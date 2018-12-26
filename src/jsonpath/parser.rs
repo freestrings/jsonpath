@@ -1,5 +1,7 @@
 use std::result;
 
+use super::path_reader::Error;
+
 use super::tokenizer::{
     self,
     Token,
@@ -83,6 +85,8 @@ enum FilterContext {
     NumValue(isize),
     StrValue(String),
     Op(FilterOp),
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -289,13 +293,38 @@ fn parse_close_paren(stack: &mut Vec<Context>) -> Result<()> {
 
     fn parse_filter(stack: &mut Vec<Context>, local_stack: &mut Vec<FilterContext>) -> Result<()> {
         stack.pop(); // Token::Question
-        stack.push(Context::FilterGroup(vec![Filter::And(
-            parse_filter_value(local_stack.pop())?,
-            parse_filter_op(local_stack.pop())?,
-            parse_filter_value(local_stack.pop())?,
-        )]));
 
-        Ok(())
+        let mut filters: Vec<Filter> = Vec::new();
+        loop {
+            if let Some(v) = local_stack.pop() {
+                filters.push(match v {
+                    FilterContext::And => {
+                        Filter::And(parse_filter_value(local_stack.pop())?,
+                                    parse_filter_op(local_stack.pop())?,
+                                    parse_filter_value(local_stack.pop())?)
+                    }
+                    FilterContext::Or => {
+                        Filter::Or(parse_filter_value(local_stack.pop())?,
+                                   parse_filter_op(local_stack.pop())?,
+                                   parse_filter_value(local_stack.pop())?)
+                    }
+                    _ => {
+                        Filter::And(parse_filter_value(Some(v))?,
+                                    parse_filter_op(local_stack.pop())?,
+                                    parse_filter_value(local_stack.pop())?)
+                    }
+                });
+            } else {
+                break;
+            }
+        }
+
+        if filters.is_empty() {
+            Err("parse_filter: invalid syntax.".to_owned())
+        } else {
+            stack.push(Context::FilterGroup(filters));
+            Ok(())
+        }
     }
 
     fn parse_path(stack: &mut Vec<Context>, local_stack: &mut Vec<FilterContext>, value: String) -> Result<()> {
@@ -328,7 +357,7 @@ fn parse_close_paren(stack: &mut Vec<Context>) -> Result<()> {
     let mut local_stack: Vec<FilterContext> = Vec::new();
 
     while let Some(ctx) = stack.pop() {
-        info!("\t{:?}", ctx);
+        info!("\t - {:?}", ctx);
 
         match ctx {
             Context::Token(Token::OpenParenthesis(_))
@@ -348,18 +377,25 @@ fn parse_close_paren(stack: &mut Vec<Context>) -> Result<()> {
             /**/if is_match(stack.last(), |c| c.alias_of(RELATIVE) || c.alias_of(RELATIVES)) => {
                 parse_path(stack, &mut local_stack, utils::vec_to_string(vec))?;
             }
+
             Context::Key(ref value)
             /**/if is_match(stack.last(), |c| c.alias_of(RELATIVE) || c.alias_of(RELATIVES)) => {
                 parse_path(stack, &mut local_stack, value.clone())?;
             }
+
             Context::Token(Token::Key(_, ref vec)) => local_stack.push(FilterContext::NumValue(utils::vec_to_number(&vec)?)),
+
+            Context::Token(Token::And(_)) => local_stack.push(FilterContext::And),
+            Context::Token(Token::Or(_)) => local_stack.push(FilterContext::Or),
+
             Context::Token(Token::Equal(_)) => local_stack.push(FilterContext::Op(FilterOp::Equal)),
             Context::Token(Token::NotEqual(_)) => local_stack.push(FilterContext::Op(FilterOp::NotEqual)),
             Context::Token(Token::Little(_)) => local_stack.push(FilterContext::Op(FilterOp::Little)),
             Context::Token(Token::LittleOrEqual(_)) => local_stack.push(FilterContext::Op(FilterOp::LittleOrEqual)),
             Context::Token(Token::Greater(_)) => local_stack.push(FilterContext::Op(FilterOp::Grater)),
             Context::Token(Token::GreaterOrEqual(_)) => local_stack.push(FilterContext::Op(FilterOp::GraterOrEqual)),
-            _ => {}
+
+            _ => unreachable!("{:?} %{:?}", ctx, stack)
         }
     }
 
@@ -398,27 +434,34 @@ impl<'a> Parser<'a> {
 
             match token {
                 Token::Absolute(_) => self.stack.push(Context::Absolute),
+
                 Token::Relative(_)
                 /**/if is_match(self.stack.last(), |c| c.alias_of(RELATIVE)) => {
                     self.stack.pop();
                     self.stack.push(Context::Relatives)
                 }
+
                 Token::Relative(_) => self.stack.push(Context::Relative),
+
                 Token::Asterisk(_)
                 /**/if is_match(self.stack.last(), |c| c.alias_of(RELATIVE)) => {
                     self.stack.pop();
                     self.stack.push(Context::RelativeValues);
                 }
+
                 Token::Asterisk(_)
                 /**/if is_match(self.stack.last(), |c| c.alias_of(RELATIVES)) => {
                     self.stack.pop();
                     self.stack.push(Context::AllValues);
                 }
+
                 Token::Asterisk(_) => self.stack.push(Context::Token(token)),
+
                 Token::OpenArray(_)
                 /**/ if is_token_match(self.stack.last(), |t| t.alias_of(tokenizer::KEY)) => {
                     parse_path_key(&mut self.stack, token)?
                 }
+
                 Token::OpenArray(_)
                 | Token::OpenParenthesis(_)
                 | Token::Question(_)
@@ -428,19 +471,27 @@ impl<'a> Parser<'a> {
                 | Token::Key(_, _)
                 | Token::DoubleQuoted(_, _)
                 | Token::SingleQuoted(_, _)
+                | Token::And(_)
+                | Token::Or(_)
                 | Token::Little(_)
                 | Token::LittleOrEqual(_)
                 | Token::Greater(_)
                 | Token::GreaterOrEqual(_)
                 | Token::Equal(_)
                 | Token::NotEqual(_) => self.stack.push(Context::Token(token)),
+
                 Token::CloseParenthesis(_) => parse_close_paren(&mut self.stack)?,
+
                 Token::CloseArray(_) => parse_close_array(&mut self.stack)?,
-                _ => unreachable!()
+
+                _ => {}
             }
         }
 
-        Ok(self.stack.to_vec())
+        match iter.get_error() {
+            Some(Error::Position(p)) => Err(format!("Parse error. position:'{}'", p)),
+            _ => Ok(self.stack.to_vec())
+        }
     }
 
 
@@ -474,10 +525,10 @@ impl<'a> Parser<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     extern crate env_logger;
+
     use super::*;
 
     fn run(input: &str, expected: Vec<Context>, err: Option<String>) {
@@ -493,7 +544,7 @@ mod tests {
     }
 
     #[test]
-    fn parse() {
+    fn filter() {
         env_logger::init();
 
         run("$..book[?(@.price<10)]", vec![
@@ -507,6 +558,42 @@ mod tests {
                         FilterPath::Key("price".to_owned()),
                     ]),
                     FilterOp::Little, FilterValue::NumValue(10),
+                ),
+            ])
+        ], None);
+
+        run("$..book[?(@.price<)]",
+            vec![],
+            Some(format!("Parse error. position:'{}'", 17)));
+
+        run("$..book[?(@.price<10 && @.name == \"한\" || @.total > 100 )]", vec![
+            Context::Absolute,
+            Context::Relatives,
+            Context::Key("book".to_owned()),
+            Context::FilterGroup(vec![
+                Filter::And(
+                    FilterValue::Path(vec![
+                        FilterPath::Relative,
+                        FilterPath::Key("price".to_owned()),
+                    ]),
+                    FilterOp::Little,
+                    FilterValue::NumValue(10),
+                ),
+                Filter::And(
+                    FilterValue::Path(vec![
+                        FilterPath::Relative,
+                        FilterPath::Key("name".to_owned()),
+                    ]),
+                    FilterOp::Equal,
+                    FilterValue::StrValue("한".to_owned()),
+                ),
+                Filter::Or(
+                    FilterValue::Path(vec![
+                        FilterPath::Relative,
+                        FilterPath::Key("total".to_owned()),
+                    ]),
+                    FilterOp::Grater,
+                    FilterValue::NumValue(100),
                 ),
             ])
         ], None);

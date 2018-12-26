@@ -193,8 +193,8 @@ impl<'a> Tokenizer<'a> {
                 Ok(Token::GreaterOrEqual(pos))
             }
             _ if ch.is_whitespace()
-                || ch == '\''
-                || ch == '"'
+                || ch == CH_SINGLE_QUOTA
+                || ch == CH_DOUBLE_QUOTA
                 || ch.is_numeric()
             => Ok(Token::Greater(pos)),
             _ => Err(Error::Position(pos))
@@ -209,8 +209,8 @@ impl<'a> Tokenizer<'a> {
                 Ok(Token::LittleOrEqual(pos))
             }
             _ if ch.is_whitespace()
-                || ch == '\''
-                || ch == '"'
+                || ch == CH_SINGLE_QUOTA
+                || ch == CH_DOUBLE_QUOTA
                 || ch.is_numeric()
             => Ok(Token::Little(pos)),
             _ => Err(Error::Position(pos))
