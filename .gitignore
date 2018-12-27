@@ -1,3 +1,4 @@
-.idea
+.idea/*
+!.idea/runConfigurations/
 /target/
 Cargo.lock
