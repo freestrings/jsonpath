@@ -1,7 +1,6 @@
 use std::result;
 
 use super::tokenizer::{
-    self,
     Token,
     PreloadedTokenizer,
     TokenError,
@@ -13,7 +12,7 @@ const DUMMY: usize = 0;
 type Result<T> = result::Result<T, String>;
 
 #[derive(Debug, PartialEq)]
-enum ParseToken {
+pub enum ParseToken {
     // '$'
     Absolute,
     // '@'
@@ -43,33 +42,37 @@ enum ParseToken {
 }
 
 #[derive(Debug, PartialEq)]
-enum FilterToken {
+pub enum FilterToken {
     Equal,
     NotEqual,
     Little,
     LittleOrEqual,
     Greater,
     GreaterOrEqual,
-    Literal(String),
-    Number(f64),
     And,
     Or,
 }
 
 #[derive(Debug)]
-struct Node {
+pub struct Node {
     left: Option<Box<Node>>,
     right: Option<Box<Node>>,
     token: ParseToken,
 }
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     tokenizer: PreloadedTokenizer<'a>
 }
 
 impl<'a> Parser<'a> {
-    fn parse(&mut self) -> Result<Node> {
-        self.json_path()
+    pub fn new(input: &'a str) -> Self {
+        Parser { tokenizer: PreloadedTokenizer::new(input) }
+    }
+
+    pub fn parse<V: NodeVisitor>(&mut self, visitor: &mut V) -> Result<()> {
+        let node = self.json_path()?;
+        visitor.visit(node);
+        Ok(())
     }
 
     fn json_path(&mut self) -> Result<Node> {
@@ -85,7 +88,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn paths(&mut self, mut prev: Node) -> Result<Node> {
+    fn paths(&mut self, prev: Node) -> Result<Node> {
         debug!("#paths");
         match self.tokenizer.peek_token() {
             Ok(Token::Dot(_)) => {
@@ -441,9 +444,30 @@ impl<'a> Parser<'a> {
 
     fn expr(&mut self) -> Result<Node> {
         debug!("#expr");
+
+        let has_prop_candidate = match self.tokenizer.peek_token() {
+            Ok(Token::At(_)) => true,
+            _ => false
+        };
+
         let node = self.term()?;
         self.eat_whitespace();
-        self.op(node)
+
+        if match self.tokenizer.peek_token() {
+            Ok(Token::Equal(_))
+            | Ok(Token::NotEqual(_))
+            | Ok(Token::Little(_))
+            | Ok(Token::LittleOrEqual(_))
+            | Ok(Token::Greater(_))
+            | Ok(Token::GreaterOrEqual(_)) => true,
+            _ => false
+        } {
+            self.op(node)
+        } else if has_prop_candidate {
+            Ok(node)
+        } else {
+            return Err(self.tokenizer.err_msg());
+        }
     }
 
     fn term_num(&mut self) -> Result<Node> {
@@ -574,7 +598,7 @@ impl<'a> Parser<'a> {
         Node { left: None, right: None, token: token }
     }
 
-    fn close_token(&mut self, mut ret: Node, token: Token) -> Result<Node> {
+    fn close_token(&mut self, ret: Node, token: Token) -> Result<Node> {
         debug!("#close_token");
         match self.tokenizer.next_token() {
             Ok(ref t) if t.partial_eq(token) => {
@@ -583,158 +607,59 @@ impl<'a> Parser<'a> {
             Err(TokenError::Eof) => {
                 Ok(ret)
             }
-            other => {
+            _ => {
                 Err(self.tokenizer.err_msg())
             }
         }
     }
 }
 
-trait NodeVisitor {
-    fn visit(&mut self, node: Node);
-}
-
-#[derive(Debug)]
-enum InterpreterToken {
-    Path(Vec<ParseToken>, ParseToken),
-    Token(ParseToken),
-}
-
-struct Interpreter<'a> {
-    input: &'a str,
-    stack: Vec<Vec<ParseToken>>,
-}
-
-impl<'a> Interpreter<'a> {
-    fn new(input: &'a str) -> Self {
-        Interpreter { input, stack: vec![] }
-    }
-
-    fn interpret(&mut self) -> result::Result<Vec<Vec<ParseToken>>, String> {
-        let tokenizer = PreloadedTokenizer::new(self.input);
-        let mut parser = Parser { tokenizer };
-        let node = parser.parse()?;
-        self.visit(node);
-        self.flush_path();
-        self.flush_meta();
-        Ok(self.stack.split_off(0))
-    }
-
-    fn flush_path(&mut self) {
-        let mut buf = vec![];
-
-        loop {
-            if !match self.stack.last() {
-                Some(n) if n.len() == 1 => {
-                    match n[0] {
-                        ParseToken::Absolute
-                        | ParseToken::Relative
-                        | ParseToken::In
-                        | ParseToken::Leaves
-                        | ParseToken::All
-                        | ParseToken::Key(_) => true,
-                        _ => false
-                    }
-                }
-                _ => false
-            } {
-                break;
-            }
-
-            self.stack.pop().map(|mut e| buf.insert(0, e.pop().unwrap()));
-        }
-
-        if buf.len() > 0 {
-            self.flush_meta();
-            self.stack.push(buf);
-        }
-    }
-
-    fn flush_expr(&mut self) {
-        if match self.stack.last() {
-            Some(n) if n.len() == 1 => {
-                match n[0] {
-                    ParseToken::Filter(FilterToken::Equal)
-                    | ParseToken::Filter(FilterToken::NotEqual)
-                    | ParseToken::Filter(FilterToken::Little)
-                    | ParseToken::Filter(FilterToken::LittleOrEqual)
-                    | ParseToken::Filter(FilterToken::Greater)
-                    | ParseToken::Filter(FilterToken::GreaterOrEqual) => true,
-                    _ => false
-                }
-            }
-            _ => false
-        } {
-            let mut op = self.stack.pop().unwrap();
-            let mut term = self.stack.pop().unwrap();
-            self.stack.last_mut().map(|v| {
-                v.append(&mut op);
-                v.append(&mut term);
-            });
-        }
-    }
-
-    fn flush_meta(&mut self) {
-        if match self.stack.last() {
-            Some(t) if t.len() == 1 => {
-                match t.last() {
-                    Some(ParseToken::ArrayEof) => true,
-                    _ => false
-                }
-            }
-            _ => false
-        } {
-            self.stack.pop();
-        }
-    }
-}
-
-impl<'a> NodeVisitor for Interpreter<'a> {
+pub trait NodeVisitor {
     fn visit(&mut self, node: Node) {
         match node.token {
             ParseToken::Absolute
             | ParseToken::Relative
             | ParseToken::All
             | ParseToken::Key(_) => {
-                self.stack.push(vec![node.token]);
+                self.visit_token(node.token);
             }
             ParseToken::In
             | ParseToken::Leaves => {
                 node.left.map(|n| self.visit(*n));
-                self.stack.push(vec![node.token]);
+                self.visit_token(node.token);
                 node.right.map(|n| self.visit(*n));
             }
             | ParseToken::Range(_, _)
             | ParseToken::Union(_)
             | ParseToken::Number(_) => {
-                self.stack.push(vec![node.token]);
+                self.visit_token(node.token);
             }
 
             | ParseToken::Array => {
                 node.left.map(|n| self.visit(*n));
-                self.flush_path();
-                self.flush_meta();
-                self.stack.push(vec![node.token]);
+                self.visit_token(node.token);
                 node.right.map(|n| self.visit(*n));
-                self.stack.push(vec![ParseToken::ArrayEof]);
+                self.visit_token(ParseToken::ArrayEof);
             }
             ParseToken::Filter(FilterToken::And)
             | ParseToken::Filter(FilterToken::Or) => {
                 node.left.map(|n| self.visit(*n));
                 node.right.map(|n| self.visit(*n));
-                self.stack.push(vec![node.token]);
+                self.visit_token(node.token);
             }
             ParseToken::Filter(_) => {
                 node.left.map(|n| self.visit(*n));
-                self.flush_path();
+                self.clean_filter_context();
                 node.right.map(|n| self.visit(*n));
-                self.flush_path();
-                self.stack.push(vec![node.token]);
-                self.flush_expr();
+                self.clean_filter_context();
+                self.visit_token(node.token);
             }
             _ => {}
         }
     }
+
+    fn visit_token(&mut self, token: ParseToken);
+    fn clean_filter_context(&mut self) {}
 }
 
 #[cfg(test)]
@@ -747,15 +672,39 @@ mod tests {
 
     static INIT: Once = ONCE_INIT;
 
+    struct NodeVisitorTestImpl<'a> {
+        input: &'a str,
+        stack: Vec<ParseToken>,
+    }
+
+    impl<'a> NodeVisitorTestImpl<'a> {
+        fn new(input: &'a str) -> Self {
+            NodeVisitorTestImpl { input, stack: Vec::new() }
+        }
+
+        fn visit(&mut self) -> result::Result<Vec<ParseToken>, String> {
+            let tokenizer = PreloadedTokenizer::new(self.input);
+            let mut parser = Parser { tokenizer };
+            parser.parse(self)?;
+            Ok(self.stack.split_off(0))
+        }
+    }
+
+    impl<'a> NodeVisitor for NodeVisitorTestImpl<'a> {
+        fn visit_token(&mut self, token: ParseToken) {
+            self.stack.push(token);
+        }
+    }
+
     fn setup() {
         INIT.call_once(|| {
             env_logger::init();
         });
     }
 
-    fn run(input: &str) -> result::Result<Vec<Vec<ParseToken>>, String> {
-        let mut interpreter = Interpreter::new(input);
-        interpreter.interpret()
+    fn run(input: &str) -> result::Result<Vec<ParseToken>, String> {
+        let mut interpreter = NodeVisitorTestImpl::new(input);
+        interpreter.visit()
     }
 
     #[test]
@@ -763,44 +712,39 @@ mod tests {
         setup();
 
         assert_eq!(run("$.aa"), Ok(vec![
-            vec![ParseToken::Absolute,
-                 ParseToken::In,
-                 ParseToken::Key("aa".to_owned())
-            ]
+            ParseToken::Absolute,
+            ParseToken::In,
+            ParseToken::Key("aa".to_owned())
         ]));
 
         assert_eq!(run("$.00.a"), Ok(vec![
-            vec![ParseToken::Absolute,
-                 ParseToken::In,
-                 ParseToken::Key("00".to_owned()),
-                 ParseToken::In,
-                 ParseToken::Key("a".to_owned())
-            ]
+            ParseToken::Absolute,
+            ParseToken::In,
+            ParseToken::Key("00".to_owned()),
+            ParseToken::In,
+            ParseToken::Key("a".to_owned())
         ]));
 
         assert_eq!(run("$.00.韓창.seok"), Ok(vec![
-            vec![ParseToken::Absolute,
-                 ParseToken::In,
-                 ParseToken::Key("00".to_owned()),
-                 ParseToken::In,
-                 ParseToken::Key("韓창".to_owned()),
-                 ParseToken::In,
-                 ParseToken::Key("seok".to_owned())
-            ]
+            ParseToken::Absolute,
+            ParseToken::In,
+            ParseToken::Key("00".to_owned()),
+            ParseToken::In,
+            ParseToken::Key("韓창".to_owned()),
+            ParseToken::In,
+            ParseToken::Key("seok".to_owned())
         ]));
 
         assert_eq!(run("$.*"), Ok(vec![
-            vec![ParseToken::Absolute,
-                 ParseToken::In,
-                 ParseToken::All
-            ]
+            ParseToken::Absolute,
+            ParseToken::In,
+            ParseToken::All
         ]));
 
         assert_eq!(run("$..*"), Ok(vec![
-            vec![ParseToken::Absolute,
-                 ParseToken::Leaves,
-                 ParseToken::All
-            ]
+            ParseToken::Absolute,
+            ParseToken::Leaves,
+            ParseToken::All
         ]));
 
         match run("$.") {
@@ -823,110 +767,148 @@ mod tests {
     fn parse_array() {
         setup();
 
+        assert_eq!(run("$.book[?(@.isbn)]"), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::In,
+            ParseToken::Key("book".to_string()),
+            ParseToken::Array,
+            ParseToken::Relative,
+            ParseToken::In,
+            ParseToken::Key("isbn".to_string()),
+            ParseToken::ArrayEof
+        ]));
+
         //
         // Array도 컨텍스트 In으로 간주 할거라서 중첩되면 하나만
         //
         assert_eq!(run("$.[*]"), Ok(vec![
-            vec![ParseToken::Absolute],
-            vec![ParseToken::Array],
-            vec![ParseToken::All]
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::All,
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[*]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::All]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::All,
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[*].가"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::All],
-            vec![ParseToken::In, ParseToken::Key("가".to_owned())]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::All,
+            ParseToken::ArrayEof,
+            ParseToken::In, ParseToken::Key("가".to_owned())
         ]));
 
         assert_eq!(run("$.a[0][1]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Number(0_f64)],
-            vec![ParseToken::Array],
-            vec![ParseToken::Number(1_f64)]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Number(0_f64),
+            ParseToken::ArrayEof,
+            ParseToken::Array,
+            ParseToken::Number(1_f64),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[1,2]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Union(vec![1, 2])]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Union(vec![1, 2]),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[10:]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Range(Some(10), None)]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Range(Some(10), None),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[:11]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Range(None, Some(11))]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Range(None, Some(11)),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[-12:13]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Range(Some(-12), Some(13))]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Range(Some(-12), Some(13)),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[?(1>2)]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Number(1_f64), ParseToken::Filter(FilterToken::Greater), ParseToken::Number(2_f64)]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Number(1_f64), ParseToken::Number(2_f64), ParseToken::Filter(FilterToken::Greater),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[?($.b>3)]"), Ok(vec![
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned())],
-            vec![ParseToken::Array],
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("b".to_owned()), ParseToken::Filter(FilterToken::Greater), ParseToken::Number(3_f64)]
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Array,
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("b".to_owned()), ParseToken::Number(3_f64), ParseToken::Filter(FilterToken::Greater),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$[?($.c>@.d && 1==2)]"), Ok(vec![
-            vec![ParseToken::Absolute],
-            vec![ParseToken::Array],
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("c".to_owned()),
-                 ParseToken::Filter(FilterToken::Greater),
-                 ParseToken::Relative, ParseToken::In, ParseToken::Key("d".to_owned())],
-            vec![ParseToken::Number(1_f64), ParseToken::Filter(FilterToken::Equal), ParseToken::Number(2_f64)],
-            vec![ParseToken::Filter(FilterToken::And)]
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("c".to_owned()),
+            ParseToken::Relative, ParseToken::In, ParseToken::Key("d".to_owned()),
+            ParseToken::Filter(FilterToken::Greater),
+            ParseToken::Number(1_f64), ParseToken::Number(2_f64), ParseToken::Filter(FilterToken::Equal),
+            ParseToken::Filter(FilterToken::And),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$[?($.c>@.d&&(1==2||3>=4))]"), Ok(vec![
-            vec![ParseToken::Absolute],
-            vec![ParseToken::Array],
-            vec![ParseToken::Absolute, ParseToken::In, ParseToken::Key("c".to_owned()),
-                 ParseToken::Filter(FilterToken::Greater),
-                 ParseToken::Relative, ParseToken::In, ParseToken::Key("d".to_owned())],
-            vec![ParseToken::Number(1_f64), ParseToken::Filter(FilterToken::Equal), ParseToken::Number(2_f64)],
-            vec![ParseToken::Number(3_f64), ParseToken::Filter(FilterToken::GreaterOrEqual), ParseToken::Number(4_f64)],
-            vec![ParseToken::Filter(FilterToken::Or)],
-            vec![ParseToken::Filter(FilterToken::And)]
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Absolute, ParseToken::In, ParseToken::Key("c".to_owned()),
+            ParseToken::Relative, ParseToken::In, ParseToken::Key("d".to_owned()),
+            ParseToken::Filter(FilterToken::Greater),
+            ParseToken::Number(1_f64), ParseToken::Number(2_f64), ParseToken::Filter(FilterToken::Equal),
+            ParseToken::Number(3_f64), ParseToken::Number(4_f64), ParseToken::Filter(FilterToken::GreaterOrEqual),
+            ParseToken::Filter(FilterToken::Or),
+            ParseToken::Filter(FilterToken::And),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$[?(@.a<@.b)]"), Ok(vec![
-            vec![ParseToken::Absolute],
-            vec![ParseToken::Array],
-            vec![ParseToken::Relative, ParseToken::In, ParseToken::Key("a".to_owned()),
-                 ParseToken::Filter(FilterToken::Little),
-                 ParseToken::Relative, ParseToken::In, ParseToken::Key("b".to_owned())]
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Relative, ParseToken::In, ParseToken::Key("a".to_owned()),
+            ParseToken::Relative, ParseToken::In, ParseToken::Key("b".to_owned()),
+            ParseToken::Filter(FilterToken::Little),
+            ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$[*][*][*]"), Ok(vec![
-            vec![ParseToken::Absolute],
-            vec![ParseToken::Array],
-            vec![ParseToken::All],
-            vec![ParseToken::Array],
-            vec![ParseToken::All],
-            vec![ParseToken::Array],
-            vec![ParseToken::All]
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::All,
+            ParseToken::ArrayEof,
+            ParseToken::Array,
+            ParseToken::All,
+            ParseToken::ArrayEof,
+            ParseToken::Array,
+            ParseToken::All,
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run("$['a']['bb']"), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Key("a".to_string()),
+            ParseToken::ArrayEof,
+            ParseToken::Array,
+            ParseToken::Key("bb".to_string()),
+            ParseToken::ArrayEof
         ]));
 
         match run("$[]") {
@@ -960,9 +942,10 @@ mod tests {
         setup();
 
         assert_eq!(run("$[?(1.1<2.1)]"), Ok(vec![
-            vec![ParseToken::Absolute],
-            vec![ParseToken::Array],
-            vec![ParseToken::Number(1.1), ParseToken::Filter(FilterToken::Little), ParseToken::Number(2.1)]
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Number(1.1), ParseToken::Number(2.1), ParseToken::Filter(FilterToken::Little),
+            ParseToken::ArrayEof
         ]));
 
         match run("$[1.1]") {

@@ -6,8 +6,6 @@ use jsonpath::path_reader::{
     PathReader,
 };
 
-use super::utils;
-
 const ABSOLUTE: &'static str = "$";
 const DOT: &'static str = ".";
 const AT: &'static str = "@";
@@ -31,7 +29,6 @@ const NOT_EQUAL: &'static str = "!=";
 const AND: &'static str = "&&";
 const OR: &'static str = "||";
 const WHITESPACE: &'static str = " ";
-const EOF: &'static str = "Eof";
 
 const CH_DOLLA: char = '$';
 const CH_DOT: char = '.';
@@ -146,14 +143,12 @@ fn simple_matched_token(ch: char, pos: usize) -> Option<Token> {
 
 pub struct Tokenizer<'a> {
     input: PathReader<'a>,
-    token_list: Vec<Token>,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
         Tokenizer {
             input: PathReader::new(input),
-            token_list: Vec::new(),
         }
     }
 
