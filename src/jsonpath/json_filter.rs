@@ -28,7 +28,9 @@ enum CmpType {
 
 trait PrivCmp {
     fn cmp_bool(&self, v1: &bool, v2: &bool) -> bool;
+
     fn cmp_f64(&self, v1: &f64, v2: &f64) -> bool;
+
     fn cmp_string(&self, v1: &String, v2: &String) -> bool;
 }
 
@@ -207,128 +209,76 @@ enum ExprTerm {
     Bool(bool),
 }
 
+impl ExprTerm {
+    fn cmp<F: PrivCmp>(&self, other: &ExprTerm, cmp_fn: F, default: bool) -> bool {
+        match self {
+            ExprTerm::Bool(v1) => match other {
+                ExprTerm::Bool(v2) => cmp_fn.cmp_bool(v1, v2),
+                _ => default
+            }
+            ExprTerm::Number(v1) => match other {
+                ExprTerm::Number(v2) => cmp_fn.cmp_f64(v1, v2),
+                _ => default
+            }
+            ExprTerm::String(v1) => match other {
+                ExprTerm::String(v2) => cmp_fn.cmp_string(v1, v2),
+                _ => default
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 enum TermContext {
     Constants(ExprTerm),
-    Json(Vec<Value>),
+    Json(ValueWrapper),
 }
 
 impl TermContext {
-    fn cmp_value_term<'a, F: PrivCmp>(et: &'a ExprTerm, cmp_fn: F, default: bool)
-                                      -> impl FnMut(&&'a mut Value) -> bool {
-        move |v| match v {
-            Value::Bool(ref v1) => {
-                match et {
-                    ExprTerm::Bool(v2) => cmp_fn.cmp_bool(v1, v2),
-                    _ => default
-                }
-            }
-            Value::Number(ref v1) => match v1.as_f64() {
-                Some(ref v1) => {
-                    match et {
-                        ExprTerm::Number(v2) => cmp_fn.cmp_f64(v1, v2),
-                        _ => default
-                    }
-                }
-                _ => default
-            },
-            Value::String(ref v1) => {
-                match et {
-                    ExprTerm::String(v2) => cmp_fn.cmp_string(v1, v2),
-                    _ => default
-                }
-            }
-            _ => default
-        }
-    }
-
-    fn cmp_values_term<F: PrivCmp>(v: &mut Vec<Value>, et: &ExprTerm, cmp: F) -> TermContext {
-        let ret = v.iter_mut()
-            .filter(Self::cmp_value_term(et, cmp, false))
-            .map(|v| v.take())
-            .collect();
-        TermContext::Json(ret)
-    }
-
-    fn cmp_term_term<F: PrivCmp>(v1: &ExprTerm, v2: &ExprTerm, cmp_fn: F, default: bool) -> bool {
-        match v1 {
-            ExprTerm::Bool(vv1) => match v2 {
-                ExprTerm::Bool(vv2) => cmp_fn.cmp_bool(vv1, vv2),
-                _ => default
-            }
-            ExprTerm::Number(vv1) => match v2 {
-                ExprTerm::Number(vv2) => cmp_fn.cmp_f64(vv1, vv2),
-                _ => default
-            }
-            ExprTerm::String(vv1) => match v2 {
-                ExprTerm::String(vv2) => cmp_fn.cmp_string(vv1, vv2),
-                _ => default
-            }
-        }
-    }
-
-    fn cmp_value_value(v1: &mut Vec<Value>, v2: &mut Vec<Value>, cmp_type: CmpType) -> TermContext {
-        match cmp_type {
-            CmpType::Eq => {
-                let mut map: HashMap<String, Value> = HashMap::new();
-                for v in v1 {
-                    map.insert(format!("{:?}", v), v.take());
-                }
-
-                let mut ret: HashMap<String, Value> = HashMap::new();
-                for v in v2 {
-                    let key = format!("{:?}", v);
-                    if map.contains_key(&key) {
-                        ret.insert(key, v.take());
-                    }
-                }
-
-                let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
-                TermContext::Json(v)
-            }
-            CmpType::Ne => {
-                let mut map: HashMap<String, Value> = HashMap::new();
-                for v in v1 {
-                    map.insert(format!("{:?}", v), v.take());
-                }
-
-                let mut ret: HashMap<String, Value> = HashMap::new();
-                for v in v2 {
-                    let key = format!("{:?}", v);
-                    if !map.contains_key(&key) {
-                        ret.insert(key, v.take());
-                    }
-                }
-
-                let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
-                TermContext::Json(v)
-            }
-            CmpType::Gt | CmpType::Ge | CmpType::Lt | CmpType::Le => {
-                TermContext::Constants(ExprTerm::Bool(false))
-            }
-        }
-    }
-
     fn cmp<F: PrivCmp + IntoType>(&mut self, other: &mut TermContext, cmp_fn: F, default: bool) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
                     TermContext::Constants(oet) => {
-                        let b = Self::cmp_term_term(et, oet, cmp_fn, default);
-                        TermContext::Constants(ExprTerm::Bool(b))
+                        TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, default)))
                     }
                     TermContext::Json(v) => {
-                        Self::cmp_values_term(v, et, cmp_fn)
+                        TermContext::Json(v.take_with(et, cmp_fn))
                     }
                 }
             }
             TermContext::Json(v) => {
                 match other {
                     TermContext::Json(ov) => {
-                        Self::cmp_value_value(v, ov, cmp_fn.into_type())
+                        v.cmp(ov, cmp_fn.into_type())
                     }
                     TermContext::Constants(et) => {
-                        Self::cmp_values_term(v, et, cmp_fn)
+                        TermContext::Json(v.take_with(et, cmp_fn))
+                    }
+                }
+            }
+        }
+    }
+
+    fn cmp_cond<F: PrivCmp>(&mut self, other: &mut TermContext, cmp_fn: F) -> TermContext {
+        match self {
+            TermContext::Constants(et) => {
+                match other {
+                    TermContext::Constants(oet) => {
+                        TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, false)))
+                    }
+                    TermContext::Json(v) => {
+                        TermContext::Json(ValueWrapper::new(v.clone_data()))
+                    }
+                }
+            }
+            TermContext::Json(v) => {
+                match other {
+                    TermContext::Json(ov) => {
+                        TermContext::Json(v.union(ov))
+                    }
+                    _ => {
+                        TermContext::Json(ValueWrapper::new(v.clone_data()))
                     }
                 }
             }
@@ -359,42 +309,6 @@ impl TermContext {
         self.cmp(other, CmpLe, false)
     }
 
-    fn cmp_cond<F: PrivCmp>(&mut self, other: &mut TermContext, cmp_fn: F) -> TermContext {
-        match self {
-            TermContext::Constants(et) => {
-                match other {
-                    TermContext::Constants(oet) => {
-                        let b = Self::cmp_term_term(et, oet, cmp_fn, false);
-                        TermContext::Constants(ExprTerm::Bool(b))
-                    }
-                    TermContext::Json(v) => {
-                        let list = v.iter_mut().map(|v| v.take()).collect();
-                        TermContext::Json(list)
-                    }
-                }
-            }
-            TermContext::Json(v) => {
-                match other {
-                    TermContext::Json(ov) => {
-                        let mut map: HashMap<String, Value> = HashMap::new();
-                        for val in v {
-                            map.insert(format!("{:?}", val), val.take());
-                        }
-                        for val in ov {
-                            map.insert(format!("{:?}", val), val.take());
-                        }
-                        let list: Vec<Value> = map.values_mut().into_iter().map(|val| val.take()).collect();
-                        TermContext::Json(list)
-                    }
-                    TermContext::Constants(et) => {
-                        let list = v.iter_mut().map(|v| v.take()).collect();
-                        TermContext::Json(list)
-                    }
-                }
-            }
-        }
-    }
-
     fn and(&mut self, other: &mut TermContext) -> TermContext {
         self.cmp_cond(other, CmpAnd)
     }
@@ -406,7 +320,7 @@ impl TermContext {
 
 pub struct JsonValueFilter {
     json: Rc<Box<Value>>,
-    current: Vec<Value>,
+    current: ValueWrapper,
     stack: Vec<ParseToken>,
     filter_stack: Vec<TermContext>,
     in_array: bool,
@@ -429,7 +343,7 @@ impl NodeVisitor for JsonValueFilter {
                 self.in_array = false;
                 match self.filter_stack.pop() {
                     Some(TermContext::Constants(_)) => unreachable!(),
-                    Some(TermContext::Json(v)) => self.current = v,
+                    Some(TermContext::Json(v)) => self.current.replace(vec![v.clone_data()]),
                     _ => {}
                 }
 
@@ -521,7 +435,7 @@ impl JsonValueFilter {
         let root = json.clone();
         Ok(JsonValueFilter {
             json: Rc::new(Box::new(json)),
-            current: vec![root],
+            current: ValueWrapper::new(root),
             stack: Vec::new(),
             filter_stack: Vec::new(),
             in_array: false,
@@ -532,10 +446,10 @@ impl JsonValueFilter {
         JsonValueFilter {
             json: self.json.clone(),
             current: if from_current {
-                self.current.clone()
+                ValueWrapper::new(self.current.clone_data())
             } else {
                 let v: &Value = self.json.as_ref().borrow();
-                vec![v.clone()]
+                ValueWrapper::new(v.clone())
             },
             stack: Vec::new(),
             filter_stack: Vec::new(),
@@ -611,35 +525,35 @@ impl JsonValueFilter {
         }
     }
 
-    fn step_leaves_all(&mut self) -> &Vec<Value> {
+    fn step_leaves_all(&mut self) -> &ValueWrapper {
         debug!("step_leaves_all");
 
-        let mut buf = Vec::new();
+        let mut vw = ValueWrapper::new(Value::Null);
         loop {
-            self.step_in_all().iter().map(|v| buf.push(v.clone()));
-            if self.current.len() == 0 {
+            vw.push(self.step_in_all().clone_data());
+            if let Value::Null = self.current._val {
                 break;
             }
         }
-        self.current = buf;
+        self.current = vw;
         &self.current
     }
 
-    fn step_leaves(&mut self, key: String) -> &Vec<Value> {
+    fn step_leaves(&mut self, key: String) -> &ValueWrapper {
         debug!("step_leaves");
 
-        let mut buf = Vec::new();
+        let mut vw = ValueWrapper::new(Value::Null);
         loop {
-            self.step_in(key.clone()).iter().map(|v| buf.push(v.clone()));
-            if self.current.len() == 0 {
+            vw.push(self.step_in(key.clone()).clone_data());
+            if let Value::Null = self.current._val {
                 break;
             }
         }
-        self.current = buf;
+        self.current = vw;
         &self.current
     }
 
-    fn step_in_all(&mut self) -> &Vec<Value> {
+    fn step_in_all(&mut self) -> &ValueWrapper {
         debug!("step_in_all");
 
         fn to_vec<'a, I: Iterator<Item=&'a mut Value>>(iter: I) -> Vec<Value> {
@@ -648,37 +562,267 @@ impl JsonValueFilter {
                 .collect()
         }
 
-        self.current = self.current.iter_mut()
-            .flat_map(|v| {
-                match v {
-                    Value::Object(map) => to_vec(map.values_mut()),
-                    Value::Array(list) => to_vec(list.iter_mut()),
-                    Value::Null => Vec::new(),
-                    _ => vec![v.take()]
-                }
-            }).collect();
+        let vec = match &mut self.current._val {
+            Value::Object(map) => to_vec(map.values_mut()),
+            Value::Array(list) => to_vec(list.iter_mut()),
+            Value::Null => Vec::new(),
+            other => vec![other.take()]
+        };
 
+        self.current.replace(vec);
         &self.current
     }
 
-    fn step_in<I: Index>(&mut self, key: I) -> &Vec<Value> {
+    fn step_in<I: Index>(&mut self, key: I) -> &ValueWrapper {
         debug!("step_in");
-        self.current = self.current.iter_mut()
-            .map(|v| {
-                trace!("step_in - map: {:?}", v);
-                match v.get_mut(&key) {
-                    Some(value) => value.take(),
-                    _ => Value::Null
-                }
-            })
-            .filter(|v| !v.is_null())
-            .collect();
+
+        let v = match self.current._val.get_mut(&key) {
+            Some(value) => value.take(),
+            _ => Value::Null
+        };
+
+        trace!("{:?}", v);
+
+        self.current.replace(vec![v]);
 
         &self.current
     }
 
-    fn current(&self) -> &Vec<Value> {
+    fn current(&self) -> &ValueWrapper {
         &self.current
+    }
+}
+
+#[derive(Debug)]
+struct ValueWrapper {
+    _val: Value,
+}
+
+impl ValueWrapper {
+    fn new(v: Value) -> Self {
+        ValueWrapper { _val: v }
+    }
+
+    fn cmp(&mut self, other: &mut ValueWrapper, cmp_type: CmpType) -> TermContext {
+        match cmp_type {
+            CmpType::Eq => {
+                TermContext::Json(self.intersect(other))
+            }
+            CmpType::Ne => {
+                TermContext::Json(self.except(other))
+            }
+            CmpType::Gt | CmpType::Ge | CmpType::Lt | CmpType::Le => {
+                TermContext::Constants(ExprTerm::Bool(false))
+            }
+        }
+    }
+
+    fn cmp_with_term<F: PrivCmp>(&self, et: &ExprTerm, cmp_fn: &F, default: bool) -> bool {
+        match &self._val {
+            Value::Bool(ref v1) => {
+                match et {
+                    ExprTerm::Bool(v2) => cmp_fn.cmp_bool(v1, v2),
+                    _ => default
+                }
+            }
+            Value::Number(ref v1) => match v1.as_f64() {
+                Some(ref v1) => {
+                    match et {
+                        ExprTerm::Number(v2) => cmp_fn.cmp_f64(v1, v2),
+                        _ => default
+                    }
+                }
+                _ => default
+            },
+            Value::String(ref v1) => {
+                match et {
+                    ExprTerm::String(v2) => cmp_fn.cmp_string(v1, v2),
+                    _ => default
+                }
+            }
+            _ => default
+        }
+    }
+
+    fn take_with<F: PrivCmp>(&mut self, et: &ExprTerm, cmp: F) -> Self {
+        match self._val.take() {
+            Value::Array(vec) => {
+                let mut vw = ValueWrapper::new(Value::Null);
+                for v in vec {
+                    if self.cmp_with_term(et, &cmp, false) {
+                        vw.push(v);
+                    }
+                }
+                vw
+            }
+            other => {
+                if self.cmp_with_term(et, &cmp, false) {
+                    ValueWrapper::new(other)
+                } else {
+                    ValueWrapper::new(Value::Null)
+                }
+            }
+        }
+    }
+
+    fn replace(&mut self, values: Vec<Value>) {
+        self._val.take();
+        for v in values {
+            self.push(v);
+        }
+    }
+
+    fn push(&mut self, v: Value) {
+        if let Value::Array(values) = &mut self._val {
+            values.push(v);
+            return;
+        }
+
+        let data = self._val.take();
+        if data.is_null() {
+            self._val = v;
+        } else {
+            let mut values = Vec::new();
+            values.push(v);
+            self._val = Value::Array(values);
+        }
+    }
+
+    fn clone_data(&self) -> Value {
+        self._val.clone()
+    }
+
+    fn is_array(&self) -> bool {
+        self._val.is_array()
+    }
+
+    fn is_object(&self) -> bool {
+        self.data().is_object()
+    }
+
+    fn is_number(&self) -> bool {
+        self.data().is_number()
+    }
+
+    fn uuid(v: &Value) -> String {
+        fn _fn(v: &Value) -> String {
+            match v {
+                Value::Null => "null".to_string(),
+                Value::String(v) => v.to_string(),
+                Value::Bool(v) => v.to_string(),
+                Value::Number(v) => v.to_string(),
+                Value::Array(v) => {
+                    v.iter().enumerate().map(|(i, v)| {
+                        format!("{}{}", i, _fn(v))
+                    }).collect()
+                }
+                Value::Object(v) => {
+                    v.into_iter().map(|(k, v)| {
+                        format!("{}{}", k, _fn(v))
+                    }).collect()
+                }
+            }
+        }
+        _fn(v)
+    }
+
+    fn into_map(&mut self) -> HashMap<String, Value> {
+        let mut map: HashMap<String, Value> = HashMap::new();
+        match &mut self._val {
+            Value::Array(v1) => {
+                for v in v1 {
+                    map.insert(Self::uuid(v), v.take());
+                }
+            }
+            other => {
+                map.insert(Self::uuid(other), other.take());
+            }
+        }
+        map
+    }
+
+    fn intersect(&mut self, other: &mut Self) -> Self {
+        let map = self.into_map();
+        let mut ret: HashMap<String, Value> = HashMap::new();
+        match &mut other._val {
+            Value::Array(vv2) => {
+                for v in vv2 {
+                    let key = Self::uuid(v);
+                    if map.contains_key(&key) {
+                        ret.insert(key, v.take());
+                    }
+                }
+            }
+            other => {
+                let key = Self::uuid(other);
+                if map.contains_key(&key) {
+                    ret.insert(key, other.take());
+                }
+            }
+        }
+
+        let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
+        ValueWrapper::new(v)
+    }
+
+    fn except(&mut self, other: &mut Self) -> Self {
+        let map = self.into_map();
+        let mut ret: HashMap<String, Value> = HashMap::new();
+        match &mut other._val {
+            Value::Array(v1) => {
+                for v in v1 {
+                    let key = Self::uuid(v);
+                    if !map.contains_key(&key) {
+                        ret.insert(key, v.take());
+                    }
+                }
+            }
+            other => {
+                let key = Self::uuid(other);
+                if !map.contains_key(&key) {
+                    ret.insert(key, other.take());
+                }
+            }
+        }
+
+        let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
+        ValueWrapper::new(v)
+    }
+
+    fn union(&mut self, other: &mut Self) -> Self {
+        let mut map = self.into_map();
+        match &mut other._val {
+            Value::Array(v1) => {
+                for v in v1 {
+                    let key = Self::uuid(v);
+                    if !map.contains_key(&key) {
+                        map.insert(key, v.take());
+                    }
+                }
+            }
+            other => {
+                let key = Self::uuid(other);
+                if !map.contains_key(&key) {
+                    map.insert(key, other.take());
+                }
+            }
+        }
+
+        let mut vw = ValueWrapper::new(Value::Null);
+        let list: Vec<Value> = map.values_mut().into_iter().map(|val| val.take()).collect();
+        vw.replace(list);
+        vw
+    }
+
+    fn data(&self) -> &Value {
+        match &self._val {
+            Value::Array(v) if v.len() == 1 => {
+                self._val.get(0).unwrap()
+            }
+            other => {
+                other
+            }
+        }
     }
 }
 
@@ -700,6 +844,18 @@ mod tests {
         });
     }
 
+    fn new_filter(file: &str) -> JsonValueFilter {
+        let string = read_json(file);
+        JsonValueFilter::new(string.as_str()).unwrap()
+    }
+
+    fn do_filter(path: &str, file: &str) -> JsonValueFilter {
+        let mut jf = new_filter(file);
+        let mut parser = Parser::new(path);
+        parser.parse(&mut jf).unwrap();
+        jf
+    }
+
     fn read_json(path: &str) -> String {
         let mut f = std::fs::File::open(path).unwrap();
         let mut contents = String::new();
@@ -711,22 +867,20 @@ mod tests {
     fn step_in() {
         setup();
 
-        let string = read_json("./benches/data_obj.json");
-        let mut jf = JsonValueFilter::new(string.as_str()).unwrap();
+        let mut jf = new_filter("./benches/data_obj.json");
         {
             let current = jf.step_in("friends");
-            assert_eq!(current[0].is_array(), true);
+            assert_eq!(current.is_array(), true);
         }
 
-        let string = read_json("./benches/data_array.json");
-        let mut jf = JsonValueFilter::new(string.as_str()).unwrap();
+        let mut jf = new_filter("./benches/data_array.json");
         {
             let current = jf.step_in(1);
-            assert_eq!(current[0].is_object(), true);
+            assert_eq!(current.is_object(), true);
         }
         {
             let current = jf.step_in("friends");
-            assert_eq!(current[0].is_array(), true);
+            assert_eq!(current.is_array(), true);
         }
     }
 
@@ -734,23 +888,22 @@ mod tests {
     fn fork() {
         setup();
 
-        let string = read_json("./benches/data_obj.json");
-        let mut jf = JsonValueFilter::new(string.as_str()).unwrap();
+        let mut jf = new_filter("./benches/data_obj.json");
         {
             let current = jf.step_in("friends");
-            assert_eq!(current[0].is_array(), true);
+            assert_eq!(current.is_array(), true);
         }
 
         let jf_from_current = jf.fork(true);
         {
             let current = jf_from_current.current();
-            assert_eq!(current[0].is_array(), true);
+            assert_eq!(current.is_array(), true);
         }
 
         let mut jf_from_root = jf_from_current.fork(false);
         {
             let current = jf_from_root.step_in("age");
-            assert_eq!(current[0].is_number(), true);
+            assert_eq!(current.is_number(), true);
         }
     }
 
@@ -758,15 +911,14 @@ mod tests {
     fn filter() {
         setup();
 
-        let string = read_json("./benches/data_obj.json");
-        let mut jf = JsonValueFilter::new(string.as_str()).unwrap();
-        let mut parser = Parser::new("$.school[?(@.friends==@.friends)]");
-        parser.parse(&mut jf).unwrap();
-        let v = json!([
-          {"id": 0,"name": "Millicent Norman"},
-          {"id": 1,"name": "Vincent Cannon" },
-          {"id": 2,"name": "Gray Berry"}
-        ]);
-        assert_eq!(v, jf.current());
+        let jf = do_filter("$.school[?(@.friends)]", "./benches/data_obj.json");
+        let v = json!({
+            "friends" : [
+              {"id": 0,"name": "Millicent Norman"},
+              {"id": 1,"name": "Vincent Cannon" },
+              {"id": 2,"name": "Gray Berry"}
+            ]
+        });
+        assert_eq!(&v, jf.current().data());
     }
 }
