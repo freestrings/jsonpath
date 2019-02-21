@@ -5,11 +5,34 @@ use super::tokenizer::{
     PreloadedTokenizer,
     TokenError,
 };
-use super::utils;
 
 const DUMMY: usize = 0;
 
 type Result<T> = result::Result<T, String>;
+
+mod utils {
+    use std::result;
+
+    pub fn vec_to_int<F>(vec: &Vec<char>, msg_handler: F) -> result::Result<isize, String>
+        where F: Fn() -> String {
+        match vec.iter().map(|c| *c).collect::<String>().as_str().parse::<isize>() {
+            Ok(n) => Ok(n),
+            _ => Err(msg_handler())
+        }
+    }
+
+    pub fn vec_to_float<F>(vec: &Vec<char>, msg_handler: F) -> result::Result<f64, String>
+        where F: Fn() -> String {
+        match vec.iter().map(|c| *c).collect::<String>().as_str().parse::<f64>() {
+            Ok(n) => Ok(n),
+            _ => Err(msg_handler())
+        }
+    }
+
+    pub fn vec_to_string(vec: &Vec<char>) -> String {
+        vec.iter().map(|c| *c).collect::<String>()
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum ParseToken {
@@ -649,9 +672,9 @@ pub trait NodeVisitor {
             }
             ParseToken::Filter(_) => {
                 node.left.map(|n| self.visit(*n));
-                self.clean_filter_context();
+                self.end_term();
                 node.right.map(|n| self.visit(*n));
-                self.clean_filter_context();
+                self.end_term();
                 self.visit_token(node.token);
             }
             _ => {}
@@ -659,7 +682,7 @@ pub trait NodeVisitor {
     }
 
     fn visit_token(&mut self, token: ParseToken);
-    fn clean_filter_context(&mut self) {}
+    fn end_term(&mut self) {}
 }
 
 #[cfg(test)]

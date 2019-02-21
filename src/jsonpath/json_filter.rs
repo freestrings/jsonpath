@@ -1,17 +1,13 @@
 use core::borrow::Borrow;
-use std::cmp::Ordering;
 use std::error::Error;
-use std::io::Read;
 use std::rc::Rc;
 use std::result;
 
 use serde_json::Value;
-use serde_json::value::Index;
 
 use jsonpath::parser::{
     FilterToken,
     NodeVisitor,
-    Parser,
     ParseToken,
 };
 
@@ -231,7 +227,7 @@ impl ExprTerm {
 #[derive(Debug)]
 enum TermContext {
     Constants(ExprTerm),
-    Json(ValueWrapper),
+    Json(Option<ValueFilterKey>, ValueWrapper),
 }
 
 impl TermContext {
@@ -242,18 +238,18 @@ impl TermContext {
                     TermContext::Constants(oet) => {
                         TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, default)))
                     }
-                    TermContext::Json(v) => {
-                        TermContext::Json(v.take_with(et, cmp_fn))
+                    TermContext::Json(key, v) => {
+                        TermContext::Json(None, v.take_with(key, et, cmp_fn))
                     }
                 }
             }
-            TermContext::Json(v) => {
+            TermContext::Json(key, v) => {
                 match other {
-                    TermContext::Json(ov) => {
+                    TermContext::Json(_, ov) => {
                         v.cmp(ov, cmp_fn.into_type())
                     }
                     TermContext::Constants(et) => {
-                        TermContext::Json(v.take_with(et, cmp_fn))
+                        TermContext::Json(None, v.take_with(key, et, cmp_fn))
                     }
                 }
             }
@@ -267,18 +263,18 @@ impl TermContext {
                     TermContext::Constants(oet) => {
                         TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, false)))
                     }
-                    TermContext::Json(v) => {
-                        TermContext::Json(ValueWrapper::new(v.clone_data()))
+                    TermContext::Json(_, v) => {
+                        TermContext::Json(None, ValueWrapper::new(v.clone_val()))
                     }
                 }
             }
-            TermContext::Json(v) => {
+            TermContext::Json(_, v) => {
                 match other {
-                    TermContext::Json(ov) => {
-                        TermContext::Json(v.union(ov))
+                    TermContext::Json(_, ov) => {
+                        TermContext::Json(None, v.union(ov))
                     }
                     _ => {
-                        TermContext::Json(ValueWrapper::new(v.clone_data()))
+                        TermContext::Json(None, ValueWrapper::new(v.clone_val()))
                     }
                 }
             }
@@ -318,82 +314,275 @@ impl TermContext {
     }
 }
 
+#[derive(Debug)]
+enum ValueFilterKey {
+    Num(usize),
+    String(String),
+    All,
+}
+
+#[derive(Debug)]
+struct ValueFilter {
+    vw: ValueWrapper,
+    last_key: Option<ValueFilterKey>,
+}
+
+impl ValueFilter {
+    fn new(v: Value) -> Self {
+        ValueFilter { vw: ValueWrapper::new(v), last_key: None }
+    }
+
+    fn iter_to_value_vec<'a, I: Iterator<Item=&'a mut Value>>(iter: I) -> Vec<Value> {
+        iter.map(|v| v.take())
+            .filter(|v| !v.is_null())
+            .collect()
+    }
+
+    fn step_leaves_all(&mut self) -> &ValueWrapper {
+        debug!("step_leaves_all");
+
+        let mut vw = ValueWrapper::new(Value::Null);
+        loop {
+            vw.push(self.step_in_all().clone_val());
+            if let Value::Null = self.vw.val {
+                break;
+            }
+        }
+        self.last_key = Some(ValueFilterKey::All);
+        self.vw = vw;
+        &self.vw
+    }
+
+    fn step_leaves(&mut self, key: &String) -> &ValueWrapper {
+        debug!("step_leaves");
+
+        let mut vw = ValueWrapper::new(Value::Null);
+        loop {
+            vw.push(self.step_in_string(key).clone_val());
+            if let Value::Null = self.vw.val() {
+                break;
+            }
+        }
+        self.last_key = Some(ValueFilterKey::String(key.clone()));
+        self.vw = vw;
+        &self.vw
+    }
+
+    fn step_in_all(&mut self) -> &ValueWrapper {
+        debug!("step_in_all");
+
+        let vec = match &mut self.vw.val {
+            Value::Object(map) => Self::iter_to_value_vec(map.values_mut()),
+            Value::Array(list) => Self::iter_to_value_vec(list.iter_mut()),
+            Value::Null => Vec::new(),
+            other => vec![other.take()]
+        };
+
+        self.last_key = Some(ValueFilterKey::All);
+        self.vw.replace(Value::Array(vec));
+        trace!("step_in_all - {:?}", self.vw.val);
+        &self.vw
+    }
+
+    fn step_in_num(&mut self, key: &usize) -> &ValueWrapper {
+        debug!("step_in_num");
+
+        trace!("step_in_num - before: {:?}", self.vw.val);
+        let v = match self.vw.val.get_mut(&key) {
+            Some(value) => value.take(),
+            _ => Value::Null
+        };
+
+        self.last_key = Some(ValueFilterKey::Num(key.clone()));
+        self.vw.replace(v);
+        trace!("step_in_num - after: {:?}", self.vw.val);
+        &self.vw
+    }
+
+    fn step_in_str(&mut self, key: &str) -> &ValueWrapper {
+        self.step_in_string(&key.to_string())
+    }
+
+    fn step_in_string(&mut self, key: &String) -> &ValueWrapper {
+        debug!("step_in_string");
+
+        trace!("step_in_string - before: {:?}", self.vw.val);
+        let v = match &mut self.vw.val {
+            Value::Array(v) => {
+                let vec: Vec<Value> = v.iter_mut()
+                    .map(|v| {
+                        if v.is_object() && v.as_object().unwrap().contains_key(key) {
+                            v.take()
+                        } else {
+                            Value::Null
+                        }
+                    })
+                    .filter(|v| !v.is_null())
+                    .collect();
+                Value::Array(vec)
+            }
+            other => match other.get_mut(key) {
+                Some(v) => v.take(),
+                _ => Value::Null
+            }
+        };
+
+        self.last_key = Some(ValueFilterKey::String(key.clone()));
+        self.vw.replace(v);
+        trace!("step_in_string - after: {:?}", self.vw.val);
+        &self.vw
+    }
+}
+
 pub struct JsonValueFilter {
     json: Rc<Box<Value>>,
-    current: ValueWrapper,
-    stack: Vec<ParseToken>,
-    filter_stack: Vec<TermContext>,
-    in_array: bool,
+    filter_stack: Vec<ValueFilter>,
+    token_stack: Vec<ParseToken>,
+    term_stack: Vec<TermContext>,
+}
+
+impl JsonValueFilter {
+    pub fn new(json: &str) -> result::Result<Self, String> {
+        let json: Value = serde_json::from_str(json)
+            .map_err(|e| e.description().to_string())?;
+        Ok(JsonValueFilter {
+            json: Rc::new(Box::new(json)),
+            filter_stack: Vec::new(),
+            token_stack: Vec::new(),
+            term_stack: Vec::new(),
+        })
+    }
+
+    fn is_peek_token_array(&self) -> bool {
+        if let Some(ParseToken::Array) = self.token_stack.last() {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn push_value_filter(&mut self, from_current: bool) {
+        if from_current {
+            self.filter_stack.last()
+                .map(|vf| ValueFilter::new(vf.vw.clone_val()))
+                .and_then(|vf| Some(self.filter_stack.push(vf)));
+        } else {
+            let v: &Value = self.json.as_ref().borrow();
+            self.filter_stack.push(ValueFilter::new(v.clone()));
+        }
+    }
+
+    fn replace_filter_stack(&mut self, v: Value) {
+        if self.filter_stack.is_empty() {
+            self.filter_stack.push(ValueFilter::new(v));
+        } else {
+            match self.filter_stack.last_mut() {
+                Some(vf) => {
+                    if v.is_null() {
+                        vf.vw.replace(v);
+                    } else if vf.vw.is_array() {
+                        vf.vw.replace(v);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn current_value(&self) -> &Value {
+        match self.filter_stack.last() {
+            Some(v) => &v.vw.val(),
+            _ => &Value::Null
+        }
+    }
 }
 
 impl NodeVisitor for JsonValueFilter {
     fn visit_token(&mut self, token: ParseToken) {
         debug!("visit_token: {:?}", token);
+
         match token {
             ParseToken::Absolute
-            | ParseToken::Relative
-            | ParseToken::In
-            | ParseToken::Leaves => {
-                self.stack.push(token);
+            | ParseToken::Relative => {
+                if self.is_peek_token_array() {
+                    self.token_stack.pop();
+                }
+                self.push_value_filter(ParseToken::Relative == token);
             }
-            ParseToken::Array => {
-                self.in_array = true;
+            ParseToken::In
+            | ParseToken::Leaves
+            | ParseToken::Array => {
+                self.token_stack.push(token);
             }
             ParseToken::ArrayEof => {
-                self.in_array = false;
-                match self.filter_stack.pop() {
-                    Some(TermContext::Constants(_)) => unreachable!(),
-                    Some(TermContext::Json(v)) => self.current.replace(vec![v.clone_data()]),
-                    _ => {}
-                }
+                trace!("array_eof - term_stack: {:?}", self.term_stack);
+                trace!("array_eof - filter_stack: {:?}", self.filter_stack);
 
-                if !self.filter_stack.is_empty() {
-                    panic!()
+                match self.term_stack.pop() {
+                    Some(TermContext::Constants(ExprTerm::Number(v))) => {
+                        let v = v as usize;
+                        match self.filter_stack.last_mut() {
+                            Some(vf) => {
+                                vf.step_in_num(&v);
+                            }
+                            _ => {}
+                        }
+                    }
+                    Some(TermContext::Json(_, mut vw)) => {
+                        self.replace_filter_stack(vw.val.take())
+                    }
+                    _ => {
+                        match self.filter_stack.pop() {
+                            Some(vf) => {
+                                match vf.vw.val {
+                                    Value::Null | Value::Bool(false) => {
+                                        self.replace_filter_stack(Value::Null)
+                                    }
+                                    other => {
+                                        self.replace_filter_stack(other)
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
             ParseToken::All => {
-                if self.in_array {
-                    self.stack.push(token);
-                } else {
-                    match self.stack.pop() {
-                        Some(ParseToken::In) => {
-                            self.step_in_all();
+                match self.filter_stack.last_mut() {
+                    Some(vf) => {
+                        match self.token_stack.pop() {
+                            Some(ParseToken::In) => {
+                                vf.step_in_all();
+                            },
+                            Some(ParseToken::Leaves) => {
+                                vf.step_leaves_all();
+                            },
+                            _ => {}
                         }
-                        Some(ParseToken::Leaves) => {
-                            self.step_leaves_all();
-                        }
-                        _ => {}
                     }
+                    _ => {}
                 }
             }
             ParseToken::Key(key) => {
-                if self.in_array {
-                    self.stack.push(ParseToken::Key(key));
-                } else {
-                    match self.stack.pop() {
-                        Some(ParseToken::In) => {
-                            self.step_in(key);
+                match self.filter_stack.last_mut() {
+                    Some(vf) => {
+                        match self.token_stack.pop() {
+                            Some(ParseToken::In) => {
+                                vf.step_in_string(&key);
+                            },
+                            Some(ParseToken::Leaves) => {
+                                vf.step_leaves(&key);
+                            },
+                            _ => {}
                         }
-                        Some(ParseToken::Leaves) => {
-                            self.step_leaves(key);
-                        }
-                        _ => {}
                     }
-
-                    if match self.stack.last() {
-                        Some(ParseToken::Absolute) | Some(ParseToken::Relative) => true,
-                        _ => false
-                    } {
-                        self.stack.pop();
-                    }
+                    _ => {}
                 }
             }
-            ParseToken::Number(_) => {
-                self.stack.push(token);
-            }
             ParseToken::Filter(ref ft) => {
-                let left = self.filter_stack.pop();
-                let right = self.filter_stack.pop();
+                let right = self.term_stack.pop();
+                let left = self.term_stack.pop();
 
                 trace!("left {:?}", left);
                 trace!("right {:?}", right);
@@ -410,206 +599,140 @@ impl NodeVisitor for JsonValueFilter {
                             FilterToken::And => left.and(&mut right),
                             FilterToken::Or => left.or(&mut right),
                         };
-                        self.filter_stack.push(tc);
+                        self.term_stack.push(tc);
                     }
                 }
             }
 
-            other => {
-                debug!("visit_token other: {:?}", other);
+            ParseToken::Number(v) => {
+                self.term_stack.push(TermContext::Constants(ExprTerm::Number(v)))
+            }
+
+            ParseToken::Range(from, to) => {
+                self.token_stack.pop();
+                match self.filter_stack.last_mut() {
+                    Some(vf) => {
+                        if !vf.vw.is_array() {
+                            return;
+                        }
+
+                        let len = if let Some(v) = vf.vw.val.as_array() { v.len() } else { 0 };
+                        let from = match from {
+                            Some(v) => if v < 0 { 0 } else { v as usize },
+                            _ => 0
+                        };
+                        let to = match to {
+                            Some(v) => if v < 0 { len - v.abs() as usize } else { v as usize }
+                            _ => len
+                        };
+
+                        trace!("range - {}:{}", from, to);
+
+                        let v: Vec<Value> = (from..to).into_iter()
+                            .map(|i| match vf.vw.val.get_mut(i) {
+                                Some(v) => v.take(),
+                                _ => Value::Null
+                            })
+                            .filter(|v| !v.is_null())
+                            .collect();
+
+                        vf.vw.replace(Value::Array(v));
+                    }
+                    _ => {}
+                }
+            }
+
+            ParseToken::Union(v) => {
+                self.token_stack.pop();
+                match self.filter_stack.last_mut() {
+                    Some(vf) => {
+                        if !vf.vw.is_array() {
+                            return;
+                        }
+
+                        let v: Vec<Value> = v.into_iter()
+                            .map(|i| match vf.vw.val.get_mut(i as usize) {
+                                Some(v) => v.take(),
+                                _ => Value::Null
+                            })
+                            .filter(|v| !v.is_null())
+                            .collect();
+
+                        trace!("union - {:?}", v);
+
+                        vf.vw.replace(Value::Array(v));
+                    }
+                    _ => {}
+                }
+            }
+
+            ParseToken::Eof => {
+                debug!("visit_token eof");
             }
         }
     }
 
-    fn clean_filter_context(&mut self) {
-        debug!("clean_filter_context");
-        self.clean_filter_path();
-        self.clean_filter_constants();
-    }
-}
+    fn end_term(&mut self) {
+        debug!("end_term");
 
-impl JsonValueFilter {
-    pub fn new(json: &str) -> result::Result<Self, String> {
-        let json: Value = serde_json::from_str(json)
-            .map_err(|e| e.description().to_string())?;
-        let root = json.clone();
-        Ok(JsonValueFilter {
-            json: Rc::new(Box::new(json)),
-            current: ValueWrapper::new(root),
-            stack: Vec::new(),
-            filter_stack: Vec::new(),
-            in_array: false,
-        })
-    }
-
-    fn fork(&self, from_current: bool) -> Self {
-        JsonValueFilter {
-            json: self.json.clone(),
-            current: if from_current {
-                ValueWrapper::new(self.current.clone_data())
-            } else {
-                let v: &Value = self.json.as_ref().borrow();
-                ValueWrapper::new(v.clone())
-            },
-            stack: Vec::new(),
-            filter_stack: Vec::new(),
-            in_array: false,
+        if let Some(ParseToken::Array) = self.token_stack.last() {
+            self.token_stack.pop();
         }
-    }
 
-    fn clean_filter_path(&mut self) {
-        let mut paths = Vec::new();
+        trace!("end_term - term_stack {:?}", self.term_stack);
+        trace!("end_term - token_stack {:?}", self.token_stack);
+        trace!("end_term - filter_stack {:?}", self.filter_stack);
 
-        loop {
-            trace!("clean_filter_path - loop: {:?}", self.stack.last());
-
-            if match self.stack.last() {
-                Some(ParseToken::Absolute)
-                | Some(ParseToken::Relative)
-                | Some(ParseToken::In)
-                | Some(ParseToken::Leaves)
-                | Some(ParseToken::All)
-                | Some(ParseToken::Key(_)) => true,
-                _ => false
-            } {
-                self.stack.pop().map(|t| paths.push(t));
-            } else {
-                break;
+        if self.token_stack.is_empty() && self.filter_stack.len() > 1 {
+            match self.filter_stack.pop() {
+                Some(vf) => {
+                    self.term_stack.push(TermContext::Json(vf.last_key, vf.vw));
+                }
+                _ => {}
             }
         }
 
-        trace!("clean_filter_path: {:?}", paths);
-
-        if let Some(forked) = match paths.pop() {
-            Some(ParseToken::Absolute) => {
-                Some(self.fork(false))
-            }
-            Some(ParseToken::Relative) => {
-                Some(self.fork(true))
-            }
-            _ => None
-        }.and_then(|mut forked| {
-            while let Some(t) = paths.pop() {
-                forked.visit_token(t);
-            }
-            Some(forked)
-        }) {
-            trace!("clean_filter_path -> {:?}", forked.current);
-            self.filter_stack.push(TermContext::Json(forked.current));
-        }
-    }
-
-    fn clean_filter_constants(&mut self) {
-        trace!("clean_filter_constants: {:?}", self.stack.last());
-
-        if match self.stack.last() {
+        if match self.token_stack.last() {
             Some(ParseToken::Key(_))
             | Some(ParseToken::Number(_)) => true,
             _ => false
         } {
-            match self.stack.pop() {
+            match self.token_stack.pop() {
                 Some(ParseToken::Key(ref v)) if v.eq_ignore_ascii_case("true") => {
-                    self.filter_stack.push(TermContext::Constants(ExprTerm::Bool(true)))
+                    self.term_stack.push(TermContext::Constants(ExprTerm::Bool(true)))
                 }
                 Some(ParseToken::Key(ref v)) if v.eq_ignore_ascii_case("false") => {
-                    self.filter_stack.push(TermContext::Constants(ExprTerm::Bool(false)))
+                    self.term_stack.push(TermContext::Constants(ExprTerm::Bool(false)))
                 }
                 Some(ParseToken::Key(v)) => {
-                    self.filter_stack.push(TermContext::Constants(ExprTerm::String(v)))
+                    self.term_stack.push(TermContext::Constants(ExprTerm::String(v)))
                 }
                 Some(ParseToken::Number(v)) => {
-                    self.filter_stack.push(TermContext::Constants(ExprTerm::Number(v)))
+                    self.term_stack.push(TermContext::Constants(ExprTerm::Number(v)))
                 }
                 _ => {}
             }
         }
     }
-
-    fn step_leaves_all(&mut self) -> &ValueWrapper {
-        debug!("step_leaves_all");
-
-        let mut vw = ValueWrapper::new(Value::Null);
-        loop {
-            vw.push(self.step_in_all().clone_data());
-            if let Value::Null = self.current._val {
-                break;
-            }
-        }
-        self.current = vw;
-        &self.current
-    }
-
-    fn step_leaves(&mut self, key: String) -> &ValueWrapper {
-        debug!("step_leaves");
-
-        let mut vw = ValueWrapper::new(Value::Null);
-        loop {
-            vw.push(self.step_in(key.clone()).clone_data());
-            if let Value::Null = self.current._val {
-                break;
-            }
-        }
-        self.current = vw;
-        &self.current
-    }
-
-    fn step_in_all(&mut self) -> &ValueWrapper {
-        debug!("step_in_all");
-
-        fn to_vec<'a, I: Iterator<Item=&'a mut Value>>(iter: I) -> Vec<Value> {
-            iter.map(|v| v.take())
-                .filter(|v| !v.is_null())
-                .collect()
-        }
-
-        let vec = match &mut self.current._val {
-            Value::Object(map) => to_vec(map.values_mut()),
-            Value::Array(list) => to_vec(list.iter_mut()),
-            Value::Null => Vec::new(),
-            other => vec![other.take()]
-        };
-
-        self.current.replace(vec);
-        &self.current
-    }
-
-    fn step_in<I: Index>(&mut self, key: I) -> &ValueWrapper {
-        debug!("step_in");
-
-        let v = match self.current._val.get_mut(&key) {
-            Some(value) => value.take(),
-            _ => Value::Null
-        };
-
-        trace!("{:?}", v);
-
-        self.current.replace(vec![v]);
-
-        &self.current
-    }
-
-    fn current(&self) -> &ValueWrapper {
-        &self.current
-    }
 }
 
 #[derive(Debug)]
 struct ValueWrapper {
-    _val: Value,
+    val: Value,
 }
 
 impl ValueWrapper {
     fn new(v: Value) -> Self {
-        ValueWrapper { _val: v }
+        ValueWrapper { val: v }
     }
 
     fn cmp(&mut self, other: &mut ValueWrapper, cmp_type: CmpType) -> TermContext {
         match cmp_type {
             CmpType::Eq => {
-                TermContext::Json(self.intersect(other))
+                TermContext::Json(None, self.intersect(other))
             }
             CmpType::Ne => {
-                TermContext::Json(self.except(other))
+                TermContext::Json(None, self.except(other))
             }
             CmpType::Gt | CmpType::Ge | CmpType::Lt | CmpType::Le => {
                 TermContext::Constants(ExprTerm::Bool(false))
@@ -617,8 +740,8 @@ impl ValueWrapper {
         }
     }
 
-    fn cmp_with_term<F: PrivCmp>(&self, et: &ExprTerm, cmp_fn: &F, default: bool) -> bool {
-        match &self._val {
+    fn cmp_with_term<F: PrivCmp>(val: &Value, et: &ExprTerm, cmp_fn: &F, default: bool) -> bool {
+        match val {
             Value::Bool(ref v1) => {
                 match et {
                     ExprTerm::Bool(v2) => cmp_fn.cmp_bool(v1, v2),
@@ -644,64 +767,89 @@ impl ValueWrapper {
         }
     }
 
-    fn take_with<F: PrivCmp>(&mut self, et: &ExprTerm, cmp: F) -> Self {
-        match self._val.take() {
-            Value::Array(vec) => {
-                let mut vw = ValueWrapper::new(Value::Null);
-                for v in vec {
-                    if self.cmp_with_term(et, &cmp, false) {
-                        vw.push(v);
-                    }
-                }
-                vw
+    fn take_object_in_array<F: PrivCmp>(&mut self, key: &String, et: &ExprTerm, cmp: &F) -> Option<Self> {
+        match self.val.take() {
+            Value::Array(mut vec) => {
+                let mut ret: Vec<Value> = vec.iter_mut()
+                    .filter(|v| {
+                        match &v {
+                            Value::Object(map) => {
+                                match map.get(key) {
+                                    Some(vv) => Self::cmp_with_term(vv, et, cmp, false),
+                                    _ => false
+                                }
+                            }
+                            _ => false
+                        }
+                    })
+                    .map(|v| v.take())
+                    .collect();
+                Some(ValueWrapper::new(Value::Array(ret)))
             }
-            other => {
-                if self.cmp_with_term(et, &cmp, false) {
-                    ValueWrapper::new(other)
-                } else {
-                    ValueWrapper::new(Value::Null)
+            _ => None
+        }
+    }
+
+    fn take_with_key_type<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: &F) -> Option<Self> {
+        match key {
+            Some(ValueFilterKey::String(key)) => {
+                self.take_object_in_array(key, et, cmp)
+            }
+            _ => None
+        }
+    }
+
+    fn take_with<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: F) -> Self {
+        match self.take_with_key_type(key, et, &cmp) {
+            Some(vw) => vw,
+            _ => {
+                match self.val.take() {
+                    Value::Array(mut vec) => {
+                        let mut ret = vec.iter_mut()
+                            .filter(|v| Self::cmp_with_term(&v, et, &cmp, false))
+                            .map(|v| v.take())
+                            .collect();
+                        ValueWrapper::new(Value::Array(ret))
+                    }
+                    other => {
+                        if Self::cmp_with_term(&other, et, &cmp, false) {
+                            ValueWrapper::new(other)
+                        } else {
+                            ValueWrapper::new(Value::Null)
+                        }
+                    }
                 }
             }
         }
     }
 
-    fn replace(&mut self, values: Vec<Value>) {
-        self._val.take();
-        for v in values {
-            self.push(v);
-        }
+    fn replace(&mut self, val: Value) {
+        self.val = val;
     }
 
     fn push(&mut self, v: Value) {
-        if let Value::Array(values) = &mut self._val {
+        if let Value::Array(values) = &mut self.val {
             values.push(v);
             return;
         }
 
-        let data = self._val.take();
+        let data = self.val.take();
         if data.is_null() {
-            self._val = v;
+            self.val = v;
         } else {
             let mut values = Vec::new();
+            values.push(data);
             values.push(v);
-            self._val = Value::Array(values);
+            self.val = Value::Array(values);
         }
     }
 
-    fn clone_data(&self) -> Value {
-        self._val.clone()
+    fn clone_val(&self) -> Value {
+        self.val.clone()
     }
 
     fn is_array(&self) -> bool {
-        self._val.is_array()
-    }
-
-    fn is_object(&self) -> bool {
-        self.data().is_object()
-    }
-
-    fn is_number(&self) -> bool {
-        self.data().is_number()
+        self.val.is_array()
     }
 
     fn uuid(v: &Value) -> String {
@@ -712,14 +860,12 @@ impl ValueWrapper {
                 Value::Bool(v) => v.to_string(),
                 Value::Number(v) => v.to_string(),
                 Value::Array(v) => {
-                    v.iter().enumerate().map(|(i, v)| {
-                        format!("{}{}", i, _fn(v))
-                    }).collect()
+                    v.iter().enumerate()
+                        .map(|(i, v)| { format!("{}{}", i, _fn(v)) })
+                        .collect()
                 }
                 Value::Object(v) => {
-                    v.into_iter().map(|(k, v)| {
-                        format!("{}{}", k, _fn(v))
-                    }).collect()
+                    v.into_iter().map(|(k, v)| { format!("{}{}", k, _fn(v)) }).collect()
                 }
             }
         }
@@ -728,7 +874,7 @@ impl ValueWrapper {
 
     fn into_map(&mut self) -> HashMap<String, Value> {
         let mut map: HashMap<String, Value> = HashMap::new();
-        match &mut self._val {
+        match &mut self.val {
             Value::Array(v1) => {
                 for v in v1 {
                     map.insert(Self::uuid(v), v.take());
@@ -741,12 +887,36 @@ impl ValueWrapper {
         map
     }
 
+    fn except(&mut self, other: &mut Self) -> Self {
+        let map = self.into_map();
+        let mut ret: HashMap<String, Value> = HashMap::new();
+        match &mut other.val {
+            Value::Array(v1) => {
+                for v in v1 {
+                    let key = Self::uuid(v);
+                    if !map.contains_key(&key) {
+                        ret.insert(key, v.take());
+                    }
+                }
+            }
+            other => {
+                let key = Self::uuid(other);
+                if !map.contains_key(&key) {
+                    ret.insert(key, other.take());
+                }
+            }
+        }
+
+        let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
+        ValueWrapper::new(v)
+    }
+
     fn intersect(&mut self, other: &mut Self) -> Self {
         let map = self.into_map();
         let mut ret: HashMap<String, Value> = HashMap::new();
-        match &mut other._val {
-            Value::Array(vv2) => {
-                for v in vv2 {
+        match &mut other.val {
+            Value::Array(v1) => {
+                for v in v1 {
                     let key = Self::uuid(v);
                     if map.contains_key(&key) {
                         ret.insert(key, v.take());
@@ -765,33 +935,9 @@ impl ValueWrapper {
         ValueWrapper::new(v)
     }
 
-    fn except(&mut self, other: &mut Self) -> Self {
-        let map = self.into_map();
-        let mut ret: HashMap<String, Value> = HashMap::new();
-        match &mut other._val {
-            Value::Array(v1) => {
-                for v in v1 {
-                    let key = Self::uuid(v);
-                    if !map.contains_key(&key) {
-                        ret.insert(key, v.take());
-                    }
-                }
-            }
-            other => {
-                let key = Self::uuid(other);
-                if !map.contains_key(&key) {
-                    ret.insert(key, other.take());
-                }
-            }
-        }
-
-        let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
-        ValueWrapper::new(v)
-    }
-
     fn union(&mut self, other: &mut Self) -> Self {
         let mut map = self.into_map();
-        match &mut other._val {
+        match &mut other.val {
             Value::Array(v1) => {
                 for v in v1 {
                     let key = Self::uuid(v);
@@ -810,19 +956,12 @@ impl ValueWrapper {
 
         let mut vw = ValueWrapper::new(Value::Null);
         let list: Vec<Value> = map.values_mut().into_iter().map(|val| val.take()).collect();
-        vw.replace(list);
+        vw.replace(Value::Array(list));
         vw
     }
 
-    fn data(&self) -> &Value {
-        match &self._val {
-            Value::Array(v) if v.len() == 1 => {
-                self._val.get(0).unwrap()
-            }
-            other => {
-                other
-            }
-        }
+    fn val(&self) -> &Value {
+        &self.val
     }
 }
 
@@ -831,9 +970,8 @@ mod tests {
     extern crate env_logger;
 
     use std::sync::{Once, ONCE_INIT};
-
-    use jsonpath::tokenizer::PreloadedTokenizer;
-
+    use jsonpath::parser::Parser;
+    use std::io::Read;
     use super::*;
 
     static INIT: Once = ONCE_INIT;
@@ -844,13 +982,15 @@ mod tests {
         });
     }
 
-    fn new_filter(file: &str) -> JsonValueFilter {
+    fn new_value_filter(file: &str) -> ValueFilter {
         let string = read_json(file);
-        JsonValueFilter::new(string.as_str()).unwrap()
+        let json: Value = serde_json::from_str(string.as_str()).unwrap();
+        ValueFilter::new(json)
     }
 
     fn do_filter(path: &str, file: &str) -> JsonValueFilter {
-        let mut jf = new_filter(file);
+        let string = read_json(file);
+        let mut jf = JsonValueFilter::new(string.as_str()).unwrap();
         let mut parser = Parser::new(path);
         parser.parse(&mut jf).unwrap();
         jf
@@ -867,58 +1007,103 @@ mod tests {
     fn step_in() {
         setup();
 
-        let mut jf = new_filter("./benches/data_obj.json");
+        let mut jf = new_value_filter("./benches/data_obj.json");
         {
-            let current = jf.step_in("friends");
+            let current = jf.step_in_str("friends");
             assert_eq!(current.is_array(), true);
         }
 
-        let mut jf = new_filter("./benches/data_array.json");
+        let mut jf = new_value_filter("./benches/data_array.json");
         {
-            let current = jf.step_in(1);
-            assert_eq!(current.is_object(), true);
+            let current = jf.step_in_num(&1);
+            assert_eq!(current.val.is_object(), true);
         }
         {
-            let current = jf.step_in("friends");
+            let current = jf.step_in_str("friends");
             assert_eq!(current.is_array(), true);
         }
     }
 
     #[test]
-    fn fork() {
+    fn array() {
         setup();
 
-        let mut jf = new_filter("./benches/data_obj.json");
-        {
-            let current = jf.step_in("friends");
-            assert_eq!(current.is_array(), true);
-        }
+        let friends = json!([
+            {"id": 1, "name": "Vincent Cannon" },
+            {"id": 2, "name": "Gray Berry"}
+        ]);
 
-        let jf_from_current = jf.fork(true);
-        {
-            let current = jf_from_current.current();
-            assert_eq!(current.is_array(), true);
-        }
+        let jf = do_filter("$.school.friends[1, 2]", "./benches/data_obj.json");
+        assert_eq!(&friends, jf.current_value());
 
-        let mut jf_from_root = jf_from_current.fork(false);
-        {
-            let current = jf_from_root.step_in("age");
-            assert_eq!(current.is_number(), true);
-        }
+        let jf = do_filter("$.school.friends[1:]", "./benches/data_obj.json");
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.school.friends[:-2]", "./benches/data_obj.json");
+        let friends = json!([
+            {"id": 0, "name": "Millicent Norman"}
+        ]);
+        assert_eq!(&friends, jf.current_value());
     }
 
     #[test]
-    fn filter() {
+    fn return_type() {
         setup();
 
-        let jf = do_filter("$.school[?(@.friends)]", "./benches/data_obj.json");
-        let v = json!({
-            "friends" : [
-              {"id": 0,"name": "Millicent Norman"},
-              {"id": 1,"name": "Vincent Cannon" },
-              {"id": 2,"name": "Gray Berry"}
+        let friends = json!({
+            "friends": [
+                {"id": 0, "name": "Millicent Norman"},
+                {"id": 1, "name": "Vincent Cannon" },
+                {"id": 2, "name": "Gray Berry"}
             ]
         });
-        assert_eq!(&v, jf.current().data());
+
+        let jf = do_filter("$.school", "./benches/data_obj.json");
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.school[?(@.friends[0])]", "./benches/data_obj.json");
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.school[?(@.friends[10])]", "./benches/data_obj.json");
+        assert_eq!(&Value::Null, jf.current_value());
+
+        let jf = do_filter("$.school[?(1==1)]", "./benches/data_obj.json");
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.school.friends[?(1==1)]", "./benches/data_obj.json");
+        let friends = json!([
+            {"id": 0, "name": "Millicent Norman"},
+            {"id": 1, "name": "Vincent Cannon" },
+            {"id": 2, "name": "Gray Berry"}
+        ]);
+        assert_eq!(&friends, jf.current_value());
+    }
+
+    #[test]
+    fn op() {
+        setup();
+
+        let jf = do_filter("$.school[?(@.friends == @.friends)]", "./benches/data_obj.json");
+        let friends = json!({
+            "friends": [
+                {"id": 0, "name": "Millicent Norman"},
+                {"id": 1, "name": "Vincent Cannon" },
+                {"id": 2, "name": "Gray Berry"}
+            ]
+        });
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.friends[?(@.name)]", "./benches/data_obj.json");
+        let friends = json!([
+            { "id" : 1, "name" : "Vincent Cannon" },
+            { "id" : 2, "name" : "Gray Berry" }
+        ]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.friends[?(@.id >= 2)]", "./benches/data_obj.json");
+        let friends = json!([
+            { "id" : 2, "name" : "Gray Berry" }
+        ]);
+        assert_eq!(&friends, jf.current_value());
     }
 }

@@ -291,27 +291,21 @@ impl<'a> PreloadedTokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut tokenizer = Tokenizer::new(input);
         let mut tokens = vec![];
-        let mut err = TokenError::Eof;
-        let mut err_pos = 0;
         loop {
             match tokenizer.next_token() {
                 Ok(t) => {
                     tokens.insert(0, (tokenizer.current_pos(), t));
                 }
                 Err(e) => {
-                    err = e;
-                    err_pos = tokenizer.current_pos();
-                    break;
+                    return PreloadedTokenizer {
+                        origin_input: input.clone(),
+                        err: e,
+                        err_pos: tokenizer.current_pos(),
+                        tokens,
+                        curr_pos: None,
+                    };
                 }
             }
-        }
-
-        PreloadedTokenizer {
-            origin_input: input.clone(),
-            err,
-            err_pos,
-            tokens,
-            curr_pos: None,
         }
     }
 
