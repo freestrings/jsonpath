@@ -22,6 +22,11 @@ enum CmpType {
     Le,
 }
 
+enum CmpCondType {
+    And,
+    Or,
+}
+
 trait PrivCmp {
     fn cmp_bool(&self, v1: &bool, v2: &bool) -> bool;
 
@@ -256,12 +261,19 @@ impl TermContext {
         }
     }
 
-    fn cmp_cond<F: PrivCmp>(&mut self, other: &mut TermContext, cmp_fn: F) -> TermContext {
+    fn cmp_cond(&mut self, other: &mut TermContext, cmp_cond_type: CmpCondType) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
                     TermContext::Constants(oet) => {
-                        TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, false)))
+                        match cmp_cond_type {
+                            CmpCondType::Or => {
+                                TermContext::Constants(ExprTerm::Bool(et.cmp(oet, CmpOr, false)))
+                            }
+                            CmpCondType::And => {
+                                TermContext::Constants(ExprTerm::Bool(et.cmp(oet, CmpAnd, false)))
+                            }
+                        }
                     }
                     TermContext::Json(_, v) => {
                         TermContext::Json(None, ValueWrapper::new(v.clone_val()))
@@ -271,7 +283,10 @@ impl TermContext {
             TermContext::Json(_, v) => {
                 match other {
                     TermContext::Json(_, ov) => {
-                        TermContext::Json(None, v.union(ov))
+                        match cmp_cond_type {
+                            CmpCondType::Or => TermContext::Json(None, v.union(ov)),
+                            CmpCondType::And => TermContext::Json(None, v.intersect(ov)),
+                        }
                     }
                     _ => {
                         TermContext::Json(None, ValueWrapper::new(v.clone_val()))
@@ -306,11 +321,11 @@ impl TermContext {
     }
 
     fn and(&mut self, other: &mut TermContext) -> TermContext {
-        self.cmp_cond(other, CmpAnd)
+        self.cmp_cond(other, CmpCondType::And)
     }
 
     fn or(&mut self, other: &mut TermContext) -> TermContext {
-        self.cmp_cond(other, CmpOr)
+        self.cmp_cond(other, CmpCondType::Or)
     }
 }
 
@@ -554,10 +569,10 @@ impl NodeVisitor for JsonValueFilter {
                         match self.token_stack.pop() {
                             Some(ParseToken::In) => {
                                 vf.step_in_all();
-                            },
+                            }
                             Some(ParseToken::Leaves) => {
                                 vf.step_leaves_all();
-                            },
+                            }
                             _ => {}
                         }
                     }
@@ -570,10 +585,10 @@ impl NodeVisitor for JsonValueFilter {
                         match self.token_stack.pop() {
                             Some(ParseToken::In) => {
                                 vf.step_in_string(&key);
-                            },
+                            }
                             Some(ParseToken::Leaves) => {
                                 vf.step_leaves(&key);
-                            },
+                            }
                             _ => {}
                         }
                     }
@@ -602,6 +617,8 @@ impl NodeVisitor for JsonValueFilter {
                         self.term_stack.push(tc);
                     }
                 }
+
+                trace!("filter - {:?}", self.term_stack)
             }
 
             ParseToken::Number(v) => {
@@ -824,7 +841,12 @@ impl ValueWrapper {
     }
 
     fn replace(&mut self, val: Value) {
-        self.val = val;
+        let is_null = match &val {
+            Value::Array(v) => if v.is_empty() { true } else { false },
+            Value::Object(m) => if m.is_empty() { true } else { false },
+            _ => val.is_null()
+        };
+        self.val = if is_null { Value::Null } else { val };
     }
 
     fn push(&mut self, v: Value) {
@@ -1105,5 +1127,18 @@ mod tests {
             { "id" : 2, "name" : "Gray Berry" }
         ]);
         assert_eq!(&friends, jf.current_value());
+
+        //
+        // TODO 원본 json 순서여야 하나?
+        //
+        let jf = do_filter("$.friends[?(@.id >= 2 || @.id == 1)]", "./benches/data_obj.json");
+        let friends = json!([
+            { "id" : 2, "name" : "Gray Berry" },
+            { "id" : 1, "name" : "Vincent Cannon" }
+        ]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]", "./benches/data_obj.json");
+        assert_eq!(&Value::Null, jf.current_value());
     }
 }
