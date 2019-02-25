@@ -5,5 +5,5 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate core;
-
+extern crate indexmap;
 pub mod jsonpath;
