@@ -1,4 +1,5 @@
 use core::borrow::Borrow;
+use std::collections::HashMap;
 use std::error::Error;
 use std::rc::Rc;
 use std::result;
@@ -10,8 +11,6 @@ use jsonpath::parser::{
     NodeVisitor,
     ParseToken,
 };
-
-use std::collections::HashMap;
 
 enum CmpType {
     Eq,
@@ -340,11 +339,12 @@ enum ValueFilterKey {
 struct ValueFilter {
     vw: ValueWrapper,
     last_key: Option<ValueFilterKey>,
+    filter_mode: bool,
 }
 
 impl ValueFilter {
-    fn new(v: Value) -> Self {
-        ValueFilter { vw: ValueWrapper::new(v), last_key: None }
+    fn new(v: Value, filter_mode: bool) -> Self {
+        ValueFilter { vw: ValueWrapper::new(v), last_key: None, filter_mode }
     }
 
     fn iter_to_value_vec<'a, I: Iterator<Item=&'a mut Value>>(iter: I) -> Vec<Value> {
@@ -422,12 +422,17 @@ impl ValueFilter {
         debug!("step_in_string");
 
         trace!("step_in_string - before: {:?}", self.vw.val);
+        let filter_mode = self.filter_mode;
         let v = match &mut self.vw.val {
             Value::Array(v) => {
                 let vec: Vec<Value> = v.iter_mut()
                     .map(|v| {
                         if v.is_object() && v.as_object().unwrap().contains_key(key) {
-                            v.take()
+                            if filter_mode {
+                                v.take()
+                            } else {
+                                v.get_mut(key).unwrap().take()
+                            }
                         } else {
                             Value::Null
                         }
@@ -479,17 +484,17 @@ impl JsonValueFilter {
     fn push_value_filter(&mut self, from_current: bool) {
         if from_current {
             self.filter_stack.last()
-                .map(|vf| ValueFilter::new(vf.vw.clone_val()))
+                .map(|vf| ValueFilter::new(vf.vw.clone_val(), from_current))
                 .and_then(|vf| Some(self.filter_stack.push(vf)));
         } else {
             let v: &Value = self.json.as_ref().borrow();
-            self.filter_stack.push(ValueFilter::new(v.clone()));
+            self.filter_stack.push(ValueFilter::new(v.clone(), !from_current));
         }
     }
 
     fn replace_filter_stack(&mut self, v: Value) {
         if self.filter_stack.is_empty() {
-            self.filter_stack.push(ValueFilter::new(v));
+            self.filter_stack.push(ValueFilter::new(v, false));
         } else {
             match self.filter_stack.last_mut() {
                 Some(vf) => {
@@ -991,9 +996,11 @@ impl ValueWrapper {
 mod tests {
     extern crate env_logger;
 
-    use std::sync::{Once, ONCE_INIT};
-    use jsonpath::parser::Parser;
     use std::io::Read;
+    use std::sync::{Once, ONCE_INIT};
+
+    use jsonpath::parser::Parser;
+
     use super::*;
 
     static INIT: Once = ONCE_INIT;
@@ -1007,7 +1014,7 @@ mod tests {
     fn new_value_filter(file: &str) -> ValueFilter {
         let string = read_json(file);
         let json: Value = serde_json::from_str(string.as_str()).unwrap();
-        ValueFilter::new(json)
+        ValueFilter::new(json, false)
     }
 
     fn do_filter(path: &str, file: &str) -> JsonValueFilter {
@@ -1043,6 +1050,19 @@ mod tests {
         {
             let current = jf.step_in_str("friends");
             assert_eq!(current.is_array(), true);
+        }
+        let mut jf = new_value_filter("./benches/data_obj.json");
+        {
+            jf.step_in_str("school");
+            jf.step_in_str("friends");
+            jf.step_in_all();
+            let current = jf.step_in_str("name");
+            let friends = json!([
+                "Millicent Norman",
+                "Vincent Cannon",
+                "Gray Berry"
+            ]);
+            assert_eq!(&friends, &current.val);
         }
     }
 
@@ -1129,16 +1149,30 @@ mod tests {
         assert_eq!(&friends, jf.current_value());
 
         //
-        // TODO 원본 json 순서여야 하나?
+        // TODO 원본 json 순서여야 하나? => serde_json preserve_order 피처를 enable 시켜야 함.
         //
         let jf = do_filter("$.friends[?(@.id >= 2 || @.id == 1)]", "./benches/data_obj.json");
-        let friends = json!([
-            { "id" : 2, "name" : "Gray Berry" },
-            { "id" : 1, "name" : "Vincent Cannon" }
-        ]);
-        assert_eq!(&friends, jf.current_value());
+        let mut map = HashMap::new();
+        let mut val = jf.current_value().clone();
+        val.as_array_mut().unwrap().iter_mut().enumerate().for_each(|(i, v)| {
+            map.insert(i, v.take());
+        });
+        let friends = vec![map.get_mut(&0).unwrap().take(), map.get_mut(&1).unwrap().take()];
+        assert_eq!(&Value::Array(friends), jf.current_value());
 
         let jf = do_filter("$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]", "./benches/data_obj.json");
         assert_eq!(&Value::Null, jf.current_value());
+    }
+
+    #[test]
+    fn example() {
+        let jf = do_filter("$.store.book[*].author", "./benches/example.json");
+        let ret = json!([
+            "Nigel Rees",
+            "Evelyn Waugh",
+            "Herman Melville",
+            "J. R. R. Tolkien"
+        ]);
+        assert_eq!(&ret, jf.current_value());
     }
 }
