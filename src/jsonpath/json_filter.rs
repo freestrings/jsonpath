@@ -368,18 +368,36 @@ impl ValueFilter {
         &self.vw
     }
 
-    fn step_leaves(&mut self, key: &String) -> &ValueWrapper {
+    fn step_leaves_str(&mut self, key: &str) -> &ValueWrapper {
+        self.step_leaves_string(&key.to_string())
+    }
+
+    fn step_leaves_string(&mut self, key: &String) -> &ValueWrapper {
         debug!("step_leaves");
 
-        let mut vw = ValueWrapper::new(Value::Null);
-        loop {
-            vw.push(self.step_in_string(key).clone_val());
-            if let Value::Null = self.vw.val() {
-                break;
+        let mut buf: Vec<Value> = Vec::new();
+
+        fn _fn(key: &String, v: &Value, buf: &mut Vec<Value>) {
+            match v {
+                Value::Array(vec) => {
+                    for i in vec {
+                        _fn(key, i, buf);
+                    }
+                }
+                Value::Object(v) => {
+                    for (k, v) in v.into_iter() {
+                        if key == k {
+                            buf.push(v.clone());
+                        }
+                        _fn(key, v, buf);
+                    }
+                }
+                _ => {}
             }
         }
+        _fn(key, &self.vw.val, &mut buf);
         self.last_key = Some(ValueFilterKey::String(key.clone()));
-        self.vw = vw;
+        self.vw = ValueWrapper::new(Value::Array(buf));
         &self.vw
     }
 
@@ -592,7 +610,7 @@ impl NodeVisitor for JsonValueFilter {
                                 vf.step_in_string(&key);
                             }
                             Some(ParseToken::Leaves) => {
-                                vf.step_leaves(&key);
+                                vf.step_leaves_string(&key);
                             }
                             _ => {}
                         }
@@ -1064,6 +1082,19 @@ mod tests {
             ]);
             assert_eq!(&friends, &current.val);
         }
+        let mut jf = new_value_filter("./benches/data_obj.json");
+        {
+            let current = jf.step_leaves_str("name");
+            let names = json!([
+                "Leonor Herman",
+                "Millicent Norman",
+                "Vincent Cannon",
+                "Gray Berry",
+                "Vincent Cannon",
+                "Gray Berry"
+            ]);
+            assert_eq!(&names, &current.val);
+        }
     }
 
     #[test]
@@ -1148,17 +1179,13 @@ mod tests {
         ]);
         assert_eq!(&friends, jf.current_value());
 
-        //
-        // TODO 원본 json 순서여야 하나? => serde_json preserve_order 피처를 enable 시켜야 함.
-        //
+        // TODO order
         let jf = do_filter("$.friends[?(@.id >= 2 || @.id == 1)]", "./benches/data_obj.json");
-        let mut map = HashMap::new();
-        let mut val = jf.current_value().clone();
-        val.as_array_mut().unwrap().iter_mut().enumerate().for_each(|(i, v)| {
-            map.insert(i, v.take());
-        });
-        let friends = vec![map.get_mut(&0).unwrap().take(), map.get_mut(&1).unwrap().take()];
-        assert_eq!(&Value::Array(friends), jf.current_value());
+        let friends = json!([
+            { "id" : 2, "name" : "Gray Berry" },
+            { "id" : 1, "name" : "Vincent Cannon" }
+        ]);
+        assert_eq!(&friends, jf.current_value());
 
         let jf = do_filter("$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]", "./benches/data_obj.json");
         assert_eq!(&Value::Null, jf.current_value());
@@ -1167,12 +1194,23 @@ mod tests {
     #[test]
     fn example() {
         let jf = do_filter("$.store.book[*].author", "./benches/example.json");
+        let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
+        assert_eq!(&ret, jf.current_value());
+
+        let jf = do_filter("$..author", "./benches/example.json");
+        assert_eq!(&ret, jf.current_value());
+
+        let jf = do_filter("$.store.*", "./benches/example.json");
         let ret = json!([
-            "Nigel Rees",
-            "Evelyn Waugh",
-            "Herman Melville",
-            "J. R. R. Tolkien"
+        [
+            {"category" : "reference", "author" : "Nigel Rees","title" : "Sayings of the Century", "price" : 8.95},
+            {"category" : "fiction", "author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99},
+            {"category" : "fiction", "author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
+            {"category" : "fiction", "author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
+        ],
+        {"color" : "red","price" : 19.95},
         ]);
         assert_eq!(&ret, jf.current_value());
     }
+
 }
