@@ -260,6 +260,15 @@ impl JsonValueFilter {
         })
     }
 
+    pub fn new_from_value(json: Value) -> result::Result<Self, String> {
+        Ok(JsonValueFilter {
+            json: Rc::new(Box::new(json)),
+            filter_stack: Vec::new(),
+            token_stack: Vec::new(),
+            term_stack: Vec::new(),
+        })
+    }
+
     fn is_peek_token_array(&self) -> bool {
         if let Some(ParseToken::Array) = self.token_stack.last() {
             true
@@ -306,6 +315,13 @@ impl JsonValueFilter {
         match self.filter_stack.last() {
             Some(v) => &v.vw.get_val(),
             _ => &Value::Null
+        }
+    }
+
+    pub fn take_value(&mut self) -> Value {
+        match self.filter_stack.last_mut() {
+            Some(v) => v.vw.get_val_mut().take(),
+            _ => Value::Null
         }
     }
 

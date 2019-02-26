@@ -1,8 +1,7 @@
 mod cmp;
 mod term;
-mod value_filter;
+pub mod value_filter;
 mod value_wrapper;
-
 
 #[cfg(test)]
 mod tests {

@@ -34,7 +34,7 @@ mod utils {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ParseToken {
     // '$'
     Absolute,
@@ -64,7 +64,7 @@ pub enum ParseToken {
     Eof,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FilterToken {
     Equal,
     NotEqual,
@@ -76,7 +76,7 @@ pub enum FilterToken {
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     left: Option<Box<Node>>,
     right: Option<Box<Node>>,
@@ -90,6 +90,10 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
         Parser { tokenizer: PreloadedTokenizer::new(input) }
+    }
+
+    pub fn compile(&mut self) -> Result<Node> {
+        Ok(self.json_path()?)
     }
 
     pub fn parse<V: NodeVisitor>(&mut self, visitor: &mut V) -> Result<()> {

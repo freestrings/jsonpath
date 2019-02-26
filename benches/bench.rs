@@ -1,5 +1,5 @@
 #![feature(test)]
-extern crate rs_jsonpath;
+extern crate jsonpath;
 extern crate serde_json;
 extern crate test;
 

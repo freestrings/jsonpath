@@ -1,6 +1,6 @@
 [package]
 name = "rs-jsonpath"
-version = "1.0.0"
+version = "0.1.0"
 authors = ["freestrings <freestrings@gmail.com>"]
 
 [dependencies]
@@ -12,3 +12,11 @@ indexmap = "1.0.2"
 
 [dev-dependencies]
 bencher = "0.1.5"
+
+[lib]
+name = "jsonpath"
+path = "src/lib.rs"
+
+[[bin]]
+name = "jsonpath"
+path = "src/bin.rs"

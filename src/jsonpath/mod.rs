@@ -1,4 +1,4 @@
 mod path_reader;
 mod tokenizer;
-mod parser;
-mod json_filter;
+pub mod parser;
+pub mod json_filter;
