@@ -8,16 +8,20 @@ use super::value_filter::*;
 #[derive(Debug)]
 pub struct ValueWrapper {
     val: Value,
-    leaves: bool,
+    is_leaves: bool,
 }
 
 impl ValueWrapper {
     pub fn new(val: Value, leaves: bool) -> Self {
-        ValueWrapper { val, leaves }
+        ValueWrapper { val, is_leaves: leaves }
     }
 
     pub fn is_leaves(&self) -> bool {
-        self.leaves
+        self.is_leaves
+    }
+
+    pub fn set_leaves(&mut self, is_leaves: bool) {
+        self.is_leaves = is_leaves;
     }
 
     pub fn cmp(&mut self, other: &mut ValueWrapper, cmp_type: CmpType) -> TermContext {

@@ -169,7 +169,7 @@ impl ValueFilter {
 
     pub fn step_in_num(&mut self, key: &f64) -> &ValueWrapper {
         debug!("step_in_num");
-        trace!("step_in_num - before: {} - {:?}", self.filter_mode, self.vw.get_val());
+        trace!("step_in_num - before: leaves {}, filterMode {} - {:?}", self.vw.is_leaves(), self.filter_mode, self.vw.get_val());
 
         let v = if self.vw.is_leaves() {
             let filter_mode = self.filter_mode;
@@ -213,6 +213,11 @@ impl ValueFilter {
                             .filter(|v| !v.is_null())
                             .collect();
                         buf.append(&mut ret);
+                    } else {
+                        match item.get_mut(key) {
+                            Some(v) => buf.push(v.take()),
+                            _ => {}
+                        }
                     }
                 }
 
@@ -294,12 +299,13 @@ impl JsonValueFilter {
         }
     }
 
-    fn replace_filter_stack(&mut self, v: Value) {
+    fn replace_filter_stack(&mut self, v: Value, is_leaves: bool) {
         if self.filter_stack.is_empty() {
-            self.filter_stack.push(ValueFilter::new(v, false, false));
+            self.filter_stack.push(ValueFilter::new(v, is_leaves, false));
         } else {
             match self.filter_stack.last_mut() {
                 Some(vf) => {
+                    vf.vw.set_leaves(is_leaves);
                     if v.is_null() {
                         vf.vw.replace(v);
                     } else if vf.vw.is_array() {
@@ -403,7 +409,7 @@ impl JsonValueFilter {
         match self.filter_stack.last_mut() {
             Some(vf) => {
                 match self.token_stack.pop() {
-                    Some(ParseToken::In) => {
+                    Some(ParseToken::In) | Some(ParseToken::Array) => {
                         vf.step_in_string(&key);
                     }
                     Some(ParseToken::Leaves) => {
@@ -447,17 +453,18 @@ impl JsonValueFilter {
                 }
             }
             Some(TermContext::Json(_, mut vw)) => {
-                self.replace_filter_stack(vw.get_val_mut().take());
+                self.replace_filter_stack(vw.get_val_mut().take(), vw.is_leaves());
             }
             _ => {
                 match self.filter_stack.pop() {
                     Some(mut vf) => {
+                        let is_leaves = vf.vw.is_leaves();
                         match vf.vw.get_val_mut() {
                             Value::Null | Value::Bool(false) => {
-                                self.replace_filter_stack(Value::Null);
+                                self.replace_filter_stack(Value::Null, is_leaves);
                             }
                             other => {
-                                self.replace_filter_stack(other.take());
+                                self.replace_filter_stack(other.take(), is_leaves);
                             }
                         }
                     }

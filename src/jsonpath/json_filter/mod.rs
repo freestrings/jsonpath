@@ -112,6 +112,22 @@ mod tests {
             {"id": 0, "name": "Millicent Norman"}
         ]);
         assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$..friends[2].name", "./benches/data_obj.json");
+        let friends = json!(["Gray Berry", "Gray Berry"]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$..friends[*].name", "./benches/data_obj.json");
+        let friends = json!(["Vincent Cannon","Gray Berry","Millicent Norman","Vincent Cannon","Gray Berry"]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$['school']['friends'][*].['name']", "./benches/data_obj.json");
+        let friends = json!(["Millicent Norman","Vincent Cannon","Gray Berry"]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$['school']['friends'][0].['name']", "./benches/data_obj.json");
+        let friends = json!("Millicent Norman");
+        assert_eq!(&friends, jf.current_value());
     }
 
     #[test]

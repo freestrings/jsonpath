@@ -183,6 +183,11 @@ impl<'a> Parser<'a> {
             Ok(Token::Asterisk(_)) => {
                 self.path_leaves_all(prev)
             }
+            Ok(Token::OpenArray(_)) => {
+                let mut leaves_node = self.node(ParseToken::Leaves);
+                leaves_node.left = Some(Box::new(prev));
+                Ok(self.paths(leaves_node)?)
+            }
             _ => {
                 self.path_leaves_key(prev)
             }
@@ -772,6 +777,14 @@ mod tests {
             ParseToken::Absolute,
             ParseToken::Leaves,
             ParseToken::All
+        ]));
+
+        assert_eq!(run("$..[0]"), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Leaves,
+            ParseToken::Array,
+            ParseToken::Number(0.0),
+            ParseToken::ArrayEof
         ]));
 
         match run("$.") {
