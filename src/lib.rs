@@ -7,10 +7,11 @@ extern crate serde_json;
 extern crate core;
 extern crate indexmap;
 
-mod jsonpath;
+pub mod parser;
+pub mod filter;
 
-use jsonpath::parser::*;
-use jsonpath::json_filter::value_filter::*;
+use parser::parser::*;
+use filter::value_filter::*;
 
 use std::result;
 use serde_json::Value;
@@ -23,7 +24,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
     move |json| {
         match &node {
             Ok(n) => {
-                let mut jf = JsonValueFilter::new_from_value(json)?;
+                let mut jf = JsonValueFilter::new_from_value(json);
                 jf.visit(n.clone());
                 Ok(jf.take_value())
             },
@@ -32,8 +33,17 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
     }
 }
 
-pub fn filter(json: Value, path: &str) -> Result {
-    let mut jf = JsonValueFilter::new_from_value(json)?;
+pub fn reader(json: Value) -> impl FnMut(&str) -> Result {
+    let mut jf = JsonValueFilter::new_from_value(json);
+    move |path: &str| {
+        let mut parser = Parser::new(path);
+        parser.parse(&mut jf)?;
+        Ok(jf.take_value())
+    }
+}
+
+pub fn read(json: Value, path: &str) -> Result {
+    let mut jf = JsonValueFilter::new_from_value(json);
     let mut parser = Parser::new(path);
     parser.parse(&mut jf)?;
     Ok(jf.take_value())

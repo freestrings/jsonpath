@@ -3,6 +3,8 @@ mod term;
 pub mod value_filter;
 mod value_wrapper;
 
+use super::parser::*;
+
 #[cfg(test)]
 mod tests {
     extern crate env_logger;
@@ -10,7 +12,7 @@ mod tests {
     use std::io::Read;
     use std::sync::{Once, ONCE_INIT};
 
-    use jsonpath::parser::Parser;
+    use super::parser::Parser;
 
     use serde_json::Value;
 

@@ -1,7 +1,7 @@
 use std::result;
 use std::io::Write;
 
-use jsonpath::path_reader::{
+use super::path_reader::{
     ReaderError,
     PathReader,
 };
@@ -361,7 +361,7 @@ impl<'a> PreloadedTokenizer<'a> {
 #[cfg(test)]
 mod tests {
     use super::TokenError;
-    use jsonpath::tokenizer::{
+    use super::{
         Token,
         Tokenizer,
         PreloadedTokenizer,

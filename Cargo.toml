@@ -1,5 +1,5 @@
 [package]
-name = "rs-jsonpath"
+name = "jsonpath"
 version = "0.1.0"
 authors = ["freestrings <freestrings@gmail.com>"]
 

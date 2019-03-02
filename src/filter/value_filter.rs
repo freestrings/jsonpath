@@ -5,7 +5,7 @@ use std::result;
 
 use serde_json::Value;
 
-use jsonpath::parser::*;
+use super::parser::*;
 
 use super::term::*;
 use super::value_wrapper::*;
@@ -257,21 +257,16 @@ impl JsonValueFilter {
     pub fn new(json: &str) -> result::Result<Self, String> {
         let json: Value = serde_json::from_str(json)
             .map_err(|e| e.description().to_string())?;
-        Ok(JsonValueFilter {
-            json: Rc::new(Box::new(json)),
-            filter_stack: Vec::new(),
-            token_stack: Vec::new(),
-            term_stack: Vec::new(),
-        })
+        Ok(JsonValueFilter::new_from_value(json))
     }
 
-    pub fn new_from_value(json: Value) -> result::Result<Self, String> {
-        Ok(JsonValueFilter {
+    pub fn new_from_value(json: Value) -> Self{
+        JsonValueFilter {
             json: Rc::new(Box::new(json)),
             filter_stack: Vec::new(),
             token_stack: Vec::new(),
             term_stack: Vec::new(),
-        })
+        }
     }
 
     fn is_peek_token_array(&self) -> bool {

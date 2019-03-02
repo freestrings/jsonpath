@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="filter_return_type - trace" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="channel" value="DEFAULT" />
-    <option name="command" value="test --package rs-jsonpath --lib jsonpath::json_filter::tests::return_type -- --exact" />
+    <option name="command" value="test --package jsonpath --lib jsonpath::json_filter::tests::return_type -- --exact" />
     <option name="allFeatures" value="false" />
     <option name="nocapture" value="true" />
     <option name="backtrace" value="NO" />
