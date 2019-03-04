@@ -1,5 +1,5 @@
 [package]
-name = "wasm"
+name = "jsonpath-wasm"
 version = "0.1.0"
 authors = ["freestrings <freestrings@gmail.com>"]
 

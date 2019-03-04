@@ -1,16 +1,48 @@
-import * as jsonpath from "rs-jsonpath";
+import * as jsonpath from "jsonpath-wasm";
 
-let jsonString = "{\"a\" : 1}";
+function getTextarea() {
+    return document.querySelector('#json-example');
+}
 
-let template = jsonpath.compile("$.a");
-console.log(template(jsonString));
-console.log(template(JSON.parse(jsonString)));
+function getJsonpathInput() {
+    return document.querySelector('#jsonpath-input');
+}
 
-let reader1 = jsonpath.reader(jsonString);
-console.log(reader1("$.a"));
+function getReadBtn() {
+    return document.querySelector('#read-json');
+}
 
-let reader2 = jsonpath.reader(JSON.parse(jsonString));
-console.log(reader2("$.a"));
+function getReadResult() {
+    return document.querySelector('#read-result');
+}
 
-console.log(jsonpath.read(JSON.parse(jsonString), "$.a"));
-console.log(jsonpath.read(jsonString, "$.a"));
+function initData(url) {
+    return fetch(url)
+        .then((res) => res.text())
+        .then((jsonStr) => getTextarea().value = jsonStr)
+        .catch(console.error);
+}
+
+function initEvent() {
+    getJsonpathInput().onkeyup = function(e) {
+        var charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+        if(charCode == 13) {
+            read();
+        }
+    }
+
+    getReadBtn().onclick = function() {
+        read();
+    }
+
+    function read() {
+        let ret = jsonpath.read(getTextarea().value, getJsonpathInput().value);
+        if(typeof ret === 'string') {
+            getReadResult().innerText = ret;
+        } else {
+            getReadResult().innerText = JSON.stringify(ret, null, 2);
+        }
+    }
+}
+
+initData('data/example.json').then(initEvent)

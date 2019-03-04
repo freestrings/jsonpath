@@ -7,5 +7,6 @@ cd ./www && \
     rm -rf node_modules && \
     npm install && \
     cd .. && \
-    wasm-pack build --target=$1 --out-dir=www/node_modules/rs-jsonpath
-
+    wasm-pack build --target=$1 && \
+    cd pkg && npm link && \
+    cd ../www && npm link jsonpath-wasm
