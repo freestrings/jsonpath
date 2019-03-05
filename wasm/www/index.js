@@ -45,4 +45,23 @@ function initEvent() {
     }
 }
 
-initData('data/example.json').then(initEvent)
+function readPathParam() {
+    let params = location.search.substr(1)
+        .split('&')
+        .map((item) => item.split('='))
+        .reduce((acc, param) => {
+            acc[param[0]] = decodeURIComponent(param[1]);
+            return acc;
+        }, {});
+
+    if(params.path) {
+        getJsonpathInput().value = params.path;
+        let doc = getReadBtn().ownerDocument;
+        let event = doc.createEvent('MouseEvents');
+        event.initEvent('click', true, true);
+        event.synthetic = true;
+        getReadBtn().dispatchEvent(event, true);
+    }
+}
+
+initData('data/example.json').then(initEvent).then(readPathParam);
