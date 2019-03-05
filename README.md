@@ -126,11 +126,7 @@ json 데이터 *(참고 사이트: https://github.com/json-path/JsonPath)*
 | $..book.length() *(not yet supported)* | ~~The number of books~~                      |
 
 
-## On Shell
-
-- 
-
-## As Library
+## With Rust (as library)
 
 - 
 
