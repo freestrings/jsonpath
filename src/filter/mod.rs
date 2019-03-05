@@ -1,29 +1,23 @@
+use super::parser::*;
+
 mod cmp;
 mod term;
 pub mod value_filter;
 mod value_wrapper;
-
-use super::parser::*;
 
 #[cfg(test)]
 mod tests {
     extern crate env_logger;
 
     use std::io::Read;
-    use std::sync::{Once, ONCE_INIT};
-
-    use super::parser::Parser;
 
     use serde_json::Value;
 
+    use super::parser::Parser;
     use super::value_filter::*;
 
-    static INIT: Once = ONCE_INIT;
-
     fn setup() {
-        INIT.call_once(|| {
-            env_logger::init();
-        });
+        let _ = env_logger::try_init();
     }
 
     fn new_value_filter(file: &str) -> ValueFilter {

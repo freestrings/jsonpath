@@ -11,7 +11,7 @@ To enjoy Rust
 
 #### `jsonpath-wasm` 라이브리러
 
-*(not yet published `jsonpath-wasm`)**
+*(not yet published `jsonpath-wasm`)*
 ```javascript
 import * as jsonpath from "jsonpath-wasm";
 ```

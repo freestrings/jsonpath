@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="parse_array_float - trace" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+  <configuration default="false" name="[trace] filter::op" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="channel" value="DEFAULT" />
-    <option name="command" value="test --package jsonpath --lib jsonpath::parser::tests::parse_array_float -- --exact" />
+    <option name="command" value="test --lib filter::tests::op" />
     <option name="allFeatures" value="false" />
     <option name="nocapture" value="true" />
     <option name="backtrace" value="NO" />

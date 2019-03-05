@@ -1,9 +1,14 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+
 extern crate serde;
+#[cfg(test)]
 #[macro_use]
 extern crate serde_json;
+#[cfg(not(test))]
+extern crate serde_json;
+
 extern crate core;
 extern crate indexmap;
 

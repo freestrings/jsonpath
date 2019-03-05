@@ -1,8 +1,8 @@
 use std::result;
 
 use super::tokenizer::{
-    Token,
     PreloadedTokenizer,
+    Token,
     TokenError,
 };
 
@@ -636,9 +636,6 @@ impl<'a> Parser<'a> {
             Ok(ref t) if t.partial_eq(token) => {
                 Ok(ret)
             }
-            Err(TokenError::Eof) => {
-                Ok(ret)
-            }
             _ => {
                 Err(self.tokenizer.err_msg())
             }
@@ -698,11 +695,7 @@ pub trait NodeVisitor {
 mod tests {
     extern crate env_logger;
 
-    use std::sync::{Once, ONCE_INIT};
-
     use super::*;
-
-    static INIT: Once = ONCE_INIT;
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,
@@ -729,9 +722,7 @@ mod tests {
     }
 
     fn setup() {
-        INIT.call_once(|| {
-            env_logger::init();
-        });
+        let _ = env_logger::try_init();
     }
 
     fn run(input: &str) -> result::Result<Vec<ParseToken>, String> {
@@ -804,7 +795,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_array() {
+    fn parse_array_sytax() {
         setup();
 
         assert_eq!(run("$.book[?(@.isbn)]"), Ok(vec![
@@ -950,6 +941,11 @@ mod tests {
             ParseToken::Key("bb".to_string()),
             ParseToken::ArrayEof
         ]));
+
+        match run("$[") {
+            Ok(_) => panic!(),
+            _ => {}
+        }
 
         match run("$[]") {
             Ok(_) => panic!(),
