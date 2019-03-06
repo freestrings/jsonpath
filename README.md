@@ -13,52 +13,87 @@ To enjoy Rust
 
 *(not yet published `jsonpath-wasm`)*
 ```javascript
+// browser
 import * as jsonpath from "jsonpath-wasm";
+// nodejs
+let jsonpath = require('jsonpath-wasm');
 ```
 
 #### `read` 함수
 
-```
-jsonpath.read(JSON.parse("{\"a\" : 1}"), "$.a");
-jsonpath.read("{\"a\" : 1}", "$.a");
-```
+```javascript
+let jsonObj = {
+   "school": {
+       "friends": [{"id": 0}, {"id": 1}]
+   },
+   "friends": [{"id": 0}, {"id": 1}]
+};
+let ret = [{"id": 0}, {"id": 0}];
 
+let a = jsonpath.read(JSON.stringify(jsonObj), "$..friends[0]");
+let b = jsonpath.read(jsonObj, "$..friends[0]");
+console.log(
+    JSON.stringify(ret) == JSON.stringify(a),
+    JSON.stringify(a) == JSON.stringify(b)
+);
+```
 
 #### JsonPath 재사용
 
-```
-let template = jsonpath.compile("$.a");
+```javascript
+let template = jsonpath.compile("$..friends[0]");
 
-//
-// 1. read json string
-//
-template("{\"a\" : 1}")
+let jsonObj = {
+    "school": {
+        "friends": [ {"id": 0}, {"id": 1} ]
+    },
+    "friends": [ {"id": 0}, {"id": 1} ]
+};
 
-//
-// 2. read as json object
-//
-template(JSON.parse("{\"a\" : 1}"));
+let ret = [ {"id": 0}, {"id": 0} ];
+
+// 1. read as json object
+console.log(JSON.stringify(template(jsonObj)) == JSON.stringify(ret));
+// 2. read as json string
+console.log(JSON.stringify(template(JSON.stringify(jsonObj))) == JSON.stringify(ret));
+
+let jsonObj2 = {
+    "school": {
+        "friends": [ {"name": "Millicent Norman"}, {"name": "Vincent Cannon"} ]
+    },
+    "friends": [ {"id": 0}, {"id": 1} ]
+};
+
+let ret2 = [ {"id": 0}, {"name": "Millicent Norman"} ];
+
+// 1. read as json object
+console.log(JSON.stringify(template(jsonObj2)) == JSON.stringify(ret2));
+// 2. read as json string
+console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == JSON.stringify(ret2));
 ```
 
 #### Json 재사용
 
-```
-//
-// 1. read json string
-//
-let reader1 = jsonpath.reader("{\"a\" : 1}");
-reader1("$.a");
-reader1("$.b");
+```javascript
+let jsonObj = {
+    "school": {
+        "friends": [{"id": 0}, {"id": 1}]
+    },
+    "friends": [{"id": 0},{"id": 1}]
+};
 
-//
-// 2. read as json object
-//
-let reader2 = jsonpath.reader(JSON.parse("{\"a\" : 1}"));
-reader2("$.a");
-reader2("$.b");
+// 1. read as json object
+let reader = jsonpath.reader(jsonObj);
+console.log(JSON.stringify(reader("$..friends[0]")) == JSON.stringify([ {"id": 0}, {"id": 0} ]));
+console.log(JSON.stringify(reader("$..friends[1]")) == JSON.stringify([ {"id": 1}, {"id": 1} ]));
+
+// 2. read as json string
+let reader2 = jsonpath.reader(JSON.stringify(jsonObj));
+console.log(JSON.stringify(reader2("$..friends[0]")) == JSON.stringify([ {"id": 0}, {"id": 0} ]));
+console.log(JSON.stringify(reader2("$..friends[1]")) == JSON.stringify([ {"id": 1}, {"id": 1} ]));
 ```
 
-### 데모
+### 예제
 
 **Demo**: https://freestrings.github.io/jsonpath/
 
@@ -126,7 +161,347 @@ json 데이터 *(참고 사이트: https://github.com/json-path/JsonPath)*
 
 ## With Rust (as library)
 
-- 
+```rust
+extern crate jsonpath_lib as jsonpath;
+#[macro_use]
+extern crate serde_json;
+```
+
+#### `read` 함수
+
+```rust
+let json_obj = json!({
+    "school": {
+        "friends": [{"id": 0}, {"id": 1}]
+    },
+    "friends": [{"id": 0}, {"id": 1}]
+});
+let json = jsonpath::read(json_obj, "$..friends[0]").unwrap();
+let ret = json!([ {"id": 0}, {"id": 0} ]);
+assert_eq!(json, ret)
+```
+
+#### JsonPath 재사용
+
+```rust
+let mut template = jsonpath::compile("$..friends[0]");
+
+let json_obj = json!({
+    "school": {
+        "friends": [ {"id": 0}, {"id": 1} ]
+    },
+    "friends": [ {"id": 0}, {"id": 1} ]
+});
+
+let json = template(json_obj).unwrap();
+let ret = json!([ {"id": 0}, {"id": 0} ]);
+assert_eq!(json, ret);
+
+let json_obj = json!({
+    "school": {
+        "friends": [ {"name": "Millicent Norman"}, {"name": "Vincent Cannon"} ]
+    },
+    "friends": [ {"id": 0}, {"id": 1} ]
+});
+
+let json = template(json_obj).unwrap();
+let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
+assert_eq!(json, ret);
+```
+
+#### Json 재사용
+
+```rust
+let json_obj = json!({
+    "school": {
+        "friends": [{"id": 0}, {"id": 1}]
+    },
+    "friends": [{"id": 0},{"id": 1}]
+});
+
+let mut reader = jsonpath::reader(json_obj);
+
+let json = reader("$..friends[0]").unwrap();
+let ret = json!([ {"id": 0}, {"id": 0} ]);
+assert_eq!(json, ret);
+
+let json = reader("$..friends[1]").unwrap();
+let ret = json!([ {"id": 1}, {"id": 1} ]);
+assert_eq!(json, ret);
+```
+
+#### 예제
+
+```rust
+let json_obj = json!({
+    "store": {
+        "book": [
+            {
+                "category": "reference",
+                "author": "Nigel Rees",
+                "title": "Sayings of the Century",
+                "price": 8.95
+            },
+            {
+                "category": "fiction",
+                "author": "Evelyn Waugh",
+                "title": "Sword of Honour",
+                "price": 12.99
+            },
+            {
+                "category": "fiction",
+                "author": "Herman Melville",
+                "title": "Moby Dick",
+                "isbn": "0-553-21311-3",
+                "price": 8.99
+            },
+            {
+                "category": "fiction",
+                "author": "J. R. R. Tolkien",
+                "title": "The Lord of the Rings",
+                "isbn": "0-395-19395-8",
+                "price": 22.99
+            }
+        ],
+        "bicycle": {
+            "color": "red",
+            "price": 19.95
+        }
+    },
+    "expensive": 10
+});
+
+let mut reader = jsonpath::reader(json_obj);
+
+//
+// $.store.book[*].author
+//
+let json = reader("$.store.book[*].author").unwrap();
+let ret = json!([
+  "Nigel Rees",
+  "Evelyn Waugh",
+  "Herman Melville",
+  "J. R. R. Tolkien"
+]);
+assert_eq!(json, ret);
+
+//
+// $..author
+//
+let json = reader("$..author").unwrap();
+let ret = json!([
+  "Nigel Rees",
+  "Evelyn Waugh",
+  "Herman Melville",
+  "J. R. R. Tolkien"
+]);
+assert_eq!(json, ret);
+
+//
+// $.store.*
+//
+let json = reader("$.store.*").unwrap();
+let ret = json!([
+    [
+        {
+          "category": "reference",
+          "author": "Nigel Rees",
+          "title": "Sayings of the Century",
+          "price": 8.95
+        },
+        {
+          "category": "fiction",
+          "author": "Evelyn Waugh",
+          "title": "Sword of Honour",
+          "price": 12.99
+        },
+        {
+          "category": "fiction",
+          "author": "Herman Melville",
+          "title": "Moby Dick",
+          "isbn": "0-553-21311-3",
+          "price": 8.99
+        },
+        {
+          "category": "fiction",
+          "author": "J. R. R. Tolkien",
+          "title": "The Lord of the Rings",
+          "isbn": "0-395-19395-8",
+          "price": 22.99
+        }
+    ],
+    {
+        "color": "red",
+        "price": 19.95
+    }
+]);
+assert_eq!(ret, json);
+
+//
+// $.store..price
+//
+let json = reader("$.store..price").unwrap();
+let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
+assert_eq!(ret, json);
+
+//
+// $..book[2]
+//
+let json = reader("$..book[2]").unwrap();
+let ret = json!([{
+    "category" : "fiction",
+    "author" : "Herman Melville",
+    "title" : "Moby Dick",
+    "isbn" : "0-553-21311-3",
+    "price" : 8.99
+}]);
+assert_eq!(ret, json);
+
+//
+// $..book[-2]
+//
+let json = reader("$..book[-2]").unwrap();
+let ret = json!([{
+    "category" : "fiction",
+    "author" : "Herman Melville",
+    "title" : "Moby Dick",
+    "isbn" : "0-553-21311-3",
+    "price" : 8.99
+ }]);
+assert_eq!(ret, json);
+
+//
+// $..book[0,1]
+//
+let json = reader("$..book[0,1]").unwrap();
+let ret = json!([
+  {
+    "category": "reference",
+    "author": "Nigel Rees",
+    "title": "Sayings of the Century",
+    "price": 8.95
+  },
+  {
+    "category": "fiction",
+    "author": "Evelyn Waugh",
+    "title": "Sword of Honour",
+    "price": 12.99
+  }
+]);
+assert_eq!(ret, json);
+
+//
+// $..book[:2]
+//
+let json = reader("$..book[:2]").unwrap();
+let ret = json!([
+  {
+    "category": "reference",
+    "author": "Nigel Rees",
+    "title": "Sayings of the Century",
+    "price": 8.95
+  },
+  {
+    "category": "fiction",
+    "author": "Evelyn Waugh",
+    "title": "Sword of Honour",
+    "price": 12.99
+  }
+]);
+assert_eq!(ret, json);
+
+//
+// $..book[2:]
+//
+let json = reader("$..book[2:]").unwrap();
+let ret = json!([
+  {
+    "category": "fiction",
+    "author": "Herman Melville",
+    "title": "Moby Dick",
+    "isbn": "0-553-21311-3",
+    "price": 8.99
+  },
+  {
+    "category": "fiction",
+    "author": "J. R. R. Tolkien",
+    "title": "The Lord of the Rings",
+    "isbn": "0-395-19395-8",
+    "price": 22.99
+  }
+]);
+assert_eq!(ret, json);
+
+//
+// $..book[?(@.isbn)]
+//
+let json = reader("$..book[?(@.isbn)]").unwrap();
+let ret = json!([
+  {
+    "category": "fiction",
+    "author": "Herman Melville",
+    "title": "Moby Dick",
+    "isbn": "0-553-21311-3",
+    "price": 8.99
+  },
+  {
+    "category": "fiction",
+    "author": "J. R. R. Tolkien",
+    "title": "The Lord of the Rings",
+    "isbn": "0-395-19395-8",
+    "price": 22.99
+  }
+]);
+assert_eq!(ret, json);
+
+//
+// $.store.book[?(@.price < 10)]
+//
+let json = reader("$.store.book[?(@.price < 10)]").unwrap();
+let ret = json!([
+  {
+    "category": "reference",
+    "author": "Nigel Rees",
+    "title": "Sayings of the Century",
+    "price": 8.95
+  },
+  {
+    "category": "fiction",
+    "author": "Herman Melville",
+    "title": "Moby Dick",
+    "isbn": "0-553-21311-3",
+    "price": 8.99
+  }
+]);
+assert_eq!(ret, json);
+
+//
+// $..book[?((@.price == 12.99 || $.store.bicycle.price < @.price) || @.category == "reference")]
+//
+let json = reader("$..book[?((@.price == 12.99 || $.store.bicycle.price < @.price) || @.category == "reference")]").unwrap();
+let ret = json!([
+  {
+    "category": "fiction",
+    "author": "Evelyn Waugh",
+    "title": "Sword of Honour",
+    "price": 12.99
+  },
+  {
+    "category": "fiction",
+    "author": "J. R. R. Tolkien",
+    "title": "The Lord of the Rings",
+    "isbn": "0-395-19395-8",
+    "price": 22.99
+  },
+  {
+    "category": "reference",
+    "author": "Nigel Rees",
+    "title": "Sayings of the Century",
+    "price": 8.95
+  }
+]);
+assert_eq!(ret, json);
+```
 
 ## With AWS API Gateway
 

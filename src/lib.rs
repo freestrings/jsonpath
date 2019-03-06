@@ -2,11 +2,11 @@
 //!
 //! # Example
 //! ```
-//! extern crate jsonpath_lib as jsonpath;
-//! #[macro_use]
-//! extern crate serde_json;
+//!    extern crate jsonpath_lib as jsonpath;
+//!    #[macro_use]
+//!    extern crate serde_json;
 //!
-//! let json_obj = json!({
+//!    let json_obj = json!({
 //!    "store": {
 //!        "book": [
 //!            {
@@ -42,180 +42,122 @@
 //!        }
 //!    },
 //!    "expensive": 10
-//!  });
+//!    });
 //!
-//! let mut reader = jsonpath::reader(json_obj);
+//!    let mut reader = jsonpath::reader(json_obj);
 //!
-//! //
-//! // $.store.book[*].author
-//! //
-//! let json = reader("$.store.book[*].author");
-//! let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
-//! assert_eq!(json, ret);
+//!    //
+//!    // $.store.book[*].author
+//!    //
+//!    let json = reader("$.store.book[*].author").unwrap();
+//!    let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
+//!    assert_eq!(json, ret);
 //!
-//! //
-//! // $..author
-//! //
-//! let json = reader("$..author");
-//! let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
-//! assert_eq!(json, ret);
+//!    //
+//!    // $..author
+//!    //
+//!    let json = reader("$..author").unwrap();
+//!    let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
+//!    assert_eq!(json, ret);
 //!
-//! //
-//! // $.store.*
-//! //
-//! let json = reader("$.store.*");
-//! let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
-//! let ret = json!([
-//! [
-//!     {"category" : "reference", "author" : "Nigel Rees","title" : "Sayings of the Century", "price" : 8.95},
-//!     {"category" : "fiction", "author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99},
-//!     {"category" : "fiction", "author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
-//!     {"category" : "fiction", "author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
-//! ],
-//! {"color" : "red","price" : 19.95},
-//! ]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $.store.*
+//!    //
+//!    let json = reader("$.store.*").unwrap();
+//!    let ret = json!([
+//!        [
+//!         {"category" : "reference", "author" : "Nigel Rees","title" : "Sayings of the Century", "price" : 8.95},
+//!         {"category" : "fiction", "author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99},
+//!         {"category" : "fiction", "author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
+//!         {"category" : "fiction", "author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
+//!        ],
+//!        {"color" : "red","price" : 19.95},
+//!    ]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $.store..price
-//! //
-//! let json = reader("$.store..price");
-//! let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $.store..price
+//!    //
+//!    let json = reader("$.store..price").unwrap();
+//!    let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $..book[2]
-//! //
-//! let json = reader("$..book[2]");
-//! let ret = json!([{
-//!     "category" : "fiction",
-//!     "author" : "Herman Melville",
-//!     "title" : "Moby Dick",
-//!     "isbn" : "0-553-21311-3",
-//!     "price" : 8.99
-//! }]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $..book[2]
+//!    //
+//!    let json = reader("$..book[2]").unwrap();
+//!    let ret = json!([{
+//!        "category" : "fiction",
+//!        "author" : "Herman Melville",
+//!        "title" : "Moby Dick",
+//!        "isbn" : "0-553-21311-3",
+//!        "price" : 8.99
+//!    }]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $..book[-2]
-//! //
-//! let json = reader("$..book[-2]");
-//! let ret = json!([{
-//!     "category" : "fiction",
-//!     "author" : "Herman Melville",
-//!     "title" : "Moby Dick",
-//!     "isbn" : "0-553-21311-3",
-//!     "price" : 8.99
-//! }]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $..book[-2]
+//!    //
+//!    let json = reader("$..book[-2]").unwrap();
+//!    let ret = json!([{
+//!        "category" : "fiction",
+//!        "author" : "Herman Melville",
+//!        "title" : "Moby Dick",
+//!        "isbn" : "0-553-21311-3",
+//!        "price" : 8.99
+//!     }]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $..book[0,1]
-//! //
-//! let json = reader("$..book[0,1]");
-//! let ret = json!([
-//! {
-//!     "category" : "reference",
-//!     "author" : "Nigel Rees",
-//!     "title" : "Sayings of the Century",
-//!     "price" : 8.95
-//! },
-//! {
-//!     "category" : "fiction",
-//!     "author" : "Evelyn Waugh",
-//!     "title" : "Sword of Honour",
-//!     "price" : 12.99
-//! }
-//! ]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $..book[0,1]
+//!    //
+//!    let json = reader("$..book[0,1]").unwrap();
+//!    let ret = json!([
+//!        {"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95},
+//!        {"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99}
+//!    ]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $..book[:2]
-//! //
-//! let json = reader("$..book[:2]");
-//! let ret = json!([
-//! {
-//!     "category" : "reference",
-//!     "author" : "Nigel Rees",
-//!     "title" : "Sayings of the Century",
-//!     "price" : 8.95
-//! },
-//! {
-//!     "category" : "fiction",
-//!     "author" : "Evelyn Waugh",
-//!     "title" : "Sword of Honour",
-//!     "price" : 12.99
-//! }
-//! ]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $..book[:2]
+//!    //
+//!    let json = reader("$..book[:2]").unwrap();
+//!    let ret = json!([
+//!        {"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95},
+//!        {"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99}
+//!    ]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $..book[2:]
-//! //
-//! let json = reader("$..book[2:]");
-//! let ret = json!([
-//! {
-//!     "category" : "fiction",
-//!     "author" : "Herman Melville",
-//!     "title" : "Moby Dick",
-//!     "isbn" : "0-553-21311-3",
-//!     "price" : 8.99
-//! },
-//! {
-//!     "category" : "fiction",
-//!     "author" : "J. R. R. Tolkien",
-//!     "title" : "The Lord of the Rings",
-//!     "isbn" : "0-395-19395-8",
-//!     "price" : 22.99
-//! }
-//! ]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $..book[2:]
+//!    //
+//!    let json = reader("$..book[2:]").unwrap();
+//!    let ret = json!([
+//!        {"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
+//!        {"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
+//!    ]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $..book[?(@.isbn)]
-//! //
-//! let json = reader("$..book[?(@.isbn)]");
-//! let ret = json!([
-//! {
-//!     "category" : "fiction",
-//!     "author" : "Herman Melville",
-//!     "title" : "Moby Dick",
-//!     "isbn" : "0-553-21311-3",
-//!     "price" : 8.99
-//! },
-//! {
-//!     "category" : "fiction",
-//!     "author" : "J. R. R. Tolkien",
-//!     "title" : "The Lord of the Rings",
-//!     "isbn" : "0-395-19395-8",
-//!     "price" : 22.99
-//! }
-//! ]);
-//! assert_eq!(ret, json);
+//!    //
+//!    // $..book[?(@.isbn)]
+//!    //
+//!    let json = reader("$..book[?(@.isbn)]").unwrap();
+//!    let ret = json!([
+//!        {"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
+//!        {"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
+//!    ]);
+//!    assert_eq!(ret, json);
 //!
-//! //
-//! // $.store.book[?(@.price < 10)]
-//! //
-//! let json = reader("$.store.book[?(@.price < 10)]");
-//! let ret = json!([
-//! {
-//!     "category" : "reference",
-//!     "author" : "Nigel Rees",
-//!     "title" : "Sayings of the Century",
-//!     "price" : 8.95
-//! },
-//! {
-//!     "category" : "fiction",
-//!     "author" : "Herman Melville",
-//!     "title" : "Moby Dick",
-//!     "isbn" : "0-553-21311-3",
-//!     "price" : 8.99
-//! }
-//! ]);
-//! assert_eq!(ret, json);
-//!
+//!    //
+//!    // $.store.book[?(@.price < 10)]
+//!    //
+//!    let json = reader("$.store.book[?(@.price < 10)]").unwrap();
+//!    let ret = json!([
+//!        {"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95},
+//!        {"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99}
+//!    ]);
+//!    assert_eq!(ret, json);
 //! ```
-//!
 #[macro_use]
 extern crate log;
 extern crate env_logger;
@@ -239,6 +181,7 @@ use parser::parser::*;
 use filter::value_filter::*;
 
 use std::result;
+use std::rc::Rc;
 use serde_json::Value;
 
 type Result = result::Result<Value, String>;
@@ -278,7 +221,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
     move |json| {
         match &node {
             Ok(n) => {
-                let mut jf = JsonValueFilter::new_from_value(json);
+                let mut jf = JsonValueFilter::new_from_value(Rc::new(Box::new(json)));
                 jf.visit(n.clone());
                 Ok(jf.take_value())
             }
@@ -309,8 +252,9 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
 /// assert_eq!(json, ret);
 /// ```
 pub fn reader(json: Value) -> impl FnMut(&str) -> Result {
-    let mut jf = JsonValueFilter::new_from_value(json);
+    let n = Rc::new(Box::new(json));
     move |path: &str| {
+        let mut jf = JsonValueFilter::new_from_value(n.clone());
         let mut parser = Parser::new(path);
         parser.parse(&mut jf)?;
         Ok(jf.take_value())
@@ -326,12 +270,12 @@ pub fn reader(json: Value) -> impl FnMut(&str) -> Result {
 /// },
 /// "friends": [{"id": 0}, {"id": 1}]
 /// });
-/// let mut reader = jsonpath::read(json_obj, "$..friends[0]");
+/// let json = jsonpath::read(json_obj, "$..friends[0]").unwrap();
 /// let ret = json!([ {"id": 0}, {"id": 0} ]);
 /// assert_eq!(json, ret);
 /// ```
 pub fn read(json: Value, path: &str) -> Result {
-    let mut jf = JsonValueFilter::new_from_value(json);
+    let mut jf = JsonValueFilter::new_from_value(Rc::new(Box::new(json)));
     let mut parser = Parser::new(path);
     parser.parse(&mut jf)?;
     Ok(jf.take_value())

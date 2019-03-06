@@ -9,6 +9,7 @@ mod utils;
 use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
 use std::result::Result;
+use std::rc::Rc;
 use serde_json::Value;
 
 use jsonpath::parser::parser::*;
@@ -23,7 +24,7 @@ cfg_if! {
 }
 
 fn filter_value(json: Value, node: Node) -> JsValue {
-    let mut jf = JsonValueFilter::new_from_value(json);
+    let mut jf = JsonValueFilter::new_from_value(Rc::new(Box::new(json)));
     jf.visit(node);
     let taken = jf.take_value();
     match JsValue::from_serde(&taken) {

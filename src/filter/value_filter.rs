@@ -257,12 +257,12 @@ impl JsonValueFilter {
     pub fn new(json: &str) -> result::Result<Self, String> {
         let json: Value = serde_json::from_str(json)
             .map_err(|e| e.description().to_string())?;
-        Ok(JsonValueFilter::new_from_value(json))
+        Ok(JsonValueFilter::new_from_value(Rc::new(Box::new(json))))
     }
 
-    pub fn new_from_value(json: Value) -> Self{
+    pub fn new_from_value(json: Rc<Box<Value>>) -> Self {
         JsonValueFilter {
-            json: Rc::new(Box::new(json)),
+            json: json,
             filter_stack: Vec::new(),
             token_stack: Vec::new(),
             term_stack: Vec::new(),
