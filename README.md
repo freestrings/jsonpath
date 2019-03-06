@@ -1,4 +1,4 @@
-# Jsonpath
+# Jsonpath Library
 
 [JsonPath](https://goessner.net/articles/JsonPath/) Rust 구현
 

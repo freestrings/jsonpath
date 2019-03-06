@@ -2,7 +2,7 @@
 //!
 //! # Example
 //! ```
-//! extern crate jsonpath;
+//! extern crate jsonpath_lib as jsonpath;
 //! #[macro_use]
 //! extern crate serde_json;
 //!

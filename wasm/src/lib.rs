@@ -2,7 +2,7 @@ extern crate cfg_if;
 extern crate wasm_bindgen;
 
 extern crate serde_json;
-extern crate jsonpath;
+extern crate jsonpath_lib as jsonpath;
 
 mod utils;
 

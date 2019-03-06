@@ -1,5 +1,5 @@
 {
-  "name": "rs-jsonpath",
+  "name": "jsonpath-wasm",
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "webassembly",
     "wasm",
     "rust",
-    "webpack"
+    "webpack",
+    "jsonpath"
   ],
   "author": "Changseok Han <freestrings@gmail.com>",
   "license": "(MIT OR Apache-2.0)",
