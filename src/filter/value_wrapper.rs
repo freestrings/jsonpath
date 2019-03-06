@@ -1,5 +1,6 @@
-use serde_json::Value;
 use indexmap::map::IndexMap;
+
+use serde_json::Value;
 
 use super::cmp::*;
 use super::term::*;
@@ -38,18 +39,18 @@ impl ValueWrapper {
         }
     }
 
-    fn cmp_with_term<F: PrivCmp>(val: &Value, et: &ExprTerm, cmp_fn: &F, default: bool) -> bool {
+    fn cmp_with_term<F: PrivCmp>(val: &Value, et: &ExprTerm, cmp_fn: &F, default: bool, reverse: bool) -> bool {
         match val {
             Value::Bool(ref v1) => {
                 match et {
-                    ExprTerm::Bool(v2) => cmp_fn.cmp_bool(v1, v2),
+                    ExprTerm::Bool(v2) => if reverse { cmp_fn.cmp_bool(v2, v1) } else { cmp_fn.cmp_bool(v1, v2) },
                     _ => default
                 }
             }
             Value::Number(ref v1) => match v1.as_f64() {
                 Some(ref v1) => {
                     match et {
-                        ExprTerm::Number(v2) => cmp_fn.cmp_f64(v1, v2),
+                        ExprTerm::Number(v2) => if reverse { cmp_fn.cmp_f64(v2, v1) } else { cmp_fn.cmp_f64(v1, v2) },
                         _ => default
                     }
                 }
@@ -57,7 +58,7 @@ impl ValueWrapper {
             },
             Value::String(ref v1) => {
                 match et {
-                    ExprTerm::String(v2) => cmp_fn.cmp_string(v1, v2),
+                    ExprTerm::String(v2) => if reverse { cmp_fn.cmp_string(v2, v1) } else { cmp_fn.cmp_string(v1, v2) },
                     _ => default
                 }
             }
@@ -65,7 +66,7 @@ impl ValueWrapper {
         }
     }
 
-    fn take_object_in_array<F: PrivCmp>(&mut self, key: &String, et: &ExprTerm, cmp: &F) -> Option<Self> {
+    fn take_object_in_array<F: PrivCmp>(&mut self, key: &String, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
         fn _filter_with_object<F: Fn(&Value) -> bool>(v: &&mut Value, key: &String, fun: F) -> bool {
             match &v {
                 Value::Object(map) => {
@@ -82,7 +83,7 @@ impl ValueWrapper {
             Value::Array(mut vec) => {
                 let mut ret: Vec<Value> = vec.iter_mut()
                     .filter(|v| {
-                        _filter_with_object(v, key, |vv| Self::cmp_with_term(vv, et, cmp, false))
+                        _filter_with_object(v, key, |vv| Self::cmp_with_term(vv, et, cmp, false, reverse))
                     })
                     .map(|v| v.take())
                     .collect();
@@ -92,29 +93,29 @@ impl ValueWrapper {
         }
     }
 
-    fn take_with_key_type<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: &F) -> Option<Self> {
+    fn take_with_key_type<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
         match key {
             Some(ValueFilterKey::String(key)) => {
-                self.take_object_in_array(key, et, cmp)
+                self.take_object_in_array(key, et, cmp, reverse)
             }
             _ => None
         }
     }
 
-    pub fn take_with<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: F) -> Self {
-        match self.take_with_key_type(key, et, &cmp) {
+    pub fn take_with<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: F, reverse: bool) -> Self {
+        match self.take_with_key_type(key, et, &cmp, reverse) {
             Some(vw) => vw,
             _ => {
                 match self.val.take() {
                     Value::Array(mut vec) => {
                         let mut ret = vec.iter_mut()
-                            .filter(|v| Self::cmp_with_term(&v, et, &cmp, false))
+                            .filter(|v| Self::cmp_with_term(&v, et, &cmp, false, reverse))
                             .map(|v| v.take())
                             .collect();
                         ValueWrapper::new(Value::Array(ret), false)
                     }
                     other => {
-                        if Self::cmp_with_term(&other, et, &cmp, false) {
+                        if Self::cmp_with_term(&other, et, &cmp, false, reverse) {
                             ValueWrapper::new(other, false)
                         } else {
                             ValueWrapper::new(Value::Null, false)
@@ -256,5 +257,46 @@ impl ValueWrapper {
         let list: Vec<Value> = map.values_mut().into_iter().map(|val| val.take()).collect();
         vw.replace(Value::Array(list));
         vw
+    }
+
+    pub fn into_term(&mut self, key: &mut Option<ValueFilterKey>) -> TermContext {
+        match self.val.take() {
+            Value::String(s) => TermContext::Constants(ExprTerm::String(s)),
+            Value::Number(n) => TermContext::Constants(ExprTerm::Number(n.as_f64().unwrap())),
+            Value::Bool(b) => TermContext::Constants(ExprTerm::Bool(b)),
+            other => TermContext::Json(match key {
+                Some(vk) => Some(vk.clone()),
+                _ => None
+            }, ValueWrapper::new(other, false))
+        }
+    }
+
+    pub fn filter(&mut self, key: &mut Option<ValueFilterKey>) -> Self {
+        let v = match &mut self.val {
+            Value::Array(vec) => {
+                let ret = vec.iter_mut()
+                    .filter(|v| match key {
+                        Some(ValueFilterKey::String(val_key)) => {
+                            v.get(val_key.as_str()).is_some()
+                        }
+                        _ => false
+                    })
+                    .map(|v| v.take())
+                    .collect();
+                Value::Array(ret)
+            }
+            Value::Object(map) => {
+                match key {
+                    Some(ValueFilterKey::String(val_key)) => match map.get_mut(val_key) {
+                        Some(v) => v.take(),
+                        _ => Value::Null
+                    },
+                    _ => Value::Null
+                }
+            }
+            other => other.take()
+        };
+
+        ValueWrapper::new(v, false)
     }
 }

@@ -1,6 +1,6 @@
 use super::cmp::*;
-use super::value_wrapper::*;
 use super::value_filter::ValueFilterKey;
+use super::value_wrapper::*;
 
 #[derive(Debug)]
 pub enum TermContext {
@@ -17,17 +17,34 @@ impl TermContext {
                         TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, default)))
                     }
                     TermContext::Json(key, v) => {
-                        TermContext::Json(None, v.take_with(key, et, cmp_fn))
+                        TermContext::Json(None, v.take_with(key, et, cmp_fn, true))
                     }
                 }
             }
             TermContext::Json(key, v) => {
                 match other {
-                    TermContext::Json(_, ov) => {
-                        v.cmp(ov, cmp_fn.into_type())
+                    TermContext::Json(key_other, ov) => {
+
+                        fn is_json(t: &TermContext) -> bool {
+                            match t {
+                                TermContext::Json(_, _) => true,
+                                _ => false
+                            }
+                        }
+
+                        let mut v = v.filter(key);
+                        let mut ov = ov.filter(key_other);
+                        let mut c = v.into_term(key);
+                        let mut oc = ov.into_term(key_other);
+
+                        if is_json(&c) && is_json(&oc) {
+                            v.cmp(&mut ov, cmp_fn.into_type())
+                        } else {
+                            c.cmp(&mut oc, cmp_fn, default)
+                        }
                     }
                     TermContext::Constants(et) => {
-                        TermContext::Json(None, v.take_with(key, et, cmp_fn))
+                        TermContext::Json(None, v.take_with(key, et, cmp_fn, false))
                     }
                 }
             }

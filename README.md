@@ -120,10 +120,8 @@ json 데이터 *(참고 사이트: https://github.com/json-path/JsonPath)*
 | <a href="https://freestrings.github.io/jsonpath/?path=$..book[2:]" target="_blank">$..book[2:]</a>                | Book number two from tail          |
 | <a href="https://freestrings.github.io/jsonpath/?path=$..book[?(@.isbn)]" target="_blank">$..book[?(@.isbn)]</a>          | All books with an ISBN number         |
 | <a href="https://freestrings.github.io/jsonpath/?path=$.store.book[?(@.price < 10)]" target="_blank">$.store.book[?(@.price < 10)]</a> | All books in store cheaper than 10  |
-| $..book[?(@.price <= $['expensive'])] *(not yet supported)* | ~~All books in store that are not "expensive"~~  |
-| $..book[?(@.author =~ /.*REES/i)] *(not yet supported)* | ~~All books matching regex (ignore case)~~  |
-| <a href="https://freestrings.github.io/jsonpath/?path=$..*" target="_blank">$..*</a>                        | Give me every thing   
-| $..book.length() *(not yet supported)* | ~~The number of books~~                      |
+| <a href="https://freestrings.github.io/jsonpath/?path=$..*" target="_blank">$..*</a>                        | Give me every thing
+| <a href="https://freestrings.github.io/jsonpath/?path=%24..book%5B%3F((%40.price%20%3D%3D%2012.99%20%7C%7C%20%24.store.bicycle.price%20%3C%20%40.price)%20%7C%7C%20%40.category%20%3D%3D%20%22reference%22)%5D" target="_blank">$..book[?((@.price == 12.99 &#124; &#124; $.store.bicycle.price < @.price)  &#124;&#124; @.category == "reference")]</a> | Complex filter
 
 
 ## With Rust (as library)

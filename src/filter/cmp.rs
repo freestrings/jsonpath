@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum CmpType {
     Eq,
     Ne,
@@ -7,6 +8,7 @@ pub enum CmpType {
     Le,
 }
 
+#[derive(Debug)]
 pub enum CmpCondType {
     And,
     Or,

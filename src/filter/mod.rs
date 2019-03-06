@@ -195,6 +195,18 @@ mod tests {
 
         let jf = do_filter("$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]", "./benches/data_obj.json");
         assert_eq!(&Value::Null, jf.current_value());
+
+        let jf = do_filter("$..friends[?(@.id == $.index)].id", "./benches/data_obj.json");
+        let friends = json!([0, 0]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$..book[?($.store.bicycle.price < @.price)].price", "./benches/example.json");
+        let friends = json!([22.99]);
+        assert_eq!(&friends, jf.current_value());
+
+        let jf = do_filter("$..book[?( (@.price == 12.99 || @.category == 'reference') && @.price > 10)].price", "./benches/example.json");
+        let friends = json!([12.99]);
+        assert_eq!(&friends, jf.current_value());
     }
 
     #[test]

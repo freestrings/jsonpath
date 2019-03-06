@@ -48,7 +48,7 @@ impl ArrayIndex for usize {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ValueFilterKey {
     Num(usize),
     String(String),
@@ -241,7 +241,7 @@ impl ValueFilter {
 
         self.last_key = Some(ValueFilterKey::String(key.clone()));
         self.vw.replace(v);
-        trace!("step_in_string - after: {:?}", self.vw.get_val());
+        trace!("step_in_string - after: {},{},{:?}", self.vw.is_leaves(), self.filter_mode, self.vw.get_val());
         &self.vw
     }
 }
@@ -410,7 +410,9 @@ impl JsonValueFilter {
                     Some(ParseToken::Leaves) => {
                         vf.step_leaves_string(&key);
                     }
-                    _ => {}
+                    _ => {
+                        self.term_stack.push(TermContext::Constants(ExprTerm::String(key)));
+                    }
                 }
             }
             _ => {}
