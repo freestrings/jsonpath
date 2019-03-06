@@ -1,9 +1,9 @@
 [package]
 name = "jsonpath_lib"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Changseok Han <freestrings@gmail.com>"]
 
-description = "JSONPath for Rust and Webassembly - Webassembly Demo: https://freestrings.github.io/jsonpath"
+description = "JsonPath for Rust and Webassembly - Webassembly Demo: https://freestrings.github.io/jsonpath"
 readme = "README.md"
 
 keywords = ["library", "jsonpath", "json", "webassembly"]
@@ -11,7 +11,9 @@ keywords = ["library", "jsonpath", "json", "webassembly"]
 repository = "https://github.com/freestrings/jsonpath"
 documentation = "https://docs.rs/jsonpath_lib/0.1.0/jsonpath_lib"
 license = "MIT"
-license-file = "LICENSE"
+
+[badges]
+travis-ci = { repository = "freestrings/jsonpath", branch = "master" }
 
 [dependencies]
 log = "0.4"

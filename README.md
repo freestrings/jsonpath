@@ -1,15 +1,40 @@
-# Jsonpath Library
+# jsonpath-lib
 
-[JsonPath](https://goessner.net/articles/JsonPath/) Rust 구현
+[![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
+
+`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. Rust 구현과 동일한 기능을 `Webassembly` 로 제공하는 것 또한 목적이다.
+
+The `Rust` version is a [JsonPath](https://goessner.net/articles/JsonPath/) implementation. It is also aimed to provide the same functionality as `Webassembly` in Rust implementation.
 
 ## 왜?
-To enjoy Rust
 
-## 사용법
+To enjoy Rust!
+
+## 목차
+
+[With Javascript (Webassembly)](#with-javascript-webassembly)
+
+- [jsonpath-wasm library](#jsonpath-wasm-library)
+- [javascript - jsonpath.read(json: string|object, jsonpath: string)](#javascript---jsonpathreadjson-stringobject-jsonpath-string)
+- [javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
+- [javascript - jsonpath.reader(json: string|object)](#javascript---jsonpathreaderjson-stringobject)
+- [javascript - examples](#javascript---examples)
+
+[With Rust (as library)](#with-rust-as-library)
+
+- [jsonpath_lib library](#jsonpath_lib-library)
+- [rust - jsonpath::read(json: serde_json::value::Value, jsonpath: &str)](#rust---jsonpathreadjson-serde_jsonvaluevalue-jsonpath-str)
+- [rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
+- [rust - jsonpath::reader(json: serde_json::value::Value)](#rust---jsonpathreaderjson-serde_jsonvaluevalue)
+- [rust - examples](#rust---examples)
+
+[With AWS API Gateway](#with-aws-api-gateway)
+
+[Benchmark](#benchmark)
 
 ## With Javascript (WebAssembly)
 
-#### `jsonpath-wasm` 라이브리러
+### jsonpath-wasm library
 
 *(not yet published `jsonpath-wasm`)*
 ```javascript
@@ -19,7 +44,7 @@ import * as jsonpath from "jsonpath-wasm";
 let jsonpath = require('jsonpath-wasm');
 ```
 
-#### `read` 함수
+### javascript - jsonpath.read(json: string|object, jsonpath: string)
 
 ```javascript
 let jsonObj = {
@@ -38,7 +63,7 @@ console.log(
 );
 ```
 
-#### JsonPath 재사용
+### javascript - jsonpath.compile(jsonpath: string)
 
 ```javascript
 let template = jsonpath.compile("$..friends[0]");
@@ -50,29 +75,32 @@ let jsonObj = {
     "friends": [ {"id": 0}, {"id": 1} ]
 };
 
-let ret = [ {"id": 0}, {"id": 0} ];
+let ret = JSON.stringify([ {"id": 0}, {"id": 0} ]);
 
 // 1. read as json object
-console.log(JSON.stringify(template(jsonObj)) == JSON.stringify(ret));
+console.log(JSON.stringify(template(jsonObj)) == ret);
 // 2. read as json string
-console.log(JSON.stringify(template(JSON.stringify(jsonObj))) == JSON.stringify(ret));
+console.log(JSON.stringify(template(JSON.stringify(jsonObj))) == ret);
 
 let jsonObj2 = {
     "school": {
-        "friends": [ {"name": "Millicent Norman"}, {"name": "Vincent Cannon"} ]
+        "friends": [ 
+            {"name": "Millicent Norman"}, 
+            {"name": "Vincent Cannon"} 
+        ]
     },
     "friends": [ {"id": 0}, {"id": 1} ]
 };
 
-let ret2 = [ {"id": 0}, {"name": "Millicent Norman"} ];
+let ret2 = JSON.stringify([ {"id": 0}, {"name": "Millicent Norman"} ]);
 
 // 1. read as json object
-console.log(JSON.stringify(template(jsonObj2)) == JSON.stringify(ret2));
+console.log(JSON.stringify(template(jsonObj2)) == ret2);
 // 2. read as json string
-console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == JSON.stringify(ret2));
+console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == ret2);
 ```
 
-#### Json 재사용
+### javascript - jsonpath.reader(json: string|object)
 
 ```javascript
 let jsonObj = {
@@ -82,18 +110,21 @@ let jsonObj = {
     "friends": [{"id": 0},{"id": 1}]
 };
 
+let ret1 = JSON.stringify([ {"id": 0}, {"id": 0} ]);
+let ret2 = JSON.stringify([ {"id": 1}, {"id": 1} ]);
+
 // 1. read as json object
 let reader = jsonpath.reader(jsonObj);
-console.log(JSON.stringify(reader("$..friends[0]")) == JSON.stringify([ {"id": 0}, {"id": 0} ]));
-console.log(JSON.stringify(reader("$..friends[1]")) == JSON.stringify([ {"id": 1}, {"id": 1} ]));
+console.log(JSON.stringify(reader("$..friends[0]")) == ret1);
+console.log(JSON.stringify(reader("$..friends[1]")) == ret2);
 
 // 2. read as json string
 let reader2 = jsonpath.reader(JSON.stringify(jsonObj));
-console.log(JSON.stringify(reader2("$..friends[0]")) == JSON.stringify([ {"id": 0}, {"id": 0} ]));
-console.log(JSON.stringify(reader2("$..friends[1]")) == JSON.stringify([ {"id": 1}, {"id": 1} ]));
+console.log(JSON.stringify(reader2("$..friends[0]")) == ret1);
+console.log(JSON.stringify(reader2("$..friends[1]")) == ret2);
 ```
 
-### 예제
+### javascript - examples
 
 **Demo**: https://freestrings.github.io/jsonpath/
 
@@ -156,10 +187,12 @@ json 데이터 *(참고 사이트: https://github.com/json-path/JsonPath)*
 | <a href="https://freestrings.github.io/jsonpath/?path=$..book[?(@.isbn)]" target="_blank">$..book[?(@.isbn)]</a>          | All books with an ISBN number         |
 | <a href="https://freestrings.github.io/jsonpath/?path=$.store.book[?(@.price < 10)]" target="_blank">$.store.book[?(@.price < 10)]</a> | All books in store cheaper than 10  |
 | <a href="https://freestrings.github.io/jsonpath/?path=$..*" target="_blank">$..*</a>                        | Give me every thing
-| <a href="https://freestrings.github.io/jsonpath/?path=%24..book%5B%3F((%40.price%20%3D%3D%2012.99%20%7C%7C%20%24.store.bicycle.price%20%3C%20%40.price)%20%7C%7C%20%40.category%20%3D%3D%20%22reference%22)%5D" target="_blank">$..book[?((@.price == 12.99 &#124; &#124; $.store.bicycle.price < @.price)  &#124;&#124; @.category == "reference")]</a> | Complex filter
+| <a href="https://freestrings.github.io/jsonpath/?path=%24..book%5B%3F((%40.price%20%3D%3D%2012.99%20%7C%7C%20%24.store.bicycle.price%20%3C%20%40.price)%20%7C%7C%20%40.category%20%3D%3D%20%22reference%22)%5D" target="_blank">$..book[ ?(<br>(@.price == 12.99 &#124; &#124; $.store.bicycle.price < @.price)<br> &#124;&#124; @.category == "reference"<br>)]</a> | Complex filter
 
 
 ## With Rust (as library)
+
+### jsonpath_lib library
 
 ```rust
 extern crate jsonpath_lib as jsonpath;
@@ -167,7 +200,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 ```
 
-#### `read` 함수
+### rust - jsonpath::read(json: serde_json::value::Value, jsonpath: &str)
 
 ```rust
 let json_obj = json!({
@@ -181,7 +214,7 @@ let ret = json!([ {"id": 0}, {"id": 0} ]);
 assert_eq!(json, ret)
 ```
 
-#### JsonPath 재사용
+### rust - jsonpath::compile(jsonpath: &str)
 
 ```rust
 let mut template = jsonpath::compile("$..friends[0]");
@@ -209,7 +242,7 @@ let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
 assert_eq!(json, ret);
 ```
 
-#### Json 재사용
+### rust - jsonpath::reader(json: serde_json::value::Value)
 
 ```rust
 let json_obj = json!({
@@ -230,7 +263,7 @@ let ret = json!([ {"id": 1}, {"id": 1} ]);
 assert_eq!(json, ret);
 ```
 
-#### 예제
+### rust - examples
 
 ```rust
 let json_obj = json!({
@@ -273,9 +306,10 @@ let json_obj = json!({
 
 let mut reader = jsonpath::reader(json_obj);
 
-//
-// $.store.book[*].author
-//
+```
+
+#### $.store.book[*].author
+```rust
 let json = reader("$.store.book[*].author").unwrap();
 let ret = json!([
   "Nigel Rees",
@@ -284,10 +318,10 @@ let ret = json!([
   "J. R. R. Tolkien"
 ]);
 assert_eq!(json, ret);
+```
 
-//
-// $..author
-//
+#### $..author
+```rust
 let json = reader("$..author").unwrap();
 let ret = json!([
   "Nigel Rees",
@@ -296,10 +330,10 @@ let ret = json!([
   "J. R. R. Tolkien"
 ]);
 assert_eq!(json, ret);
+```
 
-//
-// $.store.*
-//
+#### $.store.*
+```rust
 let json = reader("$.store.*").unwrap();
 let ret = json!([
     [
@@ -336,17 +370,17 @@ let ret = json!([
     }
 ]);
 assert_eq!(ret, json);
+```
 
-//
-// $.store..price
-//
+#### $.store..price
+```rust
 let json = reader("$.store..price").unwrap();
 let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[2]
-//
+#### $..book[2]
+```rust
 let json = reader("$..book[2]").unwrap();
 let ret = json!([{
     "category" : "fiction",
@@ -356,10 +390,10 @@ let ret = json!([{
     "price" : 8.99
 }]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[-2]
-//
+#### $..book[-2]
+```rust
 let json = reader("$..book[-2]").unwrap();
 let ret = json!([{
     "category" : "fiction",
@@ -369,10 +403,10 @@ let ret = json!([{
     "price" : 8.99
  }]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[0,1]
-//
+#### $..book[0,1]
+```rust
 let json = reader("$..book[0,1]").unwrap();
 let ret = json!([
   {
@@ -389,10 +423,10 @@ let ret = json!([
   }
 ]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[:2]
-//
+#### $..book[:2]
+```rust
 let json = reader("$..book[:2]").unwrap();
 let ret = json!([
   {
@@ -409,10 +443,10 @@ let ret = json!([
   }
 ]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[2:]
-//
+#### $..book[2:]
+```rust
 let json = reader("$..book[2:]").unwrap();
 let ret = json!([
   {
@@ -431,10 +465,10 @@ let ret = json!([
   }
 ]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[?(@.isbn)]
-//
+#### $..book[?(@.isbn)]
+```rust
 let json = reader("$..book[?(@.isbn)]").unwrap();
 let ret = json!([
   {
@@ -453,10 +487,10 @@ let ret = json!([
   }
 ]);
 assert_eq!(ret, json);
+```
 
-//
-// $.store.book[?(@.price < 10)]
-//
+#### $.store.book[?(@.price < 10)]
+```rust
 let json = reader("$.store.book[?(@.price < 10)]").unwrap();
 let ret = json!([
   {
@@ -474,11 +508,15 @@ let ret = json!([
   }
 ]);
 assert_eq!(ret, json);
+```
 
-//
-// $..book[?((@.price == 12.99 || $.store.bicycle.price < @.price) || @.category == "reference")]
-//
-let json = reader("$..book[?((@.price == 12.99 || $.store.bicycle.price < @.price) || @.category == "reference")]").unwrap();
+#### $..book[?((@.price == 12.99 || $.store.bicycle.price < @.price) || @.category == "reference")]
+```rust
+let json = reader(r#"$..book[
+                    ?(
+                        (@.price == 12.99 || $.store.bicycle.price < @.price) 
+                        || @.category == "reference"
+                     )]"#).unwrap();
 let ret = json!([
   {
     "category": "fiction",
@@ -507,5 +545,5 @@ assert_eq!(ret, json);
 
 -
 
-# 성능테스트
+## Benchmark
 

@@ -1,10 +1,9 @@
-//! JSONPath implementation for Rust
+//! JsonPath implementation for Rust
 //!
 //! # Example
 //! ```
 //!    extern crate jsonpath_lib as jsonpath;
-//!    #[macro_use]
-//!    extern crate serde_json;
+//!    #[macro_use] extern crate serde_json;
 //!
 //!    let json_obj = json!({
 //!    "store": {
@@ -158,14 +157,14 @@
 //!    ]);
 //!    assert_eq!(ret, json);
 //! ```
+
+
 #[macro_use]
 extern crate log;
 extern crate env_logger;
 
-extern crate serde;
 #[cfg(test)]
-#[macro_use]
-extern crate serde_json;
+#[macro_use] extern crate serde_json;
 #[cfg(not(test))]
 extern crate serde_json;
 
@@ -189,6 +188,9 @@ type Result = result::Result<Value, String>;
 /// # Read multiple Json multiple times with the same JsonPath
 ///
 /// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
 /// let mut template = jsonpath::compile("$..friends[0]");
 ///
 ///
@@ -234,6 +236,9 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
 /// # Read the same Json multiple times using different JsonPath
 ///
 /// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
 /// let json_obj = json!({
 /// "school": {
 ///    "friends": [{"id": 0}, {"id": 1}]
@@ -264,6 +269,9 @@ pub fn reader(json: Value) -> impl FnMut(&str) -> Result {
 /// # Read Json using JsonPath
 ///
 /// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
 /// let json_obj = json!({
 /// "school": {
 ///    "friends": [{"id": 0}, {"id": 1}]
