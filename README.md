@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
 
-`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. Rust 구현과 동일한 기능을 `Webassembly` 로 제공하는 것 또한 목적이다.
+`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. Rust 구현과 동일한 기능을 `Webassembly` 로 제공하는 것도 목표.
 
 The `Rust` version is a [JsonPath](https://goessner.net/articles/JsonPath/) implementation. It is also aimed to provide the same functionality as `Webassembly` in Rust implementation.
 

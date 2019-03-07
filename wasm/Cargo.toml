@@ -14,7 +14,7 @@ license = "MIT"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["console_error_panic_hook"]
+default = ["console_error_panic_hook", "wee_alloc"]
 
 [dependencies]
 cfg-if = "0.1.2"

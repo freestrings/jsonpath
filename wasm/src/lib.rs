@@ -93,3 +93,7 @@ pub fn read(js_value: JsValue, path: &str) -> JsValue {
         Err(e) => return JsValue::from_str(e.as_str())
     }
 }
+
+#[wasm_bindgen]
+pub fn testa() {
+}
