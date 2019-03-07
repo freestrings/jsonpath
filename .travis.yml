@@ -3,6 +3,11 @@ sudo: false
 
 cache: cargo
 
+branches:
+  only:
+    - master
+    - /^test-.*$/
+
 matrix:
   include:
 
