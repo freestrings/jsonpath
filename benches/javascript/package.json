@@ -7,7 +7,6 @@
   },
   "dependencies": {
     "jsonpath": "*",
-    "jsonpath-wasm": "*",
     "benchmark": "*"
   }
 }

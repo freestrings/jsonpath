@@ -37,7 +37,7 @@ let json = {
 };
 
 const jp = require('jsonpath');
-const jpw = require('jsonpath-wasm');
+const jpw = require('@nodejs/jsonpath-wasm');
 const Benchmark = require('benchmark');
 
 function compareJsonpath(path) {
@@ -84,12 +84,19 @@ function compareEmptyFunction() {
 
 function jsonpathOnly() {
     for(var i = 0; i < 100000 ; i++) {
-        let _ = jp.query(json, '$..book[?(@.price<30 && @.category==\"fiction\")]');
+        let _ = jp.query(json, '$..book[?(@.price<30 && @.category=="fiction")]');
+    }
+}
+
+function jsonpathWasmOnly() {
+    let reader = jpw.reader(json);
+    for(var i = 0; i < 100000 ; i++) {
+        let _ = reader('$..book[?(@.price<30 && @.category=="fiction")]');
     }
 }
 
 if(process.argv.length < 3) {
-    let functions = ['', 'compareJsonpath', 'compareEmptyFunction', 'jsonpathOnly'];
+    let functions = ['', 'compareJsonpath', 'compareEmptyFunction', 'jsonpathOnly', 'jsonpathWasmOnly'];
     console.log("node bench.js", functions.join("\n\t|"));
     return;
 }
@@ -98,10 +105,13 @@ let functionName = process.argv[2];
 
 switch (functionName) {
     case 'compareJsonpath':
-        compareJsonpath('$..book[?(@.price<30 && @.category==\"fiction\")]');
+        compareJsonpath('$..book[?(@.price<30 && @.category=="fiction")]');
         break;
     case 'compareEmptyFunction':
         compareEmptyFunction();
+        break;
+    case 'jsonpathWasmOnly':
+        jsonpathWasmOnly();
         break;
     default:
         jsonpathOnly();

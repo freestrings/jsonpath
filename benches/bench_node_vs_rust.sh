@@ -10,4 +10,6 @@ printf "\n\n"
 
 echo "Rust: " && time ./bench.sh
 printf "\n"
-cd "${DIR}"/javascript && echo "NodeJs: " && time ./bench.sh
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath module: " && time ./bench.sh jsonpathOnly
+printf "\n"
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module: " && time ./bench.sh jsonpathWasmOnly

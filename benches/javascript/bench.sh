@@ -1,2 +1,2 @@
 #!/bin/bash
-node bench.js jsonpathOnly
+node bench.js $1

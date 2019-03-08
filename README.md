@@ -1,6 +1,7 @@
 # jsonpath-lib
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
+[![version](https://img.shields.io/crates/v/:jsonpath.svg)](https://crates.io/crates/jsonpath_lib)
 
 `Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. Rust 구현과 동일한 기능을 `Webassembly` 로 제공하는 것도 목표.
 
@@ -30,7 +31,7 @@ To enjoy Rust!
 
 [With AWS API Gateway](#with-aws-api-gateway)
 
-[Benchmark](#benchmark)
+[Simple time check](#simple-time-check-with-dchesterjsonpath)
 
 ## With Javascript (WebAssembly)
 
@@ -545,5 +546,64 @@ assert_eq!(ret, json);
 
 -
 
-## Benchmark
+## Simple time check with [dchester/jsonpath](https://github.com/dchester/jsonpath)
 
+`jsonpath` is dchester/jsonpath `jsonpath-wasm` is freestrings/jsonpath's compiled to webassembly
+
+`jsonpath-wasm` is slow performance on Chrome browser and in NodeJS. not yet usable. :)
+
+### Browser [Bench Demo](https://freestrings.github.io/jsonpath/bench)
+
+#### Chrome: 72.0
+
+> Something to wrong in chrome
+
+```
+jsonpath, 134
+jsonpath-wasm- reader, 1409
+jsonpath-wasm- compile, 3237
+jsonpath-wasm- read, 5302
+```
+
+#### Firefox: 65.0
+
+> jsonpath-wasm is faster than jsonpath
+
+```
+jsonpath, 301
+jsonpath-wasm- reader, 166
+jsonpath-wasm- compile, 130
+jsonpath-wasm- read, 144
+```
+
+### NodeJs
+
+* NodeJS: 11.0
+* CPU: Intel Core i5-4460
+* Memory: 16GB
+
+> Rust > jsonpath > jsonpath-wasm
+
+```bash
+cd benches && ./bench_node_vs_rust.sh
+
+$..book[?(@.price<30 && @.category==fiction)] (loop 100,000)
+
+Rust: 
+
+real	0m1.141s
+user	0m1.137s
+sys	0m0.004s
+
+NodeJs - jsonpath module: 
+
+real	0m3.718s
+user	0m4.175s
+sys	0m0.050s
+
+NodeJs - jsonpath-wasm module: 
+
+real	0m10.205s
+user	0m10.281s
+sys	0m0.383s
+```
