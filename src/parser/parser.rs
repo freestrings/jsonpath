@@ -13,24 +13,20 @@ type Result<T> = result::Result<T, String>;
 mod utils {
     use std::result;
 
-    pub fn vec_to_int<F>(vec: &Vec<char>, msg_handler: F) -> result::Result<isize, String>
+    pub fn string_to_isize<F>(string: &String, msg_handler: F) -> result::Result<isize, String>
         where F: Fn() -> String {
-        match vec.iter().map(|c| *c).collect::<String>().as_str().parse::<isize>() {
+        match string.as_str().parse::<isize>() {
             Ok(n) => Ok(n),
             _ => Err(msg_handler())
         }
     }
 
-    pub fn vec_to_float<F>(vec: &Vec<char>, msg_handler: F) -> result::Result<f64, String>
+    pub fn string_to_f64<F>(string: &String, msg_handler: F) -> result::Result<f64, String>
         where F: Fn() -> String {
-        match vec.iter().map(|c| *c).collect::<String>().as_str().parse::<f64>() {
+        match string.as_str().parse::<f64>() {
             Ok(n) => Ok(n),
             _ => Err(msg_handler())
         }
-    }
-
-    pub fn vec_to_string(vec: &Vec<char>) -> String {
-        vec.iter().map(|c| *c).collect::<String>()
     }
 }
 
@@ -236,7 +232,7 @@ impl<'a> Parser<'a> {
         debug!("#key");
         match self.tokenizer.next_token() {
             Ok(Token::Key(_, v)) => {
-                Ok(self.node(ParseToken::Key(utils::vec_to_string(&v))))
+                Ok(self.node(ParseToken::Key(v)))
             }
             _ => {
                 Err(self.tokenizer.err_msg())
@@ -247,9 +243,9 @@ impl<'a> Parser<'a> {
     fn array_quota_value(&mut self) -> Result<Node> {
         debug!("#array_quota_value");
         match self.tokenizer.next_token() {
-            Ok(Token::SingleQuoted(_, ref vec))
-            | Ok(Token::DoubleQuoted(_, ref vec)) => {
-                Ok(self.node(ParseToken::Key(utils::vec_to_string(vec))))
+            Ok(Token::SingleQuoted(_, val))
+            | Ok(Token::DoubleQuoted(_, val)) => {
+                Ok(self.node(ParseToken::Key(val)))
             }
             Err(TokenError::Eof) => {
                 Ok(self.node(ParseToken::Eof))
@@ -299,9 +295,8 @@ impl<'a> Parser<'a> {
     fn array_value_key(&mut self) -> Result<Node> {
         debug!("#array_value_key");
         match self.tokenizer.next_token() {
-            Ok(Token::Key(pos, ref vec)) => {
-                let digit = utils::vec_to_int(vec,
-                                              || self.tokenizer.err_msg_with_pos(pos))?;
+            Ok(Token::Key(pos, ref val)) => {
+                let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
                 self.eat_whitespace();
 
                 match self.tokenizer.peek_token() {
@@ -357,9 +352,8 @@ impl<'a> Parser<'a> {
             self.eat_token();
             self.eat_whitespace();
             match self.tokenizer.next_token() {
-                Ok(Token::Key(pos, ref vec)) => {
-                    let digit = utils::vec_to_int(vec,
-                                                  || self.tokenizer.err_msg_with_pos(pos))?;
+                Ok(Token::Key(pos, ref val)) => {
+                    let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
                     values.push(digit);
                 }
                 _ => {
@@ -387,9 +381,8 @@ impl<'a> Parser<'a> {
     fn range_to(&mut self) -> Result<Node> {
         debug!("#range_to");
         match self.tokenizer.next_token() {
-            Ok(Token::Key(pos, ref vec)) => {
-                let digit = utils::vec_to_int(vec,
-                                              || self.tokenizer.err_msg_with_pos(pos))?;
+            Ok(Token::Key(pos, ref val)) => {
+                let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
                 Ok(self.node(ParseToken::Range(None, Some(digit))))
             }
             _ => {
@@ -401,9 +394,8 @@ impl<'a> Parser<'a> {
     fn range(&mut self, num: isize) -> Result<Node> {
         debug!("#range");
         match self.tokenizer.next_token() {
-            Ok(Token::Key(pos, ref vec)) => {
-                let digit = utils::vec_to_int(vec,
-                                              || self.tokenizer.err_msg_with_pos(pos))?;
+            Ok(Token::Key(pos, ref val)) => {
+                let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
                 Ok(self.node(ParseToken::Range(Some(num), Some(digit))))
             }
             _ => {
@@ -505,14 +497,13 @@ impl<'a> Parser<'a> {
     fn term_num(&mut self) -> Result<Node> {
         debug!("#term_num");
         match self.tokenizer.next_token() {
-            Ok(Token::Key(pos, mut vec)) => {
+            Ok(Token::Key(pos, val)) => {
                 match self.tokenizer.peek_token() {
                     Ok(Token::Dot(_)) => {
-                        self.term_num_float(&mut vec)
+                        self.term_num_float(val.as_str())
                     }
                     _ => {
-                        let number = utils::vec_to_float(&vec,
-                                                         || self.tokenizer.err_msg_with_pos(pos))?;
+                        let number = utils::string_to_f64(&val, || self.tokenizer.err_msg_with_pos(pos))?;
                         Ok(self.node(ParseToken::Number(number)))
                     }
                 }
@@ -526,17 +517,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn term_num_float(&mut self, mut num: &mut Vec<char>) -> Result<Node> {
+    fn term_num_float(&mut self, mut num: &str) -> Result<Node> {
         debug!("#term_num_float");
         self.eat_token();
         match self.tokenizer.next_token() {
-            Ok(Token::Key(pos, mut frac)) => {
-                let mut f = vec![];
-                f.append(&mut num);
+            Ok(Token::Key(pos, frac)) => {
+                let mut f = String::new();
+                f.push_str(&mut num);
                 f.push('.');
-                f.append(&mut frac);
-                let number = utils::vec_to_float(&f,
-                                                 || self.tokenizer.err_msg_with_pos(pos))?;
+                f.push_str(frac.as_str());
+                let number = utils::string_to_f64(&f, || self.tokenizer.err_msg_with_pos(pos))?;
                 Ok(self.node(ParseToken::Number(number)))
             }
             _ => {

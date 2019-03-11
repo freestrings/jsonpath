@@ -75,9 +75,9 @@ pub enum Token {
     Split(usize),
     OpenParenthesis(usize),
     CloseParenthesis(usize),
-    Key(usize, Vec<char>),
-    DoubleQuoted(usize, Vec<char>),
-    SingleQuoted(usize, Vec<char>),
+    Key(usize, String),
+    DoubleQuoted(usize, String),
+    SingleQuoted(usize, String),
     Equal(usize),
     GreaterOrEqual(usize),
     Greater(usize),
@@ -153,15 +153,15 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn single_quota(&mut self, pos: usize, ch: char) -> result::Result<Token, TokenError> {
-        let (_, vec) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+        let (_, val) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
         self.input.next_char().map_err(to_token_error)?;
-        Ok(Token::SingleQuoted(pos, vec))
+        Ok(Token::SingleQuoted(pos, val))
     }
 
     fn double_quota(&mut self, pos: usize, ch: char) -> result::Result<Token, TokenError> {
-        let (_, vec) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+        let (_, val) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
         self.input.next_char().map_err(to_token_error)?;
-        Ok(Token::DoubleQuoted(pos, vec))
+        Ok(Token::DoubleQuoted(pos, val))
     }
 
     fn equal(&mut self, pos: usize, _: char) -> result::Result<Token, TokenError> {
@@ -414,9 +414,9 @@ mod tests {
                 vec![
                     Token::Absolute(0),
                     Token::Dot(1),
-                    Token::Key(2, vec!['0', '1']),
+                    Token::Key(2, "01".to_string()),
                     Token::Dot(4),
-                    Token::Key(5, vec!['a'])
+                    Token::Key(5, "a".to_string())
                 ]
                 , Some(TokenError::Eof)
             ));
@@ -449,7 +449,7 @@ mod tests {
                     Token::Absolute(0),
                     Token::Dot(1),
                     Token::Dot(2),
-                    Token::Key(3, vec!['a', 'b'])
+                    Token::Key(3, "ab".to_string())
                 ]
                 , Some(TokenError::Eof)
             ));
@@ -460,7 +460,7 @@ mod tests {
                     Token::Absolute(0),
                     Token::Dot(1),
                     Token::Dot(2),
-                    Token::Key(3, vec!['가']),
+                    Token::Key(3, "가".to_string()),
                     Token::Whitespace(6, 0),
                     Token::OpenArray(7),
                 ]
@@ -471,10 +471,10 @@ mod tests {
             (
                 vec![
                     Token::OpenArray(0),
-                    Token::Key(1, vec!['-', '1']),
+                    Token::Key(1, "-1".to_string()),
                     Token::Comma(3),
                     Token::Whitespace(4, 0),
-                    Token::Key(5, vec!['2']),
+                    Token::Key(5, "2".to_string()),
                     Token::Whitespace(6, 0),
                     Token::CloseArray(7),
                 ]
@@ -486,19 +486,19 @@ mod tests {
                 vec![
                     Token::OpenArray(0),
                     Token::Whitespace(1, 0),
-                    Token::Key(2, vec!['1']),
+                    Token::Key(2, "1".to_string()),
                     Token::Whitespace(3, 0),
-                    Token::Key(4, vec!['2']),
+                    Token::Key(4, "2".to_string()),
                     Token::Whitespace(5, 0),
                     Token::Comma(6),
                     Token::Whitespace(7, 0),
-                    Token::Key(8, vec!['3']),
+                    Token::Key(8, "3".to_string()),
                     Token::Whitespace(9, 0),
-                    Token::DoubleQuoted(10, vec!['a', 'b', 'c']),
+                    Token::DoubleQuoted(10, "abc".to_string()),
                     Token::Whitespace(15, 0),
                     Token::Split(16),
                     Token::Whitespace(17, 0),
-                    Token::Key(18, vec!['-', '1', '0']),
+                    Token::Key(18, "-10".to_string()),
                     Token::Whitespace(21, 0),
                     Token::CloseArray(22),
                 ]
@@ -512,12 +512,12 @@ mod tests {
                     Token::OpenParenthesis(1),
                     Token::At(2),
                     Token::Dot(3),
-                    Token::Key(4, vec!['a', '가']),
+                    Token::Key(4, "a가".to_string()),
                     Token::Whitespace(8, 0),
                     Token::Little(9),
-                    Token::Key(10, vec!['4', '1']),
+                    Token::Key(10, "41".to_string()),
                     Token::Dot(12),
-                    Token::Key(13, vec!['0', '1']),
+                    Token::Key(13, "01".to_string()),
                     Token::CloseParenthesis(15),
                 ]
                 , Some(TokenError::Eof)
@@ -530,12 +530,12 @@ mod tests {
                     Token::OpenParenthesis(1),
                     Token::At(2),
                     Token::Dot(3),
-                    Token::Key(4, vec!['a']),
+                    Token::Key(4, "a".to_string()),
                     Token::Whitespace(5, 0),
                     Token::Little(6),
-                    Token::Key(7, vec!['4', 'a']),
+                    Token::Key(7, "4a".to_string()),
                     Token::Dot(9),
-                    Token::Key(10, vec!['0', '1']),
+                    Token::Key(10, "01".to_string()),
                     Token::CloseParenthesis(12),
                 ]
                 , Some(TokenError::Eof)
@@ -547,11 +547,11 @@ mod tests {
                 Token::OpenParenthesis(1),
                 Token::Absolute(2),
                 Token::Dot(3),
-                Token::Key(4, vec!['c']),
+                Token::Key(4, "c".to_string()),
                 Token::Greater(5),
                 Token::At(6),
                 Token::Dot(7),
-                Token::Key(8, vec!['d']),
+                Token::Key(8, "d".to_string()),
                 Token::CloseParenthesis(9)
             ]
             , Some(TokenError::Eof)

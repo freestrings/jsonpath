@@ -10,6 +10,14 @@ printf "\n\n"
 
 echo "Rust: " && time ./bench.sh
 printf "\n"
-cd "${DIR}"/javascript && echo "NodeJs - jsonpath module: " && time ./bench.sh jsonpathOnly
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath module: " && time ./bench.sh jsonpath
 printf "\n"
-cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module: " && time ./bench.sh jsonpathWasmOnly
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module - selector: " && time ./bench.sh wasmSelector
+printf "\n"
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module - compile: " && time ./bench.sh wasmCompile
+printf "\n"
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module - compile-alloc: " && time ./bench.sh wasmCompileAlloc
+printf "\n"
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module - select:" && time ./bench.sh wasmSelect
+printf "\n"
+cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm module - select-alloc:" && time ./bench.sh wasmSelectAlloc

@@ -55,20 +55,29 @@
 /******/ 		"../browser_pkg/jsonpath_wasm_bg.wasm": function() {
 /******/ 			return {
 /******/ 				"./jsonpath_wasm": {
+/******/ 					"__wbindgen_string_new": function(p0i32,p1i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_string_new"](p0i32,p1i32);
+/******/ 					},
+/******/ 					"__wbindgen_object_drop_ref": function(p0i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_object_drop_ref"](p0i32);
+/******/ 					},
+/******/ 					"__wbindgen_object_clone_ref": function(p0i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_object_clone_ref"](p0i32);
+/******/ 					},
+/******/ 					"__wbindgen_cb_forget": function(p0i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_cb_forget"](p0i32);
+/******/ 					},
 /******/ 					"__wbindgen_json_parse": function(p0i32,p1i32) {
 /******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_json_parse"](p0i32,p1i32);
 /******/ 					},
 /******/ 					"__wbindgen_json_serialize": function(p0i32,p1i32) {
 /******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_json_serialize"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__wbindgen_cb_forget": function(p0i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_cb_forget"](p0i32);
+/******/ 					"__widl_f_log_1_": function(p0i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__widl_f_log_1_"](p0i32);
 /******/ 					},
-/******/ 					"__wbindgen_object_drop_ref": function(p0i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_object_drop_ref"](p0i32);
-/******/ 					},
-/******/ 					"__wbindgen_string_new": function(p0i32,p1i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_string_new"](p0i32,p1i32);
+/******/ 					"__wbindgen_number_get": function(p0i32,p1i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_number_get"](p0i32,p1i32);
 /******/ 					},
 /******/ 					"__wbindgen_is_string": function(p0i32) {
 /******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_is_string"](p0i32);
@@ -76,17 +85,14 @@
 /******/ 					"__wbindgen_string_get": function(p0i32,p1i32) {
 /******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_string_get"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__wbindgen_object_clone_ref": function(p0i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_object_clone_ref"](p0i32);
-/******/ 					},
 /******/ 					"__wbindgen_throw": function(p0i32,p1i32) {
 /******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_throw"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper33": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper33"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper101": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper101"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper35": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper35"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper103": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper103"](p0i32,p1i32,p2i32);
 /******/ 					}
 /******/ 				}
 /******/ 			};
@@ -186,7 +192,7 @@
 /******/ 				promises.push(installedWasmModuleData);
 /******/ 			else {
 /******/ 				var importObject = wasmImportObjects[wasmModuleId]();
-/******/ 				var req = fetch(__webpack_require__.p + "" + {"../browser_pkg/jsonpath_wasm_bg.wasm":"95acaf85df86c0a76234"}[wasmModuleId] + ".module.wasm");
+/******/ 				var req = fetch(__webpack_require__.p + "" + {"../browser_pkg/jsonpath_wasm_bg.wasm":"9a826648f4cbc2bc8591"}[wasmModuleId] + ".module.wasm");
 /******/ 				var promise;
 /******/ 				if(importObject instanceof Promise && typeof WebAssembly.compileStreaming === 'function') {
 /******/ 					promise = Promise.all([WebAssembly.compileStreaming(req), importObject]).then(function(items) {

@@ -14,8 +14,8 @@ fn read_json(path: &str) -> String {
 fn main() {
     let string = read_json("../example.json");
     let json: Value = serde_json::from_str(string.as_str()).unwrap();
-    let mut reader = jsonpath::reader(json);
+    let mut selector = jsonpath::selector(json);
     for _ in 1..100000 {
-        let _ = reader(r#"$..book[?(@.price<30 && @.category=="fiction")]"#).unwrap();
+        let _ = selector(r#"$..book[?(@.price<30 && @.category=="fiction")]"#).unwrap();
     }
 }

@@ -1,7 +1,7 @@
 # jsonpath-lib
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
-[![version](https://img.shields.io/crates/v/:jsonpath.svg)](https://crates.io/crates/jsonpath_lib)
+![crates.io](https://img.shields.io/crates/v/jsonpath_lib.svg)
 
 `Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. Rust 구현과 동일한 기능을 `Webassembly` 로 제공하는 것도 목표.
 
@@ -16,17 +16,18 @@ To enjoy Rust!
 [With Javascript (Webassembly)](#with-javascript-webassembly)
 
 - [jsonpath-wasm library](#jsonpath-wasm-library)
-- [javascript - jsonpath.read(json: string|object, jsonpath: string)](#javascript---jsonpathreadjson-stringobject-jsonpath-string)
+- [javascript - jsonpath.select(json: string|object, jsonpath: string)](#javascript---jsonpathselectjson-stringobject-jsonpath-string)
 - [javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
-- [javascript - jsonpath.reader(json: string|object)](#javascript---jsonpathreaderjson-stringobject)
+- [javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
+- [javascript - alloc_json, dealloc_json](#javascript---alloc_json-dealloc_json)
 - [javascript - examples](#javascript---examples)
 
 [With Rust (as library)](#with-rust-as-library)
 
 - [jsonpath_lib library](#jsonpath_lib-library)
-- [rust - jsonpath::read(json: serde_json::value::Value, jsonpath: &str)](#rust---jsonpathreadjson-serde_jsonvaluevalue-jsonpath-str)
+- [rust - jsonpath::select(json: serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
 - [rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
-- [rust - jsonpath::reader(json: serde_json::value::Value)](#rust---jsonpathreaderjson-serde_jsonvaluevalue)
+- [rust - jsonpath::selector(json: serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
 - [rust - examples](#rust---examples)
 
 [With AWS API Gateway](#with-aws-api-gateway)
@@ -45,7 +46,7 @@ import * as jsonpath from "jsonpath-wasm";
 let jsonpath = require('jsonpath-wasm');
 ```
 
-### javascript - jsonpath.read(json: string|object, jsonpath: string)
+### javascript - jsonpath.select(json: string|object, jsonpath: string)
 
 ```javascript
 let jsonObj = {
@@ -56,8 +57,8 @@ let jsonObj = {
 };
 let ret = [{"id": 0}, {"id": 0}];
 
-let a = jsonpath.read(JSON.stringify(jsonObj), "$..friends[0]");
-let b = jsonpath.read(jsonObj, "$..friends[0]");
+let a = jsonpath.select(JSON.stringify(jsonObj), "$..friends[0]");
+let b = jsonpath.select(jsonObj, "$..friends[0]");
 console.log(
     JSON.stringify(ret) == JSON.stringify(a),
     JSON.stringify(a) == JSON.stringify(b)
@@ -101,7 +102,7 @@ console.log(JSON.stringify(template(jsonObj2)) == ret2);
 console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == ret2);
 ```
 
-### javascript - jsonpath.reader(json: string|object)
+### javascript - jsonpath.selector(json: string|object)
 
 ```javascript
 let jsonObj = {
@@ -115,14 +116,55 @@ let ret1 = JSON.stringify([ {"id": 0}, {"id": 0} ]);
 let ret2 = JSON.stringify([ {"id": 1}, {"id": 1} ]);
 
 // 1. read as json object
-let reader = jsonpath.reader(jsonObj);
-console.log(JSON.stringify(reader("$..friends[0]")) == ret1);
-console.log(JSON.stringify(reader("$..friends[1]")) == ret2);
+let selector = jsonpath.selector(jsonObj);
+console.log(JSON.stringify(selector("$..friends[0]")) == ret1);
+console.log(JSON.stringify(selector("$..friends[1]")) == ret2);
 
 // 2. read as json string
-let reader2 = jsonpath.reader(JSON.stringify(jsonObj));
-console.log(JSON.stringify(reader2("$..friends[0]")) == ret1);
-console.log(JSON.stringify(reader2("$..friends[1]")) == ret2);
+let selector = jsonpath.selector(JSON.stringify(jsonObj));
+console.log(JSON.stringify(selector("$..friends[0]")) == ret1);
+console.log(JSON.stringify(selector("$..friends[1]")) == ret2);
+```
+
+### javascript - alloc_json, dealloc_json
+
+wasm-bindgen은 Javascript와 Webassembly 간 값을 주고받을 때 JSON 객체는 String으로 변환되기 때문에, 반복해서 사용되는 JSON 객체를 Webassembly 영역에 생성해 두면 성능에 도움이 된다.
+
+Since wasm-bindgen converts JSON objects to String when exchanging values between Javascript and Webassembly, it is helpful to create repeated Json objects in Webassembly area.
+
+```javascript
+
+let jsonObj = {
+    "school": {
+        "friends": [{"id": 0}, {"id": 1}]
+    },
+    "friends": [{"id": 0},{"id": 1}]
+};
+
+let path = '$..friends[0]';
+let template = jsonpath.compile(path);
+let selector = jsonpath.selector(jsonObj);
+
+let ptr = jsonpath.alloc_json(jsonObj);
+if(ptr == 0) console.error('invalid ptr'); // `0` is invalid pointer
+let selector2 = jsonpath.selector(ptr);
+
+let ret1 = selector(path)
+let ret2 = selector2(path)
+let ret3 = template(jsonObj);
+let ret4 = template(ptr);
+let ret5 = jsonpath.select(jsonObj, path);
+let ret6 = jsonpath.select(ptr, path);
+
+console.log(
+    JSON.stringify(ret1) == JSON.stringify(ret2),// true
+    JSON.stringify(ret1) == JSON.stringify(ret3),// true
+    JSON.stringify(ret1) == JSON.stringify(ret4),// true
+    JSON.stringify(ret1) == JSON.stringify(ret5),// true
+    JSON.stringify(ret1) == JSON.stringify(ret6));// true
+
+jsonpath.dealloc_json(ptr);
+
 ```
 
 ### javascript - examples
@@ -201,7 +243,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 ```
 
-### rust - jsonpath::read(json: serde_json::value::Value, jsonpath: &str)
+### rust - jsonpath::select(json: serde_json::value::Value, jsonpath: &str)
 
 ```rust
 let json_obj = json!({
@@ -210,7 +252,7 @@ let json_obj = json!({
     },
     "friends": [{"id": 0}, {"id": 1}]
 });
-let json = jsonpath::read(json_obj, "$..friends[0]").unwrap();
+let json = jsonpath::select(json_obj, "$..friends[0]").unwrap();
 let ret = json!([ {"id": 0}, {"id": 0} ]);
 assert_eq!(json, ret)
 ```
@@ -243,7 +285,7 @@ let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
 assert_eq!(json, ret);
 ```
 
-### rust - jsonpath::reader(json: serde_json::value::Value)
+### rust - jsonpath::selector(json: serde_json::value::Value)
 
 ```rust
 let json_obj = json!({
@@ -253,13 +295,13 @@ let json_obj = json!({
     "friends": [{"id": 0},{"id": 1}]
 });
 
-let mut reader = jsonpath::reader(json_obj);
+let mut selector = jsonpath::selector(json_obj);
 
-let json = reader("$..friends[0]").unwrap();
+let json = selector("$..friends[0]").unwrap();
 let ret = json!([ {"id": 0}, {"id": 0} ]);
 assert_eq!(json, ret);
 
-let json = reader("$..friends[1]").unwrap();
+let json = selector("$..friends[1]").unwrap();
 let ret = json!([ {"id": 1}, {"id": 1} ]);
 assert_eq!(json, ret);
 ```
@@ -305,13 +347,13 @@ let json_obj = json!({
     "expensive": 10
 });
 
-let mut reader = jsonpath::reader(json_obj);
+let mut selector = jsonpath::selector(json_obj);
 
 ```
 
 #### $.store.book[*].author
 ```rust
-let json = reader("$.store.book[*].author").unwrap();
+let json = selector("$.store.book[*].author").unwrap();
 let ret = json!([
   "Nigel Rees",
   "Evelyn Waugh",
@@ -323,7 +365,7 @@ assert_eq!(json, ret);
 
 #### $..author
 ```rust
-let json = reader("$..author").unwrap();
+let json = selector("$..author").unwrap();
 let ret = json!([
   "Nigel Rees",
   "Evelyn Waugh",
@@ -335,7 +377,7 @@ assert_eq!(json, ret);
 
 #### $.store.*
 ```rust
-let json = reader("$.store.*").unwrap();
+let json = selector("$.store.*").unwrap();
 let ret = json!([
     [
         {
@@ -375,14 +417,14 @@ assert_eq!(ret, json);
 
 #### $.store..price
 ```rust
-let json = reader("$.store..price").unwrap();
+let json = selector("$.store..price").unwrap();
 let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
 assert_eq!(ret, json);
 ```
 
 #### $..book[2]
 ```rust
-let json = reader("$..book[2]").unwrap();
+let json = selector("$..book[2]").unwrap();
 let ret = json!([{
     "category" : "fiction",
     "author" : "Herman Melville",
@@ -395,7 +437,7 @@ assert_eq!(ret, json);
 
 #### $..book[-2]
 ```rust
-let json = reader("$..book[-2]").unwrap();
+let json = selector("$..book[-2]").unwrap();
 let ret = json!([{
     "category" : "fiction",
     "author" : "Herman Melville",
@@ -408,7 +450,7 @@ assert_eq!(ret, json);
 
 #### $..book[0,1]
 ```rust
-let json = reader("$..book[0,1]").unwrap();
+let json = selector("$..book[0,1]").unwrap();
 let ret = json!([
   {
     "category": "reference",
@@ -428,7 +470,7 @@ assert_eq!(ret, json);
 
 #### $..book[:2]
 ```rust
-let json = reader("$..book[:2]").unwrap();
+let json = selector("$..book[:2]").unwrap();
 let ret = json!([
   {
     "category": "reference",
@@ -448,7 +490,7 @@ assert_eq!(ret, json);
 
 #### $..book[2:]
 ```rust
-let json = reader("$..book[2:]").unwrap();
+let json = selector("$..book[2:]").unwrap();
 let ret = json!([
   {
     "category": "fiction",
@@ -470,7 +512,7 @@ assert_eq!(ret, json);
 
 #### $..book[?(@.isbn)]
 ```rust
-let json = reader("$..book[?(@.isbn)]").unwrap();
+let json = selector("$..book[?(@.isbn)]").unwrap();
 let ret = json!([
   {
     "category": "fiction",
@@ -492,7 +534,7 @@ assert_eq!(ret, json);
 
 #### $.store.book[?(@.price < 10)]
 ```rust
-let json = reader("$.store.book[?(@.price < 10)]").unwrap();
+let json = selector("$.store.book[?(@.price < 10)]").unwrap();
 let ret = json!([
   {
     "category": "reference",
@@ -513,7 +555,7 @@ assert_eq!(ret, json);
 
 #### $..book[?((@.price == 12.99 || $.store.bicycle.price < @.price) || @.category == "reference")]
 ```rust
-let json = reader(r#"$..book[
+let json = selector(r#"$..book[
                     ?(
                         (@.price == 12.99 || $.store.bicycle.price < @.price) 
                         || @.category == "reference"
@@ -554,15 +596,21 @@ assert_eq!(ret, json);
 
 ### Browser [Bench Demo](https://freestrings.github.io/jsonpath/bench)
 
+```
+'$..book[?(@.price<30 && @.category=="fiction")]' (loop 2,000)
+```
+
 #### Chrome: 72.0
 
 > Something to wrong in chrome
 
 ```
-jsonpath, 134
-jsonpath-wasm- reader, 1409
-jsonpath-wasm- compile, 3237
-jsonpath-wasm- read, 5302
+jsonpath, 166
+jsonpath-wasm- selector, 256
+jsonpath-wasm- compile, 1168
+jsonpath-wasm- compile-alloc, 645
+jsonpath-wasm- select, 3224
+jsonpath-wasm- select-alloc, 1427
 ```
 
 #### Firefox: 65.0
@@ -570,40 +618,65 @@ jsonpath-wasm- read, 5302
 > jsonpath-wasm is faster than jsonpath
 
 ```
-jsonpath, 301
-jsonpath-wasm- reader, 166
-jsonpath-wasm- compile, 130
-jsonpath-wasm- read, 144
+jsonpath, 125
+jsonpath-wasm- selector, 101
+jsonpath-wasm- compile, 169
+jsonpath-wasm- compile-alloc, 78
+jsonpath-wasm- select, 186
+jsonpath-wasm- select-alloc, 93
 ```
 
 ### NodeJs
 
 * NodeJS: 11.0
-* CPU: Intel Core i5-4460
-* Memory: 16GB
 
 > Rust > jsonpath > jsonpath-wasm
 
+
 ```bash
 cd benches && ./bench_node_vs_rust.sh
-
 $..book[?(@.price<30 && @.category==fiction)] (loop 100,000)
 
 Rust: 
 
-real	0m1.141s
-user	0m1.137s
-sys	0m0.004s
+real	0m0.862s
+user	0m0.862s
+sys	0m0.000s
 
 NodeJs - jsonpath module: 
 
-real	0m3.718s
-user	0m4.175s
-sys	0m0.050s
+real	0m3.667s
+user	0m4.139s
+sys	0m0.045s
 
-NodeJs - jsonpath-wasm module: 
+NodeJs - jsonpath-wasm module - selector: 
 
-real	0m10.205s
-user	0m10.281s
-sys	0m0.383s
+real	0m5.331s
+user	0m5.494s
+sys	0m0.093s
+
+NodeJs - jsonpath-wasm module - compile: 
+
+real	0m8.665s
+user	0m8.809s
+sys	0m0.197s
+
+NodeJs - jsonpath-wasm module - compile-alloc: 
+
+real	0m4.014s
+user	0m4.173s
+sys	0m0.088s
+
+NodeJs - jsonpath-wasm module - select:
+
+real	0m9.843s
+user	0m9.897s
+sys	0m0.244s
+
+NodeJs - jsonpath-wasm module - select-alloc:
+
+real	0m5.212s
+user	0m5.339s
+sys	0m0.096s
+
 ```

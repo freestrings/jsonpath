@@ -23,7 +23,7 @@ mod tests {
     fn new_value_filter(file: &str) -> ValueFilter {
         let string = read_json(file);
         let json: Value = serde_json::from_str(string.as_str()).unwrap();
-        ValueFilter::new(json, false, false)
+        ValueFilter::new(json.into(), false, false)
     }
 
     fn do_filter(path: &str, file: &str) -> JsonValueFilter {
@@ -71,7 +71,7 @@ mod tests {
                 "Vincent Cannon",
                 "Gray Berry"
             ]);
-            assert_eq!(&friends, current.get_val());
+            assert_eq!(friends, current.get_val().into_value());
         }
         let mut jf = new_value_filter("./benches/data_obj.json");
         {
@@ -84,7 +84,7 @@ mod tests {
                 "Vincent Cannon",
                 "Gray Berry"
             ]);
-            assert_eq!(&names, current.get_val());
+            assert_eq!(names, current.get_val().into_value());
         }
     }
 
@@ -98,32 +98,32 @@ mod tests {
         ]);
 
         let jf = do_filter("$.school.friends[1, 2]", "./benches/data_obj.json");
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.school.friends[1:]", "./benches/data_obj.json");
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.school.friends[:-2]", "./benches/data_obj.json");
         let friends = json!([
             {"id": 0, "name": "Millicent Norman"}
         ]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$..friends[2].name", "./benches/data_obj.json");
         let friends = json!(["Gray Berry", "Gray Berry"]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$..friends[*].name", "./benches/data_obj.json");
         let friends = json!(["Vincent Cannon","Gray Berry","Millicent Norman","Vincent Cannon","Gray Berry"]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$['school']['friends'][*].['name']", "./benches/data_obj.json");
         let friends = json!(["Millicent Norman","Vincent Cannon","Gray Berry"]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$['school']['friends'][0].['name']", "./benches/data_obj.json");
         let friends = json!("Millicent Norman");
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
     }
 
     #[test]
@@ -139,16 +139,16 @@ mod tests {
         });
 
         let jf = do_filter("$.school", "./benches/data_obj.json");
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.school[?(@.friends[0])]", "./benches/data_obj.json");
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.school[?(@.friends[10])]", "./benches/data_obj.json");
-        assert_eq!(&Value::Null, jf.current_value());
+        assert_eq!(Value::Null, jf.current_value().into_value());
 
         let jf = do_filter("$.school[?(1==1)]", "./benches/data_obj.json");
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.school.friends[?(1==1)]", "./benches/data_obj.json");
         let friends = json!([
@@ -156,7 +156,7 @@ mod tests {
             {"id": 1, "name": "Vincent Cannon" },
             {"id": 2, "name": "Gray Berry"}
         ]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
     }
 
     #[test]
@@ -171,42 +171,42 @@ mod tests {
                 {"id": 2, "name": "Gray Berry"}
             ]
         });
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.friends[?(@.name)]", "./benches/data_obj.json");
         let friends = json!([
             { "id" : 1, "name" : "Vincent Cannon" },
             { "id" : 2, "name" : "Gray Berry" }
         ]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.friends[?(@.id >= 2)]", "./benches/data_obj.json");
         let friends = json!([
             { "id" : 2, "name" : "Gray Berry" }
         ]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.friends[?(@.id >= 2 || @.id == 1)]", "./benches/data_obj.json");
         let friends = json!([
             { "id" : 2, "name" : "Gray Berry" },
             { "id" : 1, "name" : "Vincent Cannon" }
         ]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]", "./benches/data_obj.json");
-        assert_eq!(&Value::Null, jf.current_value());
+        assert_eq!(Value::Null, jf.current_value().into_value());
 
         let jf = do_filter("$..friends[?(@.id == $.index)].id", "./benches/data_obj.json");
         let friends = json!([0, 0]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$..book[?($.store.bicycle.price < @.price)].price", "./benches/example.json");
         let friends = json!([22.99]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
 
         let jf = do_filter("$..book[?( (@.price == 12.99 || @.category == 'reference') && @.price > 10)].price", "./benches/example.json");
         let friends = json!([12.99]);
-        assert_eq!(&friends, jf.current_value());
+        assert_eq!(friends, jf.current_value().into_value());
     }
 
     #[test]
@@ -215,10 +215,10 @@ mod tests {
 
         let jf = do_filter("$.store.book[*].author", "./benches/example.json");
         let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..author", "./benches/example.json");
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$.store.*", "./benches/example.json");
         let ret = json!([
@@ -230,11 +230,11 @@ mod tests {
         ],
         {"color" : "red","price" : 19.95},
         ]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$.store..price", "./benches/example.json");
         let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..book[2]", "./benches/example.json");
         let ret = json!([{
@@ -244,7 +244,7 @@ mod tests {
             "isbn" : "0-553-21311-3",
             "price" : 8.99
         }]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..book[-2]", "./benches/example.json");
         let ret = json!([{
@@ -254,7 +254,7 @@ mod tests {
             "isbn" : "0-553-21311-3",
             "price" : 8.99
         }]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..book[0,1]", "./benches/example.json");
         let ret = json!([
@@ -271,7 +271,7 @@ mod tests {
                 "price" : 12.99
             }
         ]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..book[:2]", "./benches/example.json");
         let ret = json!([
@@ -288,7 +288,7 @@ mod tests {
               "price" : 12.99
            }
         ]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..book[2:]", "./benches/example.json");
         let ret = json!([
@@ -307,7 +307,7 @@ mod tests {
               "price" : 22.99
            }
         ]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..book[?(@.isbn)]", "./benches/example.json");
         let ret = json!([
@@ -326,7 +326,7 @@ mod tests {
               "price" : 22.99
            }
         ]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$.store.book[?(@.price < 10)]", "./benches/example.json");
         let ret = json!([
@@ -344,10 +344,10 @@ mod tests {
               "price" : 8.99
            }
         ]);
-        assert_eq!(&ret, jf.current_value());
+        assert_eq!(ret, jf.current_value().into_value());
 
         let jf = do_filter("$..*", "./benches/example.json");
         let json: Value = serde_json::from_str(read_json("./benches/giveme_every_thing_result.json").as_str()).unwrap();
-        assert_eq!(&json, jf.current_value());
+        assert_eq!(json, jf.current_value().into_value());
     }
 }

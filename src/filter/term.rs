@@ -9,7 +9,7 @@ pub enum TermContext {
 }
 
 impl TermContext {
-    fn cmp<F: PrivCmp + IntoType>(&mut self, other: &mut TermContext, cmp_fn: F, default: bool) -> TermContext {
+    fn cmp<F: PrivCmp + IntoType>(&self, other: &TermContext, cmp_fn: F, default: bool) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
@@ -51,7 +51,7 @@ impl TermContext {
         }
     }
 
-    fn cmp_cond(&mut self, other: &mut TermContext, cmp_cond_type: CmpCondType) -> TermContext {
+    fn cmp_cond(&self, other: &TermContext, cmp_cond_type: CmpCondType) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
@@ -86,35 +86,35 @@ impl TermContext {
         }
     }
 
-    pub fn eq(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn eq(&self, other: &TermContext) -> TermContext {
         self.cmp(other, CmpEq, false)
     }
 
-    pub fn ne(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn ne(&self, other: &TermContext) -> TermContext {
         self.cmp(other, CmpNe, true)
     }
 
-    pub fn gt(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn gt(&self, other: &TermContext) -> TermContext {
         self.cmp(other, CmpGt, false)
     }
 
-    pub fn ge(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn ge(&self, other: &TermContext) -> TermContext {
         self.cmp(other, CmpGe, false)
     }
 
-    pub fn lt(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn lt(&self, other: &TermContext) -> TermContext {
         self.cmp(other, CmpLt, false)
     }
 
-    pub fn le(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn le(&self, other: &TermContext) -> TermContext {
         self.cmp(other, CmpLe, false)
     }
 
-    pub fn and(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn and(&self, other: &TermContext) -> TermContext {
         self.cmp_cond(other, CmpCondType::And)
     }
 
-    pub fn or(&mut self, other: &mut TermContext) -> TermContext {
+    pub fn or(&self, other: &TermContext) -> TermContext {
         self.cmp_cond(other, CmpCondType::Or)
     }
 }

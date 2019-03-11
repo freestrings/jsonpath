@@ -23,19 +23,23 @@ impl<'a> PathReader<'a> {
         Ok((self.pos + ch.len_utf8(), ch))
     }
 
-    pub fn take_while<F>(&mut self, fun: F) -> result::Result<(usize, Vec<char>), ReaderError>
+    pub fn take_while<F>(&mut self, fun: F) -> result::Result<(usize, String), ReaderError>
         where
             F: Fn(&char) -> bool
     {
-        let vec: Vec<char> = self.input.chars()
-            .by_ref()
-            .take_while(fun)
-            .collect();
+        let mut char_len: usize = 0;
+        let mut ret = String::new();
+        for c in self.input.chars().by_ref() {
+            if !fun(&c) {
+                break;
+            }
+            char_len += c.len_utf8();
+            ret.push(c);
+        }
 
-        let char_len: usize = vec.iter().by_ref().map(|c| c.len_utf8()).sum();
         self.pos += char_len;
         self.input = &self.input[char_len..];
-        Ok((self.pos, vec))
+        Ok((self.pos, ret))
     }
 
     pub fn next_char(&mut self) -> result::Result<(usize, char), ReaderError> {

@@ -6,8 +6,10 @@ set -e
 DIR="$(pwd)"
 
 cd "${DIR}"/www && \
-    rm -rf "${DIR}"/dist && \
-    rm -rf "${DIR}"/node_modules && \
+    rm -rf "${DIR}"/www/dist && \
+    rm -rf "${DIR}"/www/node_modules && \
+    rm -rf "${DIR}"/www_bench/dist && \
+    rm -rf "${DIR}"/www_bench/node_modules && \
     npm install && \
     cd "${DIR}"
 
@@ -26,6 +28,10 @@ cd "${DIR}"
 
 echo
 echo
+echo
+echo
+echo
+echo
 echo "-------------------- start build browser pkg --------------------"
 echo
 rm -rf "${DIR}"/wasm/browser_pkg && \
@@ -36,8 +42,38 @@ echo "-------------------- build browser pkg done --------------------"
 
 echo
 echo
+echo
+echo
+echo
+echo
 echo "-------------------- start build browser bench pkg --------------------"
 echo
 rm -rf "${DIR}"/www_bench/node_modules && \
 cd "${DIR}"/www_bench && npm install && npm link @browser/jsonpath-wasm
 echo "-------------------- build browser bench pkg done --------------------"
+
+echo
+echo
+echo
+echo
+echo
+echo
+echo "-------------------- start build docs --------------------"
+cd "${DIR}"/www && \
+    npm run build && \
+    rm -f "${DIR}"/../docs/*.js && rm -f "${DIR}"/../docs/*.wasm && rm -f "${DIR}"/../docs/*.html && \
+    cp "${DIR}"/www/dist/*.* "${DIR}"/../docs/
+echo "-------------------- build docs done --------------------"
+
+echo
+echo
+echo
+echo
+echo
+echo
+echo "-------------------- start build docs bench --------------------"
+cd "${DIR}"/www_bench && \
+    npm run build && \
+    rm -f "${DIR}"/../docs/bench/*.js && rm -f "${DIR}"/../docs/bench/*.wasm && rm -f "${DIR}"/../docs/bench/*.html && \
+    cp "${DIR}"/www_bench/dist/*.* "${DIR}"/../docs/bench/
+echo "-------------------- build docs bench done --------------------"

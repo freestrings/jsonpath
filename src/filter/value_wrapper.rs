@@ -1,6 +1,5 @@
 use indexmap::map::IndexMap;
-
-use serde_json::Value;
+use ref_value::*;
 
 use super::cmp::*;
 use super::term::*;
@@ -8,12 +7,12 @@ use super::value_filter::*;
 
 #[derive(Debug)]
 pub struct ValueWrapper {
-    val: Value,
+    val: RefValueWrapper,
     is_leaves: bool,
 }
 
 impl ValueWrapper {
-    pub fn new(val: Value, leaves: bool) -> Self {
+    pub fn new(val: RefValueWrapper, leaves: bool) -> Self {
         ValueWrapper { val, is_leaves: leaves }
     }
 
@@ -25,7 +24,7 @@ impl ValueWrapper {
         self.is_leaves = is_leaves;
     }
 
-    pub fn cmp(&mut self, other: &mut ValueWrapper, cmp_type: CmpType) -> TermContext {
+    pub fn cmp(&self, other: &ValueWrapper, cmp_type: CmpType) -> TermContext {
         match cmp_type {
             CmpType::Eq => {
                 TermContext::Json(None, self.intersect(other))
@@ -39,24 +38,19 @@ impl ValueWrapper {
         }
     }
 
-    fn cmp_with_term<F: PrivCmp>(val: &Value, et: &ExprTerm, cmp_fn: &F, default: bool, reverse: bool) -> bool {
-        match val {
-            Value::Bool(ref v1) => {
+    fn cmp_with_term<F: PrivCmp>(val: &RefValueWrapper, et: &ExprTerm, cmp_fn: &F, default: bool, reverse: bool) -> bool {
+        match val.get_data_ref() {
+            RefValue::Bool(ref v1) => {
                 match et {
                     ExprTerm::Bool(v2) => if reverse { cmp_fn.cmp_bool(v2, v1) } else { cmp_fn.cmp_bool(v1, v2) },
                     _ => default
                 }
             }
-            Value::Number(ref v1) => match v1.as_f64() {
-                Some(ref v1) => {
-                    match et {
-                        ExprTerm::Number(v2) => if reverse { cmp_fn.cmp_f64(v2, v1) } else { cmp_fn.cmp_f64(v1, v2) },
-                        _ => default
-                    }
-                }
+            RefValue::Number(ref v1) => match et {
+                ExprTerm::Number(v2) => if reverse { cmp_fn.cmp_f64(v2, &v1.as_f64().unwrap()) } else { cmp_fn.cmp_f64(&v1.as_f64().unwrap(), v2) },
                 _ => default
             },
-            Value::String(ref v1) => {
+            RefValue::String(ref v1) => {
                 match et {
                     ExprTerm::String(v2) => if reverse { cmp_fn.cmp_string(v2, v1) } else { cmp_fn.cmp_string(v1, v2) },
                     _ => default
@@ -66,12 +60,12 @@ impl ValueWrapper {
         }
     }
 
-    fn take_object_in_array<F: PrivCmp>(&mut self, key: &String, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
-        fn _filter_with_object<F: Fn(&Value) -> bool>(v: &&mut Value, key: &String, fun: F) -> bool {
-            match &v {
-                Value::Object(map) => {
+    fn take_object_in_array<F: PrivCmp>(&self, key: &String, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
+        fn _filter_with_object<F: Fn(&RefValueWrapper) -> bool>(v: &RefValueWrapper, key: &String, fun: F) -> bool {
+            match v.get_data_ref() {
+                RefValue::Object(map) => {
                     match map.get(key) {
-                        Some(vv) => fun(vv),
+                        Some(val) => fun(&val.into()),
                         _ => false
                     }
                 }
@@ -79,21 +73,24 @@ impl ValueWrapper {
             }
         }
 
-        match self.val.take() {
-            Value::Array(mut vec) => {
-                let mut ret: Vec<Value> = vec.iter_mut()
-                    .filter(|v| {
-                        _filter_with_object(v, key, |vv| Self::cmp_with_term(vv, et, cmp, false, reverse))
-                    })
-                    .map(|v| v.take())
-                    .collect();
-                Some(ValueWrapper::new(Value::Array(ret), false))
+        match self.val.get_data_ref() {
+            RefValue::Array(vec) => {
+                let mut ret = Vec::new();
+                for v in vec {
+                    if _filter_with_object(&v.into(), key, |vv| {
+                        Self::cmp_with_term(vv, et, cmp, false, reverse)
+                    }) {
+                        ret.push(v.clone());
+                    }
+                }
+
+                Some(ValueWrapper::new(RefValue::Array(ret).into(), false))
             }
             _ => None
         }
     }
 
-    fn take_with_key_type<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
+    fn take_with_key_type<F: PrivCmp>(&self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
         match key {
             Some(ValueFilterKey::String(key)) => {
                 self.take_object_in_array(key, et, cmp, reverse)
@@ -102,23 +99,25 @@ impl ValueWrapper {
         }
     }
 
-    pub fn take_with<F: PrivCmp>(&mut self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: F, reverse: bool) -> Self {
+    pub fn take_with<F: PrivCmp>(&self, key: &Option<ValueFilterKey>, et: &ExprTerm, cmp: F, reverse: bool) -> Self {
         match self.take_with_key_type(key, et, &cmp, reverse) {
             Some(vw) => vw,
             _ => {
-                match self.val.take() {
-                    Value::Array(mut vec) => {
-                        let mut ret = vec.iter_mut()
-                            .filter(|v| Self::cmp_with_term(&v, et, &cmp, false, reverse))
-                            .map(|v| v.take())
-                            .collect();
-                        ValueWrapper::new(Value::Array(ret), false)
+                match self.val.get_data_ref() {
+                    RefValue::Array(vec) => {
+                        let mut ret = Vec::new();
+                        for v in vec {
+                            if Self::cmp_with_term(&v.into(), et, &cmp, false, reverse) {
+                                ret.push(v.clone());
+                            }
+                        }
+                        ValueWrapper::new(RefValue::Array(ret).into(), false)
                     }
-                    other => {
-                        if Self::cmp_with_term(&other, et, &cmp, false, reverse) {
-                            ValueWrapper::new(other, false)
+                    _ => {
+                        if Self::cmp_with_term(&self.val, et, &cmp, false, reverse) {
+                            ValueWrapper::new(self.val.clone(), false)
                         } else {
-                            ValueWrapper::new(Value::Null, false)
+                            ValueWrapper::new(RefValue::Null.into(), false)
                         }
                     }
                 }
@@ -126,24 +125,25 @@ impl ValueWrapper {
         }
     }
 
-    pub fn replace(&mut self, val: Value) {
-        let is_null = match &val {
-            Value::Array(v) => if v.is_empty() { true } else { false },
-            Value::Object(m) => if m.is_empty() { true } else { false },
+    pub fn replace(&mut self, val: RefValueWrapper) {
+        let is_null = match val.get_data_ref() {
+            RefValue::Array(v) => if v.is_empty() { true } else { false },
+            RefValue::Object(m) => if m.is_empty() { true } else { false },
             _ => val.is_null()
         };
-        self.val = if is_null { Value::Null } else { val };
+        self.val = if is_null {
+            let v = RefValueWrapper::wrap(RefValue::Null);
+            RefValueWrapper::new(v)
+        } else {
+            val
+        };
     }
 
-    pub fn get_val(&self) -> &Value {
+    pub fn get_val(&self) -> &RefValueWrapper {
         &self.val
     }
 
-    pub fn get_val_mut(&mut self) -> &mut Value {
-        &mut self.val
-    }
-
-    pub fn clone_val(&self) -> Value {
+    pub fn clone_val(&self) -> RefValueWrapper {
         self.val.clone()
     }
 
@@ -151,150 +151,161 @@ impl ValueWrapper {
         self.val.is_array()
     }
 
-    fn uuid(v: &Value) -> String {
-        fn _fn(v: &Value) -> String {
-            match v {
-                Value::Null => "null".to_string(),
-                Value::String(v) => v.to_string(),
-                Value::Bool(v) => v.to_string(),
-                Value::Number(v) => v.to_string(),
-                Value::Array(v) => {
-                    v.iter().enumerate()
-                        .map(|(i, v)| { format!("{}{}", i, _fn(v)) })
-                        .collect()
+    fn uuid(v: &RefValueWrapper) -> String {
+        fn _fn(v: &RefValueWrapper, acc: &mut String) {
+            match v.get_data_ref() {
+                RefValue::Null => acc.push_str("null"),
+                RefValue::String(v) => acc.push_str(v),
+                RefValue::Bool(v) => acc.push_str(if *v { "true" } else { "false" }),
+                RefValue::Number(v) => acc.push_str(&*v.to_string()),
+                RefValue::Array(v) => {
+                    for (i, v) in v.iter().enumerate() {
+                        acc.push_str(&*i.to_string());
+                        _fn(&v.into(), acc);
+                    }
                 }
-                Value::Object(v) => {
-                    v.into_iter().map(|(k, v)| { format!("{}{}", k, _fn(v)) }).collect()
+                RefValue::Object(ref v) => {
+                    for (k, v) in v.into_iter() {
+                        acc.push_str(&*k.to_string());
+                        _fn(&v.into(), acc);
+                    }
                 }
             }
         }
-        _fn(v)
+        let mut acc = String::new();
+        _fn(v, &mut acc);
+        acc
     }
 
-    fn into_map(&mut self) -> IndexMap<String, Value> {
+    fn into_map(&self) -> IndexMap<String, RefValueWrapper> {
         let mut map = IndexMap::new();
-        match &mut self.val {
-            Value::Array(v1) => {
+        match self.val.get_data_ref() {
+            RefValue::Array(ref v1) => {
                 for v in v1 {
-                    map.insert(Self::uuid(v), v.take());
+                    let wrapper = v.into();
+                    let key = Self::uuid(&wrapper);
+                    map.insert(key, wrapper);
                 }
             }
-            other => {
-                map.insert(Self::uuid(other), other.take());
+            _ => {
+                map.insert(Self::uuid(&self.val), self.val.clone());
             }
         }
         map
     }
 
-    pub fn except(&mut self, other: &mut Self) -> Self {
+    pub fn except(&self, other: &Self) -> Self {
         let map = self.into_map();
-        let mut ret: IndexMap<String, Value> = IndexMap::new();
-        match &mut other.val {
-            Value::Array(v1) => {
+        let mut ret: IndexMap<String, RefValueWrapper> = IndexMap::new();
+        match other.val.get_data_ref() {
+            RefValue::Array(ref v1) => {
                 for v in v1 {
-                    let key = Self::uuid(v);
+                    let wrapper = v.into();
+                    let key = Self::uuid(&wrapper);
                     if !map.contains_key(&key) {
-                        ret.insert(key, v.take());
+                        ret.insert(key, wrapper);
                     }
                 }
             }
-            other => {
-                let key = Self::uuid(other);
+            _ => {
+                let key = Self::uuid(&other.val);
                 if !map.contains_key(&key) {
-                    ret.insert(key, other.take());
+                    ret.insert(key, other.val.clone());
                 }
             }
         }
 
-        let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
-        ValueWrapper::new(v, false)
+        let vec = ret.values().into_iter().map(|v| v.clone_data()).collect();
+        ValueWrapper::new(RefValue::Array(vec).into(), false)
     }
 
-    pub fn intersect(&mut self, other: &mut Self) -> Self {
+    pub fn intersect(&self, other: &Self) -> Self {
         let map = self.into_map();
-        let mut ret: IndexMap<String, Value> = IndexMap::new();
-        match &mut other.val {
-            Value::Array(v1) => {
+        let mut ret: IndexMap<String, RefValueWrapper> = IndexMap::new();
+        match other.val.get_data_ref() {
+            RefValue::Array(ref v1) => {
                 for v in v1 {
-                    let key = Self::uuid(v);
+                    let wrapper = v.into();
+                    let key = Self::uuid(&wrapper);
                     if map.contains_key(&key) {
-                        ret.insert(key, v.take());
+                        ret.insert(key, wrapper);
                     }
                 }
             }
-            other => {
-                let key = Self::uuid(other);
+            _ => {
+                let key = Self::uuid(&other.val);
                 if map.contains_key(&key) {
-                    ret.insert(key, other.take());
+                    ret.insert(key, other.val.clone());
                 }
             }
         }
 
-        let v = ret.values_mut().into_iter().map(|v| v.take()).collect();
-        ValueWrapper::new(v, false)
+        let vec = ret.values().into_iter().map(|v| v.clone_data()).collect();
+        ValueWrapper::new(RefValue::Array(vec).into(), false)
     }
 
-    pub fn union(&mut self, other: &mut Self) -> Self {
+    pub fn union(&self, other: &Self) -> Self {
         let mut map = self.into_map();
-        match &mut other.val {
-            Value::Array(v1) => {
+        match other.val.get_data_ref() {
+            RefValue::Array(ref v1) => {
                 for v in v1 {
-                    let key = Self::uuid(v);
+                    let wrapper = v.into();
+                    let key = Self::uuid(&wrapper);
                     if !map.contains_key(&key) {
-                        map.insert(key, v.take());
+                        map.insert(key, wrapper);
                     }
                 }
             }
-            other => {
-                let key = Self::uuid(other);
+            _ => {
+                let key = Self::uuid(&other.val);
                 if !map.contains_key(&key) {
-                    map.insert(key, other.take());
+                    map.insert(key, other.val.clone());
                 }
             }
         }
 
-        let mut vw = ValueWrapper::new(Value::Null, false);
-        let list: Vec<Value> = map.values_mut().into_iter().map(|val| val.take()).collect();
-        vw.replace(Value::Array(list));
+        let mut vw = ValueWrapper::new(RefValue::Null.into(), false);
+        let list = map.values().into_iter().map(|val| val.clone_data()).collect();
+        vw.replace(RefValue::Array(list).into());
         vw
     }
 
-    pub fn into_term(&mut self, key: &mut Option<ValueFilterKey>) -> TermContext {
-        match self.val.take() {
-            Value::String(s) => TermContext::Constants(ExprTerm::String(s)),
-            Value::Number(n) => TermContext::Constants(ExprTerm::Number(n.as_f64().unwrap())),
-            Value::Bool(b) => TermContext::Constants(ExprTerm::Bool(b)),
-            other => TermContext::Json(match key {
+    pub fn into_term(&self, key: &Option<ValueFilterKey>) -> TermContext {
+        match self.val.get_data_ref() {
+            RefValue::String(ref s) => TermContext::Constants(ExprTerm::String(s.clone())),
+            RefValue::Number(ref n) => TermContext::Constants(ExprTerm::Number(n.as_f64().unwrap())),
+            RefValue::Bool(b) => TermContext::Constants(ExprTerm::Bool(*b)),
+            _ => TermContext::Json(match key {
                 Some(vk) => Some(vk.clone()),
                 _ => None
-            }, ValueWrapper::new(other, false))
+            }, ValueWrapper::new(self.val.clone(), false))
         }
     }
 
-    pub fn filter(&mut self, key: &mut Option<ValueFilterKey>) -> Self {
-        let v = match &mut self.val {
-            Value::Array(vec) => {
-                let ret = vec.iter_mut()
-                    .filter(|v| match key {
-                        Some(ValueFilterKey::String(val_key)) => {
-                            v.get(val_key.as_str()).is_some()
+    pub fn filter(&self, key: &Option<ValueFilterKey>) -> Self {
+        let v = match self.val.get_data_ref() {
+            RefValue::Array(ref vec) => {
+                let mut ret = Vec::new();
+                for v in vec {
+                    if let Some(ValueFilterKey::String(k)) = key {
+                        let wrapper: RefValueWrapper = v.into();
+                        if wrapper.get(k.clone()).is_some() {
+                            ret.push(v.clone());
                         }
-                        _ => false
-                    })
-                    .map(|v| v.take())
-                    .collect();
-                Value::Array(ret)
+                    }
+                }
+                RefValue::Array(ret).into()
             }
-            Value::Object(map) => {
+            RefValue::Object(ref map) => {
                 match key {
-                    Some(ValueFilterKey::String(val_key)) => match map.get_mut(val_key) {
-                        Some(v) => v.take(),
-                        _ => Value::Null
+                    Some(ValueFilterKey::String(k)) => match map.get(k) {
+                        Some(v) => v.into(),
+                        _ => RefValue::Null.into()
                     },
-                    _ => Value::Null
+                    _ => RefValue::Null.into()
                 }
             }
-            other => other.take()
+            _ => self.val.clone()
         };
 
         ValueWrapper::new(v, false)

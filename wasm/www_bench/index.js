@@ -2,11 +2,14 @@ import * as jpw from "@browser/jsonpath-wasm";
 import * as jp from "jsonpath/jsonpath.js";
 
 function run(message, iter, cb) {
-    let d = Date.now();
-    for (let i = 0; i < iter; i++) {
-        cb();
-    }
-    msg([message, Date.now() - d].join(", "));
+    return new Promise(function(resolve, _reject) {
+        let d = Date.now();
+        for (let i = 0; i < iter; i++) {
+            cb();
+        }
+        msg([message, Date.now() - d].join(", "));
+        setTimeout(resolve, 0);
+    })
 }
 
 function msg(msg) {
@@ -54,12 +57,33 @@ let json = {
     "expensive": 10
 };
 
-setTimeout(function() {
-    let path = '$..book[?(@.price<30 && @.category=="fiction")]';
-    let template = jpw.compile(path);
-    let reader = jpw.reader(json);
-    run('jsonpath', 1000, function() { jp.query(json, path) });
-    run('jsonpath-wasm- reader', 1000, function() { reader(path) });
-    run('jsonpath-wasm- compile', 1000, function() { template(json) });
-    run('jsonpath-wasm- read', 1000, function() { jpw.read(json, path) });
-}, 0);
+let path = '$..book[?(@.price<30 && @.category=="fiction")]';
+let template = jpw.compile(path);
+let selector = jpw.selector(json);
+
+let ptr = jpw.alloc_json(json);
+if(ptr == 0) console.error('invalid ptr');
+
+let iterCount = 2000;
+
+run('jsonpath', iterCount, function() { jp.query(json, path) })
+     .then(function() {
+         return run('jsonpath-wasm- selector', iterCount, function() { selector(path) });
+     })
+    .then(function() {
+        return run('jsonpath-wasm- compile', iterCount, function() { template(json) });
+    })
+    .then(function() {
+        return run('jsonpath-wasm- compile-alloc', iterCount, function() { template(ptr) });
+    })
+    .then(function() {
+        return run('jsonpath-wasm- select', iterCount, function() { jpw.select(json, path) });
+    })
+    .then(function() {
+        return run('jsonpath-wasm- select-alloc', iterCount, function() { jpw.select(ptr, path) });
+    })
+    .finally(function() {
+        if(!jpw.dealloc_json(ptr)) {
+            console.error('fail to dealloc');
+        }
+    });
