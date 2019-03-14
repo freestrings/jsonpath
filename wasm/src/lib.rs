@@ -11,9 +11,7 @@ use std::result::Result;
 use std::sync::Mutex;
 
 use cfg_if::cfg_if;
-use jsonpath::filter::value_filter::*;
-use jsonpath::parser::parser::*;
-use jsonpath::ref_value::*;
+use jsonpath::prelude::*;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
@@ -54,7 +52,7 @@ fn into_serde_json(js_value: &JsValue) -> Result<Value, String> {
 
 fn into_ref_value(js_value: &JsValue, node: Node) -> JsValue {
     match into_serde_json(js_value) {
-        Ok(json) => filter_ref_value(json.into(), node),
+        Ok(json) => filter_ref_value((&json).into(), node),
         Err(e) => JsValue::from_str(&format!("Json serialize error: {}", e))
     }
 }
@@ -87,7 +85,7 @@ pub fn alloc_json(js_value: JsValue) -> usize {
 
             let mut idx = CACHE_JSON_IDX.lock().unwrap();
             *idx += 1;
-            map.insert(*idx, json.into());
+            map.insert(*idx, (&json).into());
             *idx
         }
         Err(e) => {
@@ -138,7 +136,7 @@ pub fn selector(js_value: JsValue) -> JsValue {
         }
         _ => {
             match into_serde_json(&js_value) {
-                Ok(json) => json.into(),
+                Ok(json) => (&json).into(),
                 Err(e) => return JsValue::from_str(e.as_str())
             }
         }

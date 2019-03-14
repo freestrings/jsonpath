@@ -1,0 +1,24 @@
+[package]
+name = "jsonpath-rs"
+version = "0.1.0"
+authors = ["Changseok Han <freestrings@gmail.com>"]
+description = "JsonPath engine for NodeJs with Rust native implementation."
+keywords = ["library", "jsonpath", "json"]
+repository = "https://github.com/freestrings/jsonpath"
+license = "MIT"
+
+build = "build.rs"
+exclude = ["artifacts.json", "index.node"]
+
+[build-dependencies]
+neon-build = "0.2.0"
+
+[dependencies]
+jsonpath_lib = { path = "../../" }
+neon = "0.2.0"
+neon-serde = "0.1.1"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+
+[lib]
+name = "jsonpath_rs"
+crate-type = ["dylib"]

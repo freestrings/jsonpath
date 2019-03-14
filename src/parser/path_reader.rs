@@ -1,4 +1,4 @@
-use std::result;
+use std::result::Result;
 
 #[derive(Debug, PartialEq)]
 pub enum ReaderError {
@@ -18,12 +18,12 @@ impl<'a> PathReader<'a> {
         }
     }
 
-    pub fn peek_char(&self) -> result::Result<(usize, char), ReaderError> {
+    pub fn peek_char(&self) -> Result<(usize, char), ReaderError> {
         let ch = self.input.chars().next().ok_or(ReaderError::Eof)?;
         Ok((self.pos + ch.len_utf8(), ch))
     }
 
-    pub fn take_while<F>(&mut self, fun: F) -> result::Result<(usize, String), ReaderError>
+    pub fn take_while<F>(&mut self, fun: F) -> Result<(usize, String), ReaderError>
         where
             F: Fn(&char) -> bool
     {
@@ -42,7 +42,7 @@ impl<'a> PathReader<'a> {
         Ok((self.pos, ret))
     }
 
-    pub fn next_char(&mut self) -> result::Result<(usize, char), ReaderError> {
+    pub fn next_char(&mut self) -> Result<(usize, char), ReaderError> {
         let (_, ch) = self.peek_char()?;
         self.input = &self.input[ch.len_utf8()..];
         let ret = Ok((self.pos, ch));

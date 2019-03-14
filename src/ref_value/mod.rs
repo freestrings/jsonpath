@@ -5,8 +5,7 @@ use std::sync::Arc;
 use std::convert::Into;
 
 use indexmap::map::IndexMap;
-use serde_json::Number;
-use serde_json::Value;
+use serde_json::{Number, Value};
 
 pub type TypeRefValue = Arc<Box<RefValue>>;
 
@@ -81,7 +80,7 @@ impl RefIndex for str {
         match *v {
             RefValue::Object(ref mut map) => {
                 map.entry(self.to_owned()).or_insert(RefValueWrapper::wrap(RefValue::Null))
-            },
+            }
             _ => panic!("cannot access key {:?} in JSON {:?}", self, v),
         }
     }
@@ -182,7 +181,7 @@ impl RefValueWrapper {
     }
 }
 
-impl Into<RefValueWrapper> for Value {
+impl Into<RefValueWrapper> for &Value {
     fn into(self) -> RefValueWrapper {
         let ref_val = RefValueConverter::new(self);
         RefValueWrapper::new(ref_val)
@@ -275,7 +274,6 @@ impl RefValue {
 }
 
 impl Into<RefValueWrapper> for RefValue {
-
     fn into(self) -> RefValueWrapper {
         let wrap = RefValueWrapper::wrap(self);
         RefValueWrapper::new(wrap)
@@ -285,11 +283,11 @@ impl Into<RefValueWrapper> for RefValue {
 struct RefValueConverter;
 
 impl RefValueConverter {
-    fn new(value: Value) -> TypeRefValue {
+    fn new(value: &Value) -> TypeRefValue {
         RefValueConverter {}.visit_value(value)
     }
 
-    fn visit_value(&self, value: Value) -> TypeRefValue {
+    fn visit_value(&self, value: &Value) -> TypeRefValue {
         match value {
             Value::Null => self.visit_null(),
             Value::Bool(v) => self.visit_bool(v),
@@ -302,29 +300,29 @@ impl RefValueConverter {
     fn visit_null(&self) -> TypeRefValue {
         RefValueWrapper::wrap(RefValue::Null)
     }
-    fn visit_bool(&self, value: bool) -> TypeRefValue {
-        RefValueWrapper::wrap(RefValue::Bool(value))
+    fn visit_bool(&self, value: &bool) -> TypeRefValue {
+        RefValueWrapper::wrap(RefValue::Bool(*value))
     }
-    fn visit_number(&self, value: serde_json::Number) -> TypeRefValue {
-        RefValueWrapper::wrap(RefValue::Number(value))
+    fn visit_number(&self, value: &serde_json::Number) -> TypeRefValue {
+        RefValueWrapper::wrap(RefValue::Number(value.clone()))
     }
-    fn visit_string(&self, value: String) -> TypeRefValue {
+    fn visit_string(&self, value: &String) -> TypeRefValue {
         RefValueWrapper::wrap(RefValue::String(value.to_string()))
     }
-    fn visit_array(&self, value: Vec<Value>) -> TypeRefValue {
+    fn visit_array(&self, value: &Vec<Value>) -> TypeRefValue {
         let mut values = Vec::new();
         for v in value {
             values.push(self.visit_value(v));
         }
         RefValueWrapper::wrap(RefValue::Array(values))
     }
-    fn visit_object(&self, mut value: serde_json::Map<String, Value>) -> TypeRefValue {
+    fn visit_object(&self, value: &serde_json::Map<String, Value>) -> TypeRefValue {
         let mut map = IndexMap::new();
         let keys: Vec<String> = value.keys().into_iter().map(|k| k.to_string()).collect();
         for k in keys {
-            let value = self.visit_value(match value.get_mut(&k) {
-                Some(v) => v.take(),
-                _ => Value::Null
+            let value = self.visit_value(match value.get(&k) {
+                Some(v) => v,
+                _ => &Value::Null
             });
             map.insert(k, value);
         }

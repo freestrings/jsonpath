@@ -35,40 +35,65 @@ let json = {
     },
     'expensive': 10,
 };
+let jsonStr = JSON.stringify(json);
 
+function getJson() {
+    return JSON.parse(jsonStr);
+}
+const path = '$..book[?(@.price<30 && @.category=="fiction")]';
 const jp = require('jsonpath');
 const jpw = require('@nodejs/jsonpath-wasm');
-const iter = 100000;
+const jpwRs = require('jsonpath-rs');
 
 function jsonpath() {
     for (var i = 0; i < iter; i++) {
-        let _ = jp.query(json, '$..book[?(@.price<30 && @.category=="fiction")]');
+        let _ = jp.query(getJson(), path);
+    }
+}
+
+function nativeCompile() {
+    let template = jpwRs.compile(path);
+    for (var i = 0; i < iter; i++) {
+        let _ = template(JSON.stringify(json));
+    }
+}
+
+function nativeSelector() {
+    let selector = jpwRs.selector(getJson());
+    for (var i = 0; i < iter; i++) {
+        let _ = selector(path);
+    }
+}
+
+function nativeSelect() {
+    for (var i = 0; i < iter; i++) {
+        let _ = jpwRs.select(JSON.stringify(json), path);
     }
 }
 
 function wasmSelector() {
-    let selector = jpw.selector(json);
+    let selector = jpw.selector(getJson());
     for (var i = 0; i < iter; i++) {
-        let _ = selector('$..book[?(@.price<30 && @.category=="fiction")]');
+        let _ = selector(path);
     }
 }
 
 function wasmCompile() {
-    let template = jpw.compile('$..book[?(@.price<30 && @.category=="fiction")]');
+    let template = jpw.compile(path);
     for (var i = 0; i < iter; i++) {
-        let _ = template(json);
+        let _ = template(getJson());
     }
 }
 
 function wasmCompileAlloc() {
-    let ptr = jpw.alloc_json(json);
+    let ptr = jpw.alloc_json(getJson());
     if (ptr == 0) {
         console.error('Invalid pointer');
         return;
     }
 
     try {
-        let template = jpw.compile('$..book[?(@.price<30 && @.category=="fiction")]');
+        let template = jpw.compile(path);
         for (var i = 0; i < iter; i++) {
             let _ = template(ptr);
         }
@@ -79,12 +104,12 @@ function wasmCompileAlloc() {
 
 function wasmSelect() {
     for (var i = 0; i < iter; i++) {
-        let _ = jpw.select(json, '$..book[?(@.price<30 && @.category=="fiction")]');
+        let _ = jpw.select(getJson(), path);
     }
 }
 
 function wasmSelectAlloc() {
-    let ptr = jpw.alloc_json(json);
+    let ptr = jpw.alloc_json(getJson());
     if (ptr == 0) {
         console.error('Invalid pointer');
         return;
@@ -92,33 +117,13 @@ function wasmSelectAlloc() {
 
     try {
         for (var i = 0; i < iter; i++) {
-            let _ = jpw.select(ptr, '$..book[?(@.price<30 && @.category=="fiction")]');
+            let _ = jpw.select(ptr, path);
         }
     } finally {
         jpw.dealloc_json(ptr);
     }
 }
 
-let functionName = process.argv[2];
-
-switch (functionName) {
-    case 'jsonpath':
-        jsonpath();
-        break;
-    case 'wasmSelector':
-        wasmSelector();
-        break;
-    case 'wasmCompile':
-        wasmCompile();
-        break;
-    case 'wasmSelect':
-        wasmSelect();
-        break;
-    case 'wasmCompileAlloc':
-        wasmCompileAlloc();
-        break;
-    case 'wasmSelectAlloc':
-        wasmSelectAlloc();
-    default:
-        console.error('Invalid function name');
-}
+const functionName = process.argv[2];
+const iter = parseInt(process.argv[3], 10);
+eval(functionName + "()");

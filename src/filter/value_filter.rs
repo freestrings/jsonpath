@@ -1,13 +1,13 @@
 use std::error::Error;
-use std::result;
-
-use ref_value::*;
+use std::result::Result;
 
 use serde_json::Value;
 
-use super::parser::*;
-use super::term::*;
-use super::value_wrapper::*;
+use ref_value::*;
+
+use parser::prelude::*;
+use filter::term::*;
+use filter::value_wrapper::*;
 
 trait ArrayIndex {
     fn index(&self, v: &RefValueWrapper) -> usize;
@@ -277,10 +277,10 @@ pub struct JsonValueFilter {
 }
 
 impl JsonValueFilter {
-    pub fn new(json: &str) -> result::Result<Self, String> {
+    pub fn new(json: &str) -> Result<Self, String> {
         let json: Value = serde_json::from_str(json)
             .map_err(|e| e.description().to_string())?;
-        Ok(JsonValueFilter::new_from_value(json.into()))
+        Ok(JsonValueFilter::new_from_value((&json).into()))
     }
 
     pub fn new_from_value(json: RefValueWrapper) -> Self {

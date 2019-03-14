@@ -1,19 +1,14 @@
-use std::result;
+use std::result::Result;
 
-use super::tokenizer::{
-    PreloadedTokenizer,
-    Token,
-    TokenError,
-};
+use super::tokenizer::*;
 
 const DUMMY: usize = 0;
 
-type Result<T> = result::Result<T, String>;
+type ParseResult<T> = Result<T, String>;
 
 mod utils {
-    use std::result;
 
-    pub fn string_to_isize<F>(string: &String, msg_handler: F) -> result::Result<isize, String>
+    pub fn string_to_isize<F>(string: &String, msg_handler: F) -> Result<isize, String>
         where F: Fn() -> String {
         match string.as_str().parse::<isize>() {
             Ok(n) => Ok(n),
@@ -21,7 +16,7 @@ mod utils {
         }
     }
 
-    pub fn string_to_f64<F>(string: &String, msg_handler: F) -> result::Result<f64, String>
+    pub fn string_to_f64<F>(string: &String, msg_handler: F) -> Result<f64, String>
         where F: Fn() -> String {
         match string.as_str().parse::<f64>() {
             Ok(n) => Ok(n),
@@ -88,17 +83,17 @@ impl<'a> Parser<'a> {
         Parser { tokenizer: PreloadedTokenizer::new(input) }
     }
 
-    pub fn compile(&mut self) -> Result<Node> {
+    pub fn compile(&mut self) -> ParseResult<Node> {
         Ok(self.json_path()?)
     }
 
-    pub fn parse<V: NodeVisitor>(&mut self, visitor: &mut V) -> Result<()> {
+    pub fn parse<V: NodeVisitor>(&mut self, visitor: &mut V) -> ParseResult<()> {
         let node = self.json_path()?;
         visitor.visit(node);
         Ok(())
     }
 
-    fn json_path(&mut self) -> Result<Node> {
+    fn json_path(&mut self) -> ParseResult<Node> {
         debug!("#json_path");
         match self.tokenizer.next_token() {
             Ok(Token::Absolute(_)) => {
@@ -111,7 +106,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn paths(&mut self, prev: Node) -> Result<Node> {
+    fn paths(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#paths");
         match self.tokenizer.peek_token() {
             Ok(Token::Dot(_)) => {
@@ -130,7 +125,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn paths_dot(&mut self, prev: Node) -> Result<Node> {
+    fn paths_dot(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#paths_dot");
         let node = self.path(prev)?;
         match self.tokenizer.peek_token() {
@@ -150,7 +145,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn path(&mut self, prev: Node) -> Result<Node> {
+    fn path(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#path");
         match self.tokenizer.peek_token() {
             Ok(Token::Dot(_)) => {
@@ -172,7 +167,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn path_leaves(&mut self, prev: Node) -> Result<Node> {
+    fn path_leaves(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#path_leaves");
         self.eat_token();
         match self.tokenizer.peek_token() {
@@ -190,7 +185,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn path_leaves_key(&mut self, prev: Node) -> Result<Node> {
+    fn path_leaves_key(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#path_leaves_key");
         Ok(Node {
             token: ParseToken::Leaves,
@@ -199,7 +194,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn path_leaves_all(&mut self, prev: Node) -> Result<Node> {
+    fn path_leaves_all(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#path_leaves_all");
         self.eat_token();
         Ok(Node {
@@ -209,7 +204,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn path_in_all(&mut self, prev: Node) -> Result<Node> {
+    fn path_in_all(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#path_in_all");
         self.eat_token();
         Ok(Node {
@@ -219,7 +214,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn path_in_key(&mut self, prev: Node) -> Result<Node> {
+    fn path_in_key(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#path_in_key");
         Ok(Node {
             token: ParseToken::In,
@@ -228,7 +223,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn key(&mut self) -> Result<Node> {
+    fn key(&mut self) -> ParseResult<Node> {
         debug!("#key");
         match self.tokenizer.next_token() {
             Ok(Token::Key(_, v)) => {
@@ -240,7 +235,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn array_quota_value(&mut self) -> Result<Node> {
+    fn array_quota_value(&mut self) -> ParseResult<Node> {
         debug!("#array_quota_value");
         match self.tokenizer.next_token() {
             Ok(Token::SingleQuoted(_, val))
@@ -256,7 +251,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn array_start(&mut self, prev: Node) -> Result<Node> {
+    fn array_start(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#array_start");
         match self.tokenizer.peek_token() {
             Ok(Token::Question(_)) => {
@@ -285,14 +280,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn array(&mut self, prev: Node) -> Result<Node> {
+    fn array(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#array");
         let ret = self.array_start(prev)?;
         self.eat_whitespace();
         self.close_token(ret, Token::CloseArray(DUMMY))
     }
 
-    fn array_value_key(&mut self) -> Result<Node> {
+    fn array_value_key(&mut self) -> ParseResult<Node> {
         debug!("#array_value_key");
         match self.tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
@@ -318,7 +313,7 @@ impl<'a> Parser<'a> {
     }
 
 
-    fn array_value(&mut self) -> Result<Node> {
+    fn array_value(&mut self) -> ParseResult<Node> {
         debug!("#array_value");
         match self.tokenizer.peek_token() {
             Ok(Token::Key(_, _)) => {
@@ -342,7 +337,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn union(&mut self, num: isize) -> Result<Node> {
+    fn union(&mut self, num: isize) -> ParseResult<Node> {
         debug!("#union");
         let mut values = vec![num];
         while match self.tokenizer.peek_token() {
@@ -364,7 +359,7 @@ impl<'a> Parser<'a> {
         Ok(self.node(ParseToken::Union(values)))
     }
 
-    fn range_from(&mut self, num: isize) -> Result<Node> {
+    fn range_from(&mut self, num: isize) -> ParseResult<Node> {
         debug!("#range_from");
         self.eat_token();
         self.eat_whitespace();
@@ -378,7 +373,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn range_to(&mut self) -> Result<Node> {
+    fn range_to(&mut self) -> ParseResult<Node> {
         debug!("#range_to");
         match self.tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
@@ -391,7 +386,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn range(&mut self, num: isize) -> Result<Node> {
+    fn range(&mut self, num: isize) -> ParseResult<Node> {
         debug!("#range");
         match self.tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
@@ -404,7 +399,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn filter(&mut self) -> Result<Node> {
+    fn filter(&mut self) -> ParseResult<Node> {
         debug!("#filter");
         match self.tokenizer.next_token() {
             Ok(Token::OpenParenthesis(_)) => {
@@ -421,7 +416,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn exprs(&mut self) -> Result<Node> {
+    fn exprs(&mut self) -> ParseResult<Node> {
         self.eat_whitespace();
         debug!("#exprs");
         let node = match self.tokenizer.peek_token() {
@@ -441,7 +436,7 @@ impl<'a> Parser<'a> {
         self.condition_expr(node)
     }
 
-    fn condition_expr(&mut self, prev: Node) -> Result<Node> {
+    fn condition_expr(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#condition_expr");
         match self.tokenizer.peek_token() {
             Ok(Token::And(_)) => {
@@ -466,7 +461,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expr(&mut self) -> Result<Node> {
+    fn expr(&mut self) -> ParseResult<Node> {
         debug!("#expr");
 
         let has_prop_candidate = match self.tokenizer.peek_token() {
@@ -494,7 +489,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn term_num(&mut self) -> Result<Node> {
+    fn term_num(&mut self) -> ParseResult<Node> {
         debug!("#term_num");
         match self.tokenizer.next_token() {
             Ok(Token::Key(pos, val)) => {
@@ -517,7 +512,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn term_num_float(&mut self, mut num: &str) -> Result<Node> {
+    fn term_num_float(&mut self, mut num: &str) -> ParseResult<Node> {
         debug!("#term_num_float");
         self.eat_token();
         match self.tokenizer.next_token() {
@@ -535,7 +530,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn term(&mut self) -> Result<Node> {
+    fn term(&mut self) -> ParseResult<Node> {
         debug!("#term");
         match self.tokenizer.peek_token() {
             Ok(Token::At(_)) => {
@@ -568,7 +563,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn op(&mut self, prev: Node) -> Result<Node> {
+    fn op(&mut self, prev: Node) -> ParseResult<Node> {
         debug!("#op");
         let token = match self.tokenizer.next_token() {
             Ok(Token::Equal(_)) => {
@@ -620,7 +615,7 @@ impl<'a> Parser<'a> {
         Node { left: None, right: None, token: token }
     }
 
-    fn close_token(&mut self, ret: Node, token: Token) -> Result<Node> {
+    fn close_token(&mut self, ret: Node, token: Token) -> ParseResult<Node> {
         debug!("#close_token");
         match self.tokenizer.next_token() {
             Ok(ref t) if t.partial_eq(token) => {
@@ -679,319 +674,4 @@ pub trait NodeVisitor {
 
     fn visit_token(&mut self, token: ParseToken);
     fn end_term(&mut self) {}
-}
-
-#[cfg(test)]
-mod tests {
-    extern crate env_logger;
-
-    use super::*;
-
-    struct NodeVisitorTestImpl<'a> {
-        input: &'a str,
-        stack: Vec<ParseToken>,
-    }
-
-    impl<'a> NodeVisitorTestImpl<'a> {
-        fn new(input: &'a str) -> Self {
-            NodeVisitorTestImpl { input, stack: Vec::new() }
-        }
-
-        fn visit(&mut self) -> result::Result<Vec<ParseToken>, String> {
-            let tokenizer = PreloadedTokenizer::new(self.input);
-            let mut parser = Parser { tokenizer };
-            parser.parse(self)?;
-            Ok(self.stack.split_off(0))
-        }
-    }
-
-    impl<'a> NodeVisitor for NodeVisitorTestImpl<'a> {
-        fn visit_token(&mut self, token: ParseToken) {
-            self.stack.push(token);
-        }
-    }
-
-    fn setup() {
-        let _ = env_logger::try_init();
-    }
-
-    fn run(input: &str) -> result::Result<Vec<ParseToken>, String> {
-        let mut interpreter = NodeVisitorTestImpl::new(input);
-        interpreter.visit()
-    }
-
-    #[test]
-    fn parse_path() {
-        setup();
-
-        assert_eq!(run("$.aa"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::In,
-            ParseToken::Key("aa".to_owned())
-        ]));
-
-        assert_eq!(run("$.00.a"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::In,
-            ParseToken::Key("00".to_owned()),
-            ParseToken::In,
-            ParseToken::Key("a".to_owned())
-        ]));
-
-        assert_eq!(run("$.00.韓창.seok"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::In,
-            ParseToken::Key("00".to_owned()),
-            ParseToken::In,
-            ParseToken::Key("韓창".to_owned()),
-            ParseToken::In,
-            ParseToken::Key("seok".to_owned())
-        ]));
-
-        assert_eq!(run("$.*"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::In,
-            ParseToken::All
-        ]));
-
-        assert_eq!(run("$..*"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Leaves,
-            ParseToken::All
-        ]));
-
-        assert_eq!(run("$..[0]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Leaves,
-            ParseToken::Array,
-            ParseToken::Number(0.0),
-            ParseToken::ArrayEof
-        ]));
-
-        match run("$.") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$..") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$. a") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-    }
-
-    #[test]
-    fn parse_array_sytax() {
-        setup();
-
-        assert_eq!(run("$.book[?(@.isbn)]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::In,
-            ParseToken::Key("book".to_string()),
-            ParseToken::Array,
-            ParseToken::Relative,
-            ParseToken::In,
-            ParseToken::Key("isbn".to_string()),
-            ParseToken::ArrayEof
-        ]));
-
-        //
-        // Array도 컨텍스트 In으로 간주 할거라서 중첩되면 하나만
-        //
-        assert_eq!(run("$.[*]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::All,
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[*]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::All,
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[*].가"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::All,
-            ParseToken::ArrayEof,
-            ParseToken::In, ParseToken::Key("가".to_owned())
-        ]));
-
-        assert_eq!(run("$.a[0][1]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Number(0_f64),
-            ParseToken::ArrayEof,
-            ParseToken::Array,
-            ParseToken::Number(1_f64),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[1,2]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Union(vec![1, 2]),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[10:]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Range(Some(10), None),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[:11]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Range(None, Some(11)),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[-12:13]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Range(Some(-12), Some(13)),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[?(1>2)]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Number(1_f64), ParseToken::Number(2_f64), ParseToken::Filter(FilterToken::Greater),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$.a[?($.b>3)]"), Ok(vec![
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Array,
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("b".to_owned()), ParseToken::Number(3_f64), ParseToken::Filter(FilterToken::Greater),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$[?($.c>@.d && 1==2)]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("c".to_owned()),
-            ParseToken::Relative, ParseToken::In, ParseToken::Key("d".to_owned()),
-            ParseToken::Filter(FilterToken::Greater),
-            ParseToken::Number(1_f64), ParseToken::Number(2_f64), ParseToken::Filter(FilterToken::Equal),
-            ParseToken::Filter(FilterToken::And),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$[?($.c>@.d&&(1==2||3>=4))]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::Absolute, ParseToken::In, ParseToken::Key("c".to_owned()),
-            ParseToken::Relative, ParseToken::In, ParseToken::Key("d".to_owned()),
-            ParseToken::Filter(FilterToken::Greater),
-            ParseToken::Number(1_f64), ParseToken::Number(2_f64), ParseToken::Filter(FilterToken::Equal),
-            ParseToken::Number(3_f64), ParseToken::Number(4_f64), ParseToken::Filter(FilterToken::GreaterOrEqual),
-            ParseToken::Filter(FilterToken::Or),
-            ParseToken::Filter(FilterToken::And),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$[?(@.a<@.b)]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::Relative, ParseToken::In, ParseToken::Key("a".to_owned()),
-            ParseToken::Relative, ParseToken::In, ParseToken::Key("b".to_owned()),
-            ParseToken::Filter(FilterToken::Little),
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$[*][*][*]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::All,
-            ParseToken::ArrayEof,
-            ParseToken::Array,
-            ParseToken::All,
-            ParseToken::ArrayEof,
-            ParseToken::Array,
-            ParseToken::All,
-            ParseToken::ArrayEof
-        ]));
-
-        assert_eq!(run("$['a']['bb']"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::Key("a".to_string()),
-            ParseToken::ArrayEof,
-            ParseToken::Array,
-            ParseToken::Key("bb".to_string()),
-            ParseToken::ArrayEof
-        ]));
-
-        match run("$[") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[a]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?($.a)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(@.a > @.b]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(@.a < @.b&&(@.c < @.d)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-    }
-
-    #[test]
-    fn parse_array_float() {
-        setup();
-
-        assert_eq!(run("$[?(1.1<2.1)]"), Ok(vec![
-            ParseToken::Absolute,
-            ParseToken::Array,
-            ParseToken::Number(1.1), ParseToken::Number(2.1), ParseToken::Filter(FilterToken::Little),
-            ParseToken::ArrayEof
-        ]));
-
-        match run("$[1.1]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(1.1<.2)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(1.1<2.)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(1.1<2.a)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-    }
 }

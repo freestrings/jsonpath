@@ -1,0 +1,20 @@
+{
+  "name": "jsonpath-rs",
+  "version": "0.1.0",
+  "description": "JsonPath engine for NodeJs with Rust native implementation.",
+  "author": "Changseok Han <freestrings@gmail.com>",
+  "repository": "git+https://github.com/freestrings/jsonpath",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "dependencies": {
+    "neon-cli": "^0.2.0",
+    "node-pre-gyp": "0.6"
+  },
+  "scripts": {
+    "install": "neon build --release",
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "mocha": "^6.0.2"
+  }
+}

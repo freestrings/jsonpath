@@ -43,7 +43,7 @@
 //!    "expensive": 10
 //!    });
 //!
-//!    let mut selector = jsonpath::selector(json_obj);
+//!    let mut selector = jsonpath::selector(&json_obj);
 //!
 //!    //
 //!    // $.store.book[*].author
@@ -158,28 +158,22 @@
 //!    assert_eq!(ret, json);
 //! ```
 
-
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
-#[cfg(test)]
-#[macro_use] extern crate serde_json;
-#[cfg(not(test))]
 extern crate serde_json;
-
-extern crate core;
 extern crate indexmap;
 
 #[doc(hidden)]
-pub mod parser;
+mod parser;
 #[doc(hidden)]
-pub mod filter;
+mod filter;
 #[doc(hidden)]
-pub mod ref_value;
+mod ref_value;
+pub mod prelude;
 
-use parser::parser::*;
-use filter::value_filter::*;
+use parser::prelude::*;
+use filter::prelude::*;
 
 use std::result;
 use serde_json::Value;
@@ -204,7 +198,7 @@ type Result = result::Result<Value, String>;
 /// "friends": [ {"id": 0}, {"id": 1} ]
 /// });
 ///
-/// let json = template(json_obj).unwrap();
+/// let json = template(&json_obj).unwrap();
 /// let ret = json!([ {"id": 0}, {"id": 0} ]);
 /// assert_eq!(json, ret);
 ///
@@ -216,11 +210,11 @@ type Result = result::Result<Value, String>;
 /// "friends": [ {"id": 0}, {"id": 1} ]
 /// });
 ///
-/// let json = template(json_obj).unwrap();
+/// let json = template(&json_obj).unwrap();
 /// let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
+pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> Result + 'a {
     let mut parser = Parser::new(path);
     let node = parser.compile();
     move |json| {
@@ -249,7 +243,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
 /// "friends": [{"id": 0},{"id": 1}]
 /// });
 ///
-/// let mut selector = jsonpath::selector(json_obj);
+/// let mut selector = jsonpath::selector(&json_obj);
 ///
 /// let json = selector("$..friends[0]").unwrap();
 /// let ret = json!([ {"id": 0}, {"id": 0} ]);
@@ -259,7 +253,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(Value) -> Result + 'a {
 /// let ret = json!([ {"id": 1}, {"id": 1} ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn selector(json: Value) -> impl FnMut(&str) -> Result {
+pub fn selector(json: &Value) -> impl FnMut(&str) -> Result {
     let wrapper: RefValueWrapper = json.into();
     move |path: &str| {
         let mut jf = JsonValueFilter::new_from_value(wrapper.clone());
@@ -270,7 +264,7 @@ pub fn selector(json: Value) -> impl FnMut(&str) -> Result {
 }
 
 /// # Read the same Json multiple times using different JsonPath - Deprecated. use selector
-pub fn reader(json: Value) -> impl FnMut(&str) -> Result {
+pub fn reader(json: &Value) -> impl FnMut(&str) -> Result {
     selector(json)
 }
 
@@ -286,11 +280,11 @@ pub fn reader(json: Value) -> impl FnMut(&str) -> Result {
 /// },
 /// "friends": [{"id": 0}, {"id": 1}]
 /// });
-/// let json = jsonpath::select(json_obj, "$..friends[0]").unwrap();
+/// let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
 /// let ret = json!([ {"id": 0}, {"id": 0} ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn select(json: Value, path: &str) -> Result {
+pub fn select(json: &Value, path: &str) -> Result {
     let mut jf = JsonValueFilter::new_from_value(json.into());
     let mut parser = Parser::new(path);
     parser.parse(&mut jf)?;
@@ -298,73 +292,7 @@ pub fn select(json: Value, path: &str) -> Result {
 }
 
 /// # Read Json using JsonPath - Deprecated. use select
-pub fn read(json: Value, path: &str) -> Result {
+pub fn read(json: &Value, path: &str) -> Result {
     select(json, path)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use std::io::Read;
-
-    fn read_json(path: &str) -> Value {
-        let mut f = std::fs::File::open(path).unwrap();
-        let mut contents = String::new();
-        f.read_to_string(&mut contents).unwrap();
-        serde_json::from_str(contents.as_str()).unwrap()
-    }
-
-    #[test]
-    fn compile() {
-        let mut template = super::compile("$..friends[2]");
-        let json_obj = read_json("./benches/data_obj.json");
-        let json = template(json_obj).unwrap();
-        let ret = json!([
-            {"id": 2,"name": "Gray Berry"},
-            {"id": 2,"name": "Gray Berry"}
-        ]);
-        assert_eq!(json, ret);
-
-        let json_obj = read_json("./benches/data_array.json");
-        let json = template(json_obj).unwrap();
-        let ret = json!([
-            {"id": 2,"name": "Gray Berry"},
-            {"id": 2,"name": "Rosetta Erickson"}
-        ]);
-        assert_eq!(json, ret);
-    }
-
-    #[test]
-    fn selector() {
-        let json_obj = read_json("./benches/data_obj.json");
-        let mut reader = super::selector(json_obj);
-        let json = reader("$..friends[2]").unwrap();
-        let ret = json!([
-            {"id": 2,"name": "Gray Berry"},
-            {"id": 2,"name": "Gray Berry"}
-        ]);
-        assert_eq!(json, ret);
-
-        let json = reader("$..friends[0]").unwrap();
-        let ret = json!([
-            {"id": 0},
-            {"id": 0,"name": "Millicent Norman"}
-        ]);
-        assert_eq!(json, ret);
-    }
-
-    #[test]
-    fn select() {
-        let json_obj = read_json("./benches/example.json");
-        let json = super::select(json_obj, "$..book[2]").unwrap();
-        let ret = json!([{
-            "category" : "fiction",
-            "author" : "Herman Melville",
-            "title" : "Moby Dick",
-            "isbn" : "0-553-21311-3",
-            "price" : 8.99
-        }]);
-        assert_eq!(json, ret);
-    }
-}

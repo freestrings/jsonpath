@@ -15,13 +15,39 @@ fn read_json(path: &str) -> String {
 }
 
 #[bench]
-fn bench_reader(b: &mut Bencher) {
+fn bench_selector(b: &mut Bencher) {
     let string = read_json("./benches/example.json");
+    let path = r#"$..book[?(@.price<30 && @.category=="fiction")]"#;
     let json: Value = serde_json::from_str(string.as_str()).unwrap();
-    let mut reader = jsonpath::reader(json);
+    let mut selector = jsonpath::selector(&json);
     b.iter(move || {
-        for _ in 1..10000 {
-            let _ = reader("$.store").unwrap();
+        for _ in 1..1000 {
+            let _ = selector(path).unwrap();
+        }
+    });
+}
+
+#[bench]
+fn bench_select(b: &mut Bencher) {
+    let string = read_json("./benches/example.json");
+    let path = r#"$..book[?(@.price<30 && @.category=="fiction")]"#;
+    let json: Value = serde_json::from_str(string.as_str()).unwrap();
+    b.iter(move || {
+        for _ in 1..1000 {
+            let _ = jsonpath::select(&json, path).unwrap();
+        }
+    });
+}
+
+#[bench]
+fn bench_compile(b: &mut Bencher) {
+    let string = read_json("./benches/example.json");
+    let path = r#"$..book[?(@.price<30 && @.category=="fiction")]"#;
+    let json: Value = serde_json::from_str(string.as_str()).unwrap();
+    let mut template = jsonpath::compile(path);
+    b.iter(move || {
+        for _ in 1..1000 {
+            let _ = template(&json).unwrap();
         }
     });
 }

@@ -30,5 +30,5 @@ name = "jsonpath_lib"
 path = "src/lib.rs"
 
 [profile.release]
-debug = true
-lto = false
+#debug = true
+#lto = false
