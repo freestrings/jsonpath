@@ -7,6 +7,8 @@
 
 It is an implementation of the `Rust` version [JsonPath] (https://goessner.net/articles/JsonPath/). `Webassembly` and` Javascript` also provide the same API interface.
 
+## [Webassembly Demo](https://freestrings.github.io/jsonpath/)
+
 ## 왜?
 
 To enjoy Rust!
