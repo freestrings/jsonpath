@@ -1,3 +1,8 @@
+os:
+  - osx
+  - linux
+  - windows
+
 language: rust
 sudo: false
 
@@ -10,7 +15,6 @@ branches:
 
 matrix:
   include:
-
     - rust: stable
       env: RUST_BACKTRACE=1
       before_script:
@@ -24,20 +28,20 @@ matrix:
         - cd wasm
         - wasm-pack build
     - language: node_js
-        node_js:
-          - 'node'
-          - '11'
-          - '10'
-          - '9'
-          - '8'
-        before_install:
-          - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
-          - sh /tmp/rustup.sh -y
-          - export PATH="$HOME/.cargo/bin:$PATH"
-          - source "$HOME/.cargo/env"
-          - cd nodejs
-          - node -v
-          - npm -v
-          - npm install
-        script:
-          - npm test
+      node_js:
+        - 'node'
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - cd nodejs
+        - node -v
+        - npm -v
+        - npm install
+      script:
+        - npm test
