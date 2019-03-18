@@ -15,6 +15,13 @@ fn read_json(path: &str) -> Value {
     serde_json::from_str(contents.as_str()).unwrap()
 }
 
+fn read_contents(path: &str) -> String {
+    let mut f = std::fs::File::open(path).unwrap();
+    let mut contents = String::new();
+    f.read_to_string(&mut contents).unwrap();
+    contents
+}
+
 #[test]
 fn compile() {
     let mut template = jsonpath::compile("$..friends[2]");
@@ -65,5 +72,20 @@ fn select() {
             "isbn" : "0-553-21311-3",
             "price" : 8.99
         }]);
+    assert_eq!(json, ret);
+}
+
+#[test]
+fn select_str() {
+    let json_str = read_contents("./benches/example.json");
+    let result_str = jsonpath::select_str(&json_str, "$..book[2]").unwrap();
+    let ret = json!([{
+            "category" : "fiction",
+            "author" : "Herman Melville",
+            "title" : "Moby Dick",
+            "isbn" : "0-553-21311-3",
+            "price" : 8.99
+        }]);
+    let json: Value = serde_json::from_str(&result_str).unwrap();
     assert_eq!(json, ret);
 }

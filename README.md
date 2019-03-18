@@ -29,6 +29,7 @@ To enjoy Rust!
 
 - [jsonpath_lib library](#jsonpath_lib-library)
 - [rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
+- [rust - jsonpath::select_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_strjson-str-jsonpath-str)
 - [rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
 - [rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
 - [rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
@@ -36,6 +37,7 @@ To enjoy Rust!
 [With AWS API Gateway](#)
 
 [Simple time check - webassembly](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck---jsonpath-wasm)
+
 [Simple time check - native addon for NodeJs](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck-jsonpath-native)
 
 ## With Javascript
@@ -192,7 +194,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 ```
 
-### rust - jsonpath::select(&json: serde_json::value::Value, jsonpath: &str)
+### rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)
 
 ```rust
 let json_obj = json!({
@@ -202,6 +204,21 @@ let json_obj = json!({
     "friends": [{"id": 0}, {"id": 1}]
 });
 let json = jsonpath::select(json_obj, "$..friends[0]").unwrap();
+let ret = json!([ {"id": 0}, {"id": 0} ]);
+assert_eq!(json, ret)
+```
+
+### rust - jsonpath::select_str(json: &str, jsonpath: &str)
+
+```rust
+let json_obj = json!({
+    "school": {
+        "friends": [{"id": 0}, {"id": 1}]
+    },
+    "friends": [{"id": 0}, {"id": 1}]
+});
+let json_str = jsonpath::select_str(&serde_json::to_string(&json_obj).unwrap(), "$..friends[0]").unwrap();
+let json: Value = serde_json::from_str(&json_str).unwrap();
 let ret = json!([ {"id": 0}, {"id": 0} ]);
 assert_eq!(json, ret)
 ```

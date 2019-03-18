@@ -6,7 +6,7 @@ function compile(path) {
         if(typeof json != 'string') {
             json = JSON.stringify(json)
         }
-        return compile.template(json);
+        return JSON.parse(compile.template(json));
     };
 }
 
@@ -16,7 +16,7 @@ function selector(json) {
     }
     let selector = new Selector(json);
     return (path) => {
-        return selector.selector(path);
+        return JSON.parse(selector.selector(path));
     }
 }
 
@@ -24,7 +24,7 @@ function select(json, path) {
     if(typeof json != 'string') {
         json = JSON.stringify(json)
     }
-    return selectStr(json, path);
+    return JSON.parse(selectStr(json, path));
 }
 
 module.exports = {

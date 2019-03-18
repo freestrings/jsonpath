@@ -158,11 +158,18 @@
 //!    assert_eq!(ret, json);
 //! ```
 
+extern crate env_logger;
+extern crate indexmap;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
+extern crate serde;
 extern crate serde_json;
-extern crate indexmap;
+
+use std::result;
+
+use serde_json::Value;
+
+use prelude::*;
 
 #[doc(hidden)]
 mod parser;
@@ -171,14 +178,6 @@ mod filter;
 #[doc(hidden)]
 mod ref_value;
 pub mod prelude;
-
-use parser::prelude::*;
-use filter::prelude::*;
-
-use std::result;
-use serde_json::Value;
-
-use ref_value::*;
 
 type Result = result::Result<Value, String>;
 
@@ -222,7 +221,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> Result + 'a {
             Ok(n) => {
                 let mut jf = JsonValueFilter::new_from_value(json.into());
                 jf.visit(n.clone());
-                Ok(jf.take_value().into_value())
+                Ok(jf.take_value().into())
             }
             Err(e) => Err(e.clone())
         }
@@ -259,7 +258,7 @@ pub fn selector(json: &Value) -> impl FnMut(&str) -> Result {
         let mut jf = JsonValueFilter::new_from_value(wrapper.clone());
         let mut parser = Parser::new(path);
         parser.parse(&mut jf)?;
-        Ok(jf.take_value().into_value())
+        Ok(jf.take_value().into())
     }
 }
 
@@ -288,7 +287,7 @@ pub fn select(json: &Value, path: &str) -> Result {
     let mut jf = JsonValueFilter::new_from_value(json.into());
     let mut parser = Parser::new(path);
     parser.parse(&mut jf)?;
-    Ok(jf.take_value().into_value())
+    Ok(jf.take_value().into())
 }
 
 /// # Read Json using JsonPath - Deprecated. use select
@@ -296,3 +295,29 @@ pub fn read(json: &Value, path: &str) -> Result {
     select(json, path)
 }
 
+/// # Read Json string using JsonPath
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde_json::Value;
+///
+/// let json_obj = json!({
+/// "school": {
+///    "friends": [{"id": 0}, {"id": 1}]
+/// },
+/// "friends": [{"id": 0}, {"id": 1}]
+/// });
+/// let json_str = jsonpath::select_str(&serde_json::to_string(&json_obj).unwrap(), "$..friends[0]").unwrap();
+/// let json: Value = serde_json::from_str(&json_str).unwrap();
+/// let ret = json!([ {"id": 0}, {"id": 0} ]);
+/// assert_eq!(json, ret);
+/// ```
+pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
+    let ref_value: RefValue = serde_json::from_str(json).map_err(|e| format!("{:?}", e))?;
+    let mut jf = JsonValueFilter::new_from_value(ref_value.into());
+    let mut parser = Parser::new(path);
+    parser.parse(&mut jf)?;
+    serde_json::to_string(&jf.take_value()).map_err(|e| format!("{:?}", e))
+}

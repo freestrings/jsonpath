@@ -66,7 +66,7 @@ impl TermContext {
                         }
                     }
                     TermContext::Json(_, v) => {
-                        TermContext::Json(None, ValueWrapper::new(v.clone_val(), false))
+                        TermContext::Json(None, ValueWrapper::new(v.get_val().clone(), false))
                     }
                 }
             }
@@ -79,7 +79,7 @@ impl TermContext {
                         }
                     }
                     _ => {
-                        TermContext::Json(None, ValueWrapper::new(v.clone_val(), false))
+                        TermContext::Json(None, ValueWrapper::new(v.get_val().clone(), false))
                     }
                 }
             }

@@ -88,11 +88,11 @@
 /******/ 					"__wbindgen_throw": function(p0i32,p1i32) {
 /******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_throw"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper99": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper99"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper100": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper100"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper101": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper101"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper102": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../browser_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper102"](p0i32,p1i32,p2i32);
 /******/ 					}
 /******/ 				}
 /******/ 			};
@@ -192,7 +192,7 @@
 /******/ 				promises.push(installedWasmModuleData);
 /******/ 			else {
 /******/ 				var importObject = wasmImportObjects[wasmModuleId]();
-/******/ 				var req = fetch(__webpack_require__.p + "" + {"../browser_pkg/jsonpath_wasm_bg.wasm":"db8564aae9d99ec41b79"}[wasmModuleId] + ".module.wasm");
+/******/ 				var req = fetch(__webpack_require__.p + "" + {"../browser_pkg/jsonpath_wasm_bg.wasm":"e354e10adee0b37b85d7"}[wasmModuleId] + ".module.wasm");
 /******/ 				var promise;
 /******/ 				if(importObject instanceof Promise && typeof WebAssembly.compileStreaming === 'function') {
 /******/ 					promise = Promise.all([WebAssembly.compileStreaming(req), importObject]).then(function(items) {

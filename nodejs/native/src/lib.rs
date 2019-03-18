@@ -24,13 +24,9 @@ fn select(mut ctx: FunctionContext) -> JsResult<JsValue> {
 
 fn select_str(mut ctx: FunctionContext) -> JsResult<JsValue> {
     let json_val = ctx.argument::<JsString>(0)?.value();
-    let json: Value = match serde_json::from_str(json_val.as_str()) {
-        Ok(json) => json,
-        Err(e) => panic!("{:?}", e)
-    };
     let path = ctx.argument::<JsString>(1)?.value();
-    match jsonpath::select(&json, path.as_str()) {
-        Ok(value) => Ok(neon_serde::to_value(&mut ctx, &value)?),
+    match jsonpath::select_str(&json_val, path.as_str()) {
+        Ok(value) => Ok(JsString::new(&mut ctx, &value).upcast()),
         Err(e) => panic!("{:?}", e)
     }
 }
@@ -66,31 +62,30 @@ declare_types! {
                 this.node.clone()
             };
 
-//            let o = ctx.argument::<JsValue>(0)?;
-//            let json: Value = neon_serde::from_value(&mut ctx, o)?;
             let json_str = ctx.argument::<JsString>(0)?.value();
-            let json: Value = match serde_json::from_str(&json_str) {
-                Ok(json) => json,
+            let ref_value: RefValue = match serde_json::from_str(&json_str) {
+                Ok(ref_value) => ref_value,
                 Err(e) => panic!("{:?}", e)
             };
-            let mut jf = JsonValueFilter::new_from_value((&json).into());
+
+            let mut jf = JsonValueFilter::new_from_value(ref_value.into());
             jf.visit(node);
-            let v = jf.take_value().into_value();
-            Ok(neon_serde::to_value(&mut ctx, &v)?)
+            match serde_json::to_string(&jf.take_value()) {
+                Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
+                Err(e) => panic!("{:?}", e)
+            }
         }
     }
 
     pub class JsSelector for Selector {
         init(mut ctx) {
-//            let o = ctx.argument::<JsValue>(0)?;
-//            let json: Value = neon_serde::from_value(&mut ctx, o)?;
             let json_str = ctx.argument::<JsString>(0)?.value();
-            let json: Value = match serde_json::from_str(&json_str) {
-                Ok(json) => json,
+            let ref_value: RefValue = match serde_json::from_str(&json_str) {
+                Ok(ref_value) => ref_value,
                 Err(e) => panic!("{:?}", e)
             };
 
-            Ok(Selector { json: (&json).into() })
+            Ok(Selector { json: ref_value.into() })
         }
 
         method selector(mut ctx) {
@@ -112,8 +107,10 @@ declare_types! {
 
             let mut jf = JsonValueFilter::new_from_value(json);
             jf.visit(node);
-            let v = jf.take_value().into_value();
-            Ok(neon_serde::to_value(&mut ctx, &v)?)
+            match serde_json::to_string(&jf.take_value()) {
+                Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
+                Err(e) => panic!("{:?}", e)
+            }
         }
     }
 }

@@ -29,14 +29,14 @@ cfg_if! {
 fn filter_ref_value(json: RefValueWrapper, node: Node) -> JsValue {
     let mut jf = JsonValueFilter::new_from_value(json);
     jf.visit(node);
-    let taken = jf.take_value().into_value();
+    let taken: Value = jf.take_value().into();
     match JsValue::from_serde(&taken) {
         Ok(js_value) => js_value,
         Err(e) => JsValue::from_str(&format!("Json deserialize error: {:?}", e))
     }
 }
 
-fn into_serde_json(js_value: &JsValue) -> Result<Value, String> {
+fn into_serde_json(js_value: &JsValue) -> Result<RefValue, String> {
     if js_value.is_string() {
         match serde_json::from_str(js_value.as_string().unwrap().as_str()) {
             Ok(json) => Ok(json),
@@ -52,7 +52,7 @@ fn into_serde_json(js_value: &JsValue) -> Result<Value, String> {
 
 fn into_ref_value(js_value: &JsValue, node: Node) -> JsValue {
     match into_serde_json(js_value) {
-        Ok(json) => filter_ref_value((&json).into(), node),
+        Ok(json) => filter_ref_value(json.into(), node),
         Err(e) => JsValue::from_str(&format!("Json serialize error: {}", e))
     }
 }
@@ -85,7 +85,7 @@ pub fn alloc_json(js_value: JsValue) -> usize {
 
             let mut idx = CACHE_JSON_IDX.lock().unwrap();
             *idx += 1;
-            map.insert(*idx, (&json).into());
+            map.insert(*idx, json.into());
             *idx
         }
         Err(e) => {
@@ -136,7 +136,7 @@ pub fn selector(js_value: JsValue) -> JsValue {
         }
         _ => {
             match into_serde_json(&js_value) {
-                Ok(json) => (&json).into(),
+                Ok(json) => json.into(),
                 Err(e) => return JsValue::from_str(e.as_str())
             }
         }
