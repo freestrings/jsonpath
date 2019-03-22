@@ -1,6 +1,6 @@
 [package]
 name = "jsonpath-wasm"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Changseok Han <freestrings@gmail.com>"]
 description = "JsonPath Webassembly version compiled by Rust - Demo: https://freestrings.github.io/jsonpath"
 keywords = ["library", "jsonpath", "json", "webassembly"]

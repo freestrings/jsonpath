@@ -14,9 +14,11 @@ impl TermContext {
             TermContext::Constants(et) => {
                 match other {
                     TermContext::Constants(oet) => {
+                        trace!("const-const");
                         TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, default)))
                     }
                     TermContext::Json(key, v) => {
+                        trace!("const-json");
                         TermContext::Json(None, v.take_with(key, et, cmp_fn, true))
                     }
                 }
@@ -24,6 +26,7 @@ impl TermContext {
             TermContext::Json(key, v) => {
                 match other {
                     TermContext::Json(key_other, ov) => {
+                        trace!("json-json");
 
                         fn is_json(t: &TermContext) -> bool {
                             match t {
@@ -32,18 +35,16 @@ impl TermContext {
                             }
                         }
 
-                        let mut v = v.filter(key);
-                        let mut ov = ov.filter(key_other);
                         let mut c = v.into_term(key);
                         let mut oc = ov.into_term(key_other);
-
                         if is_json(&c) && is_json(&oc) {
-                            v.cmp(&mut ov, cmp_fn.into_type())
+                            v.cmp(&ov, cmp_fn.into_type())
                         } else {
                             c.cmp(&mut oc, cmp_fn, default)
                         }
                     }
                     TermContext::Constants(et) => {
+                        trace!("json-const");
                         TermContext::Json(None, v.take_with(key, et, cmp_fn, false))
                     }
                 }
@@ -87,26 +88,32 @@ impl TermContext {
     }
 
     pub fn eq(&self, other: &TermContext) -> TermContext {
+        trace!("eq");
         self.cmp(other, CmpEq, false)
     }
 
     pub fn ne(&self, other: &TermContext) -> TermContext {
+        trace!("ne");
         self.cmp(other, CmpNe, true)
     }
 
     pub fn gt(&self, other: &TermContext) -> TermContext {
+        trace!("gt");
         self.cmp(other, CmpGt, false)
     }
 
     pub fn ge(&self, other: &TermContext) -> TermContext {
+        trace!("ge");
         self.cmp(other, CmpGe, false)
     }
 
     pub fn lt(&self, other: &TermContext) -> TermContext {
+        trace!("lt");
         self.cmp(other, CmpLt, false)
     }
 
     pub fn le(&self, other: &TermContext) -> TermContext {
+        trace!("le");
         self.cmp(other, CmpLe, false)
     }
 

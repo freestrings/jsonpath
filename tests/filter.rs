@@ -154,17 +154,17 @@ fn return_type() {
 }
 
 #[test]
-fn op() {
+fn op_default() {
     setup();
 
     let jf = do_filter("$.school[?(@.friends == @.friends)]", "./benches/data_obj.json");
     let friends = json!({
-            "friends": [
-                {"id": 0, "name": "Millicent Norman"},
-                {"id": 1, "name": "Vincent Cannon" },
-                {"id": 2, "name": "Gray Berry"}
-            ]
-        });
+        "friends": [
+            {"id": 0, "name": "Millicent Norman"},
+            {"id": 1, "name": "Vincent Cannon" },
+            {"id": 2, "name": "Gray Berry"}
+        ]
+    });
     assert_eq!(friends, jf.into_value());
 
     let jf = do_filter("$.friends[?(@.name)]", "./benches/data_obj.json");
@@ -203,6 +203,81 @@ fn op() {
     assert_eq!(friends, jf.into_value());
 }
 
+#[test]
+fn op_number() {
+    setup();
+
+    let json = json!({ "a": 1 });
+    let ret = jsonpath::select(&json, "$.[?(@.a == 1)]").unwrap();
+    assert_eq!(json, ret);
+    let ret = jsonpath::select(&json, "$.[?(@.a != 2)]").unwrap();
+    assert_eq!(json, ret);
+    let ret = jsonpath::select(&json, "$.[?(@.a < 2)]").unwrap();
+    assert_eq!(json, ret);
+    let ret = jsonpath::select(&json, "$.[?(@.a <= 1)]").unwrap();
+    assert_eq!(json, ret);
+    let ret = jsonpath::select(&json, "$.[?(@.a > 0)]").unwrap();
+    assert_eq!(json, ret);
+    let ret = jsonpath::select(&json, "$.[?(@.a >= 0)]").unwrap();
+    assert_eq!(json, ret);
+}
+
+#[test]
+fn op_string() {
+    setup();
+
+    let json = json!({ "a": "b" });
+    let ret = jsonpath::select(&json, r#"$.[?(@.a == "b")]"#).unwrap();
+    assert_eq!(json!({ "a": "b" }), ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a != "c")]"#).unwrap();
+    assert_eq!(json!({ "a": "b" }), ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a < "b")]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a <= "b")]"#).unwrap();
+    assert_eq!(json!({ "a": "b" }), ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a > "b")]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a >= "b")]"#).unwrap();
+    assert_eq!(json!({ "a": "b" }), ret);
+}
+
+#[test]
+fn op_object() {
+    setup();
+
+    let json = json!({
+        "a": { "1": 1 },
+        "b": { "2": 2 },
+        "c": { "1": 1 },
+    });
+    let ret = jsonpath::select(&json, r#"$.[?(@.a == @.c)]"#).unwrap();
+    assert_eq!(json, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a != @.c)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a < @.c)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a <= @.c)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a > @.c)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a >= @.c)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+}
+
+#[test]
+fn op_complex() {
+    setup();
+
+    let json = json!({ "a": { "b": 1 } });
+    let ret = jsonpath::select(&json, r#"$.[?(1 == @.a)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?("1" != @.a)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a <= 1)]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+    let ret = jsonpath::select(&json, r#"$.[?(@.a > "1")]"#).unwrap();
+    assert_eq!(Value::Null, ret);
+}
 #[test]
 fn example() {
     setup();

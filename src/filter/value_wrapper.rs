@@ -155,6 +155,7 @@ impl ValueWrapper {
     }
 
     fn into_hashset(&self) -> IndexSet<RefValueWrapper> {
+        trace!("into_hashset");
         let mut hashset = IndexSet::new();
         match self.val.deref() {
             RefValue::Array(ref v1) => {
@@ -170,9 +171,10 @@ impl ValueWrapper {
     }
 
     pub fn except(&self, other: &Self) -> Self {
+        trace!("except");
         let hashset = self.into_hashset();
         let mut ret: IndexSet<RefValueWrapper> = IndexSet::new();
-        match &(*other.val) {
+        match other.val.deref() {
             RefValue::Array(ref v1) => {
                 for v in v1 {
                     if !hashset.contains(v) {
@@ -192,6 +194,7 @@ impl ValueWrapper {
     }
 
     pub fn intersect(&self, other: &Self) -> Self {
+        trace!("intersect");
         let hashset = self.into_hashset();
         let mut ret: IndexSet<RefValueWrapper> = IndexSet::new();
         match other.val.deref() {
@@ -214,6 +217,7 @@ impl ValueWrapper {
     }
 
     pub fn union(&self, other: &Self) -> Self {
+        trace!("union");
         let mut hashset = self.into_hashset();
         match other.val.deref() {
             RefValue::Array(ref v1) => {
@@ -249,6 +253,7 @@ impl ValueWrapper {
     }
 
     pub fn filter(&self, key: &Option<ValueFilterKey>) -> Self {
+        trace!("filter");
         let v = match self.val.deref() {
             RefValue::Array(ref vec) => {
                 let mut ret = Vec::new();

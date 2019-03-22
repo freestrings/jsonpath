@@ -1,6 +1,6 @@
 use std::error::Error;
-use std::result::Result;
 use std::ops::Deref;
+use std::result::Result;
 
 use serde_json::Value;
 
@@ -324,6 +324,8 @@ impl JsonValueFilter {
                     vf.vw.set_leaves(is_leaves);
                     if v.is_null() {
                         vf.vw.replace(v);
+                    } else if v.is_array() && v.as_array().unwrap().is_empty() {
+                        vf.vw.replace(RefValue::Null.into());
                     } else if vf.vw.is_array() {
                         vf.vw.replace(v);
                     }
@@ -479,6 +481,9 @@ impl JsonValueFilter {
                     }
                     _ => {}
                 }
+            }
+            Some(TermContext::Constants(ExprTerm::Bool(false))) => {
+                self.replace_filter_stack(RefValue::Null.into(), false);
             }
             Some(TermContext::Json(_, vw)) => {
                 self.replace_filter_stack(vw.get_val().clone(), vw.is_leaves());

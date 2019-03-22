@@ -124,11 +124,17 @@ pub enum RefValue {
     Object(IndexMap<String, RefValueWrapper>),
 }
 
+static REF_VALUE_NULL: &'static str = "$jsonpath::ref_value::model::RefValue::Null";
+
 impl Hash for RefValue {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            RefValue::Null => RefValue::Null.hash(state),
-            RefValue::Bool(b) => b.hash(state),
+            RefValue::Null => {
+                REF_VALUE_NULL.hash(state)
+            },
+            RefValue::Bool(b) => {
+                b.hash(state)
+            },
             RefValue::Number(n) => {
                 if n.is_f64() {
                     n.as_f64().unwrap().to_string().hash(state)
@@ -138,7 +144,9 @@ impl Hash for RefValue {
                     n.as_u64().unwrap().hash(state);
                 }
             }
-            RefValue::String(s) => s.hash(state),
+            RefValue::String(s) => {
+                s.hash(state)
+            },
             RefValue::Object(map) => {
                 for (_, v) in map {
                     v.hash(state);
