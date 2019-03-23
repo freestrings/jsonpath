@@ -301,18 +301,11 @@ pub fn read(json: &Value, path: &str) -> Result {
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
-/// use serde_json::Value;
-///
-/// let json_obj = json!({
-/// "school": {
-///    "friends": [{"id": 0}, {"id": 1}]
-/// },
-/// "friends": [{"id": 0}, {"id": 1}]
-/// });
-/// let json_str = jsonpath::select_str(&serde_json::to_string(&json_obj).unwrap(), "$..friends[0]").unwrap();
-/// let json: Value = serde_json::from_str(&json_str).unwrap();
-/// let ret = json!([ {"id": 0}, {"id": 0} ]);
-/// assert_eq!(json, ret);
+/// let ret = jsonpath::select_str(r#"{
+///     "school": { "friends": [{"id": 0}, {"id": 1}] },
+///     "friends": [{"id": 0}, {"id": 1}]
+/// }"#, "$..friends[0]").unwrap();
+/// assert_eq!(ret, r#"[{"id":0},{"id":0}]"#);
 /// ```
 pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
     let ref_value: RefValue = serde_json::from_str(json).map_err(|e| format!("{:?}", e))?;

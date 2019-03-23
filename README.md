@@ -7,7 +7,8 @@
 
 It is an implementation of the `Rust` version [JsonPath] (https://goessner.net/articles/JsonPath/). `Webassembly` and` Javascript` also provide the same API interface.
 
-## [Webassembly Demo](https://freestrings.github.io/jsonpath/)
+- [Webassembly Demo](https://freestrings.github.io/jsonpath/)
+- [Rust documentation](https://docs.rs/jsonpath_lib/0.1.6/jsonpath_lib)
 
 ## 왜?
 
@@ -211,16 +212,11 @@ assert_eq!(json, ret)
 ### rust - jsonpath::select_str(json: &str, jsonpath: &str)
 
 ```rust
-let json_obj = json!({
-    "school": {
-        "friends": [{"id": 0}, {"id": 1}]
-    },
+let ret = jsonpath::select_str(r#"{
+    "school": { "friends": [{"id": 0}, {"id": 1}] },
     "friends": [{"id": 0}, {"id": 1}]
-});
-let json_str = jsonpath::select_str(&serde_json::to_string(&json_obj).unwrap(), "$..friends[0]").unwrap();
-let json: Value = serde_json::from_str(&json_str).unwrap();
-let ret = json!([ {"id": 0}, {"id": 0} ]);
-assert_eq!(json, ret)
+}"#, "$..friends[0]").unwrap();
+assert_eq!(ret, r#"[{"id":0},{"id":0}]"#);
 ```
 
 ### rust - jsonpath::compile(jsonpath: &str)
