@@ -2,8 +2,7 @@ extern crate env_logger;
 extern crate jsonpath_lib as jsonpath;
 
 use std::result;
-
-use jsonpath::prelude::*;
+use jsonpath::parser::parser::{Parser, ParseToken, NodeVisitor, FilterToken};
 
 struct NodeVisitorTestImpl<'a> {
     input: &'a str,

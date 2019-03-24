@@ -11,10 +11,13 @@ use std::result::Result;
 use std::sync::Mutex;
 
 use cfg_if::cfg_if;
-use jsonpath::prelude::*;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
+
+use jsonpath::filter::value_filter::JsonValueFilter;
+use jsonpath::parser::parser::{Node, NodeVisitor, Parser};
+use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
 
 mod utils;
 

@@ -1,6 +1,6 @@
 extern crate jsonpath_lib as jsonpath;
 
-use jsonpath::prelude::*;
+use jsonpath::parser::tokenizer::{Tokenizer, Token, TokenError, PreloadedTokenizer};
 
 fn collect_token(input: &str) -> (Vec<Token>, Option<TokenError>) {
     let mut tokenizer = Tokenizer::new(input);

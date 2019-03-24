@@ -30,7 +30,8 @@ To enjoy Rust!
 
 - [jsonpath_lib library](#jsonpath_lib-library)
 - [rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
-- [rust - jsonpath::select_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_strjson-str-jsonpath-str)
+- [rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
+- [rust - jsonpath::select_as\<T\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_astjson-str-jsonpath-str)
 - [rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
 - [rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
 - [rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
@@ -209,14 +210,44 @@ let ret = json!([ {"id": 0}, {"id": 0} ]);
 assert_eq!(json, ret)
 ```
 
-### rust - jsonpath::select_str(json: &str, jsonpath: &str)
+### rust - jsonpath::select_as_str(json: &str, jsonpath: &str)
 
 ```rust
-let ret = jsonpath::select_str(r#"{
+let ret = jsonpath::select_as_str(r#"{
     "school": { "friends": [{"id": 0}, {"id": 1}] },
     "friends": [{"id": 0}, {"id": 1}]
 }"#, "$..friends[0]").unwrap();
 assert_eq!(ret, r#"[{"id":0},{"id":0}]"#);
+```
+
+### rust - jsonpath::select_as\<T\>(json: &str, jsonpath: &str)
+
+```rust
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct Person {
+    name: String,
+    age: u8,
+    phones: Vec<String>,
+}
+let ret: Person = jsonpath::select_as(r#"
+{
+    "person":
+        {
+            "name": "Doe John",
+            "age": 44,
+            "phones": [
+                "+44 1234567",
+                "+44 2345678"
+            ]
+        }
+}
+"#, "$.person").unwrap();
+let person = Person {
+    name: "Doe John".to_string(),
+    age: 44,
+    phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
+};
+assert_eq!(person, ret);
 ```
 
 ### rust - jsonpath::compile(jsonpath: &str)

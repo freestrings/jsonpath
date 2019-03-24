@@ -1,11 +1,11 @@
 extern crate jsonpath_lib as jsonpath;
+extern crate serde;
 extern crate serde_json;
 
 use std::io::Read;
 
 use serde_json::Value;
-
-use jsonpath::prelude::*;
+use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
 
 fn read_json(path: &str) -> String {
     let mut f = std::fs::File::open(path).unwrap();

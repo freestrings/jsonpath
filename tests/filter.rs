@@ -6,8 +6,8 @@ extern crate serde_json;
 use std::io::Read;
 
 use serde_json::Value;
-
-use jsonpath::prelude::*;
+use jsonpath::filter::value_filter::{ValueFilter, JsonValueFilter};
+use jsonpath::parser::parser::Parser;
 
 fn setup() {
     let _ = env_logger::try_init();

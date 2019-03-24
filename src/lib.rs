@@ -162,26 +162,27 @@ extern crate env_logger;
 extern crate indexmap;
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate serde;
 extern crate serde_json;
 
+use std::ops::Deref;
 use std::result;
 
 use serde_json::Value;
 
-use prelude::*;
+use filter::value_filter::JsonValueFilter;
+use parser::parser::{NodeVisitor, Parser};
+use ref_value::model::{RefValue, RefValueWrapper};
 
 #[doc(hidden)]
-mod parser;
+pub mod parser;
 #[doc(hidden)]
-mod filter;
+pub mod filter;
 #[doc(hidden)]
-mod ref_value;
-pub mod prelude;
+pub mod ref_value;
 
-type Result = result::Result<Value, String>;
-
-/// # Read multiple Json multiple times with the same JsonPath
+/// # Compile a Jsonpath so it select a JsonObject immediately.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -213,7 +214,7 @@ type Result = result::Result<Value, String>;
 /// let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> Result + 'a {
+pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value, String> + 'a {
     let mut parser = Parser::new(path);
     let node = parser.compile();
     move |json| {
@@ -229,7 +230,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> Result + 'a {
 }
 
 
-/// # Read the same Json multiple times using different JsonPath
+/// # Use multiple JsonPaths for one JsonObject.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -252,7 +253,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> Result + 'a {
 /// let ret = json!([ {"id": 1}, {"id": 1} ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn selector(json: &Value) -> impl FnMut(&str) -> Result {
+pub fn selector(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String> {
     let wrapper: RefValueWrapper = json.into();
     move |path: &str| {
         let mut jf = JsonValueFilter::new_from_value(wrapper.clone());
@@ -262,12 +263,12 @@ pub fn selector(json: &Value) -> impl FnMut(&str) -> Result {
     }
 }
 
-/// # Read the same Json multiple times using different JsonPath - Deprecated. use selector
-pub fn reader(json: &Value) -> impl FnMut(&str) -> Result {
+/// # Deprecated. use `selector`
+pub fn reader(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String> {
     selector(json)
 }
 
-/// # Read Json using JsonPath
+/// # Select a JsonObject
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -283,34 +284,84 @@ pub fn reader(json: &Value) -> impl FnMut(&str) -> Result {
 /// let ret = json!([ {"id": 0}, {"id": 0} ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn select(json: &Value, path: &str) -> Result {
+pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
     let mut jf = JsonValueFilter::new_from_value(json.into());
     let mut parser = Parser::new(path);
     parser.parse(&mut jf)?;
     Ok(jf.take_value().into())
 }
 
-/// # Read Json using JsonPath - Deprecated. use select
-pub fn read(json: &Value, path: &str) -> Result {
+/// # Deprecated. use `select`
+pub fn read(json: &Value, path: &str) -> result::Result<Value, String> {
     select(json, path)
 }
 
-/// # Read Json string using JsonPath
+/// # Deprecaed. use `into_str`
+pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
+    select_as_str(json, path)
+}
+
+/// # Return to json string
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
-/// let ret = jsonpath::select_str(r#"{
+/// let ret = jsonpath::select_as_str(r#"{
 ///     "school": { "friends": [{"id": 0}, {"id": 1}] },
 ///     "friends": [{"id": 0}, {"id": 1}]
 /// }"#, "$..friends[0]").unwrap();
 /// assert_eq!(ret, r#"[{"id":0},{"id":0}]"#);
 /// ```
-pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
+pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
     let ref_value: RefValue = serde_json::from_str(json).map_err(|e| format!("{:?}", e))?;
     let mut jf = JsonValueFilter::new_from_value(ref_value.into());
     let mut parser = Parser::new(path);
     parser.parse(&mut jf)?;
-    serde_json::to_string(&jf.take_value()).map_err(|e| format!("{:?}", e))
+    serde_json::to_string(&jf.take_value().deref()).map_err(|e| format!("{:?}", e))
+}
+
+/// # Return to deserializeable.
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// extern crate serde;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Serialize, Deserialize, PartialEq, Debug)]
+/// struct Person {
+///     name: String,
+///     age: u8,
+///     phones: Vec<String>,
+/// }
+///
+/// let ret: Person = jsonpath::select_as(r#"
+/// {
+///     "person":
+///         {
+///             "name": "Doe John",
+///             "age": 44,
+///             "phones": [
+///                 "+44 1234567",
+///                 "+44 2345678"
+///             ]
+///         }
+/// }
+/// "#, "$.person").unwrap();
+///
+/// let person = Person {
+///     name: "Doe John".to_string(),
+///     age: 44,
+///     phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
+/// };
+///
+/// assert_eq!(person, ret);
+/// ```
+pub fn select_as<'a, T: serde::Deserialize<'a>>(json: &str, path: &str) -> result::Result<T, String> {
+    let ref_value: RefValue = serde_json::from_str(json).map_err(|e| format!("{:?}", e))?;
+    let mut jf = JsonValueFilter::new_from_value(ref_value.into());
+    let mut parser = Parser::new(path);
+    parser.parse(&mut jf)?;
+    T::deserialize(jf.take_value().deref()).map_err(|e| format!("{:?}", e))
 }

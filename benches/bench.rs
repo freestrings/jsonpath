@@ -1,10 +1,14 @@
 #![feature(test)]
 extern crate jsonpath_lib as jsonpath;
+extern crate serde;
 extern crate serde_json;
 extern crate test;
 
 use std::io::Read;
+
+use serde::Deserialize;
 use serde_json::Value;
+
 use self::test::Bencher;
 
 fn read_json(path: &str) -> String {
@@ -65,6 +69,26 @@ fn bench_compile(b: &mut Bencher) {
     b.iter(move || {
         for _ in 1..100 {
             let _ = template(&json).unwrap();
+        }
+    });
+}
+
+
+#[bench]
+fn bench_select_as(b: &mut Bencher) {
+    let json = get_string();
+
+    #[derive(Deserialize, PartialEq, Debug)]
+    struct Book {
+        category: String,
+        author: String,
+        title: String,
+        price: f64
+    }
+
+    b.iter(move || {
+        for _ in 1..100 {
+            let _: Book = jsonpath::select_as(&json, r#"$..book[?(@.price<30 && @.category=="fiction")][0]"#).unwrap();
         }
     });
 }

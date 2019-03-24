@@ -3,15 +3,23 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use indexmap::map::IndexMap;
+use serde::ser::Serialize;
 use serde_json::{Number, Value};
-
-use super::convert::*;
 
 type TypeRefValue = Arc<Box<RefValue>>;
 
 #[derive(Debug, PartialEq)]
 pub struct RefValueWrapper {
     data: TypeRefValue
+}
+
+impl RefValueWrapper {
+    pub fn try_unwrap(self) -> RefValue {
+        match Arc::try_unwrap(self.data) {
+            Ok(ref_value) => *ref_value,
+            Err(e) => panic!("{:?}", e)
+        }
+    }
 }
 
 impl Eq for RefValueWrapper {}
@@ -131,10 +139,10 @@ impl Hash for RefValue {
         match self {
             RefValue::Null => {
                 REF_VALUE_NULL.hash(state)
-            },
+            }
             RefValue::Bool(b) => {
                 b.hash(state)
-            },
+            }
             RefValue::Number(n) => {
                 if n.is_f64() {
                     n.as_f64().unwrap().to_string().hash(state)
@@ -146,7 +154,7 @@ impl Hash for RefValue {
             }
             RefValue::String(s) => {
                 s.hash(state)
-            },
+            }
             RefValue::Object(map) => {
                 for (_, v) in map {
                     v.hash(state);
@@ -246,20 +254,61 @@ impl Into<RefValueWrapper> for RefValue {
     }
 }
 
+//impl Into<RefValue> for &RefValue {
+//    fn into(self) -> RefValue {
+//        match self {
+//            RefValue::Null => RefValue::Null,
+//            RefValue::Bool(b) => RefValue::Bool(*b),
+//            RefValue::String(s) => RefValue::String(s.to_string()),
+//            RefValue::Number(n) => {
+//                if n.is_f64() {
+//                    RefValue::Number(n.as_u64().unwrap().into())
+//                } else if n.is_i64() {
+//                    RefValue::Number(n.as_i64().unwrap().into())
+//                } else if n.is_u64() {
+//                    RefValue::Number(n.as_u64().unwrap().into())
+//                } else {
+//                    unreachable!()
+//                }
+//            }
+//            RefValue::Array(ay) => {
+//                let vec = ay.iter().map(|a| a.try_unwrap().into()).collect();
+//                RefValue::Array(vec)
+//            }
+//            RefValue::Object(map) => {
+//                let mut ret = IndexMap::new();
+//                for (k, v) in map {
+//                    ret.insert(k.to_string(), v.try_unwrap().into());
+//                }
+//                RefValue::Object(ret)
+//            }
+//        }
+//    }
+//}
+
 impl Into<RefValueWrapper> for &Value {
     fn into(self) -> RefValueWrapper {
-        RefValueConverter::new(&self)
+        match self.serialize(super::ser::Serializer) {
+            Ok(v) => v.into(),
+            Err(e) => panic!("Error Value into RefValue: {:?}", e)
+        }
     }
 }
 
 impl Into<Value> for RefValueWrapper {
     fn into(self) -> Value {
-        ValueConverter::new(&self)
+        match serde_json::to_value(self.deref()) {
+            Ok(v) => v,
+            Err(e) => panic!("Error RefValueWrapper into Value: {:?}", e)
+        }
     }
 }
 
 impl Into<Value> for &RefValueWrapper {
     fn into(self) -> Value {
-        ValueConverter::new(&self)
+        match serde_json::to_value(self.deref()) {
+            Ok(v) => v,
+            Err(e) => panic!("Error RefValueWrapper into Value: {:?}", e)
+        }
     }
 }

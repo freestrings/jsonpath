@@ -6,8 +6,8 @@ use serde_json::Value;
 
 use filter::term::*;
 use filter::value_wrapper::*;
-use parser::prelude::*;
 use ref_value::model::*;
+use parser::parser::{ParseToken, FilterToken, NodeVisitor};
 
 trait ArrayIndex {
     fn index(&self, v: &RefValueWrapper) -> usize;

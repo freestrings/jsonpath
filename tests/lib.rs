@@ -1,11 +1,13 @@
 extern crate env_logger;
 extern crate jsonpath_lib as jsonpath;
 extern crate log;
+extern crate serde;
 #[macro_use]
 extern crate serde_json;
 
 use std::io::Read;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 fn read_json(path: &str) -> Value {
@@ -88,4 +90,36 @@ fn select_str() {
         }]);
     let json: Value = serde_json::from_str(&result_str).unwrap();
     assert_eq!(json, ret);
+}
+
+#[test]
+fn test_to_struct() {
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct Person {
+        name: String,
+        age: u8,
+        phones: Vec<String>,
+    }
+
+    let ret: Person = jsonpath::select_as(r#"
+    {
+        "person":
+            {
+                "name": "Doe John",
+                "age": 44,
+                "phones": [
+                    "+44 1234567",
+                    "+44 2345678"
+                ]
+            }
+    }
+    "#, "$.person").unwrap();
+
+    let person = Person {
+        name: "Doe John".to_string(),
+        age: 44,
+        phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
+    };
+
+    assert_eq!(person, ret);
 }

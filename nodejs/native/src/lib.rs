@@ -4,7 +4,11 @@ extern crate neon;
 extern crate neon_serde;
 extern crate serde_json;
 
-use jsonpath::prelude::*;
+use std::ops::Deref;
+
+use jsonpath::filter::value_filter::JsonValueFilter;
+use jsonpath::parser::parser::{Node, NodeVisitor, Parser};
+use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
 use neon::prelude::*;
 use serde_json::Value;
 
@@ -70,7 +74,7 @@ declare_types! {
 
             let mut jf = JsonValueFilter::new_from_value(ref_value.into());
             jf.visit(node);
-            match serde_json::to_string(&jf.take_value()) {
+            match serde_json::to_string(&jf.take_value().deref()) {
                 Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
                 Err(e) => panic!("{:?}", e)
             }
@@ -107,7 +111,7 @@ declare_types! {
 
             let mut jf = JsonValueFilter::new_from_value(json);
             jf.visit(node);
-            match serde_json::to_string(&jf.take_value()) {
+            match serde_json::to_string(&jf.take_value().deref()) {
                 Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
                 Err(e) => panic!("{:?}", e)
             }
