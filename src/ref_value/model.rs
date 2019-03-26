@@ -254,38 +254,6 @@ impl Into<RefValueWrapper> for RefValue {
     }
 }
 
-//impl Into<RefValue> for &RefValue {
-//    fn into(self) -> RefValue {
-//        match self {
-//            RefValue::Null => RefValue::Null,
-//            RefValue::Bool(b) => RefValue::Bool(*b),
-//            RefValue::String(s) => RefValue::String(s.to_string()),
-//            RefValue::Number(n) => {
-//                if n.is_f64() {
-//                    RefValue::Number(n.as_u64().unwrap().into())
-//                } else if n.is_i64() {
-//                    RefValue::Number(n.as_i64().unwrap().into())
-//                } else if n.is_u64() {
-//                    RefValue::Number(n.as_u64().unwrap().into())
-//                } else {
-//                    unreachable!()
-//                }
-//            }
-//            RefValue::Array(ay) => {
-//                let vec = ay.iter().map(|a| a.try_unwrap().into()).collect();
-//                RefValue::Array(vec)
-//            }
-//            RefValue::Object(map) => {
-//                let mut ret = IndexMap::new();
-//                for (k, v) in map {
-//                    ret.insert(k.to_string(), v.try_unwrap().into());
-//                }
-//                RefValue::Object(ret)
-//            }
-//        }
-//    }
-//}
-
 impl Into<RefValueWrapper> for &Value {
     fn into(self) -> RefValueWrapper {
         match self.serialize(super::ser::Serializer) {
