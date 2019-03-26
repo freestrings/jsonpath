@@ -4,9 +4,9 @@
 ![crates.io](https://img.shields.io/crates/v/jsonpath_lib.svg)
 ![Crates.io](https://img.shields.io/crates/d/jsonpath_lib.svg)
 
-`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 역시 동일한 API 인터페이스를 제공 한다. 
+`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 역시 동일한 API 인터페이스를 제공 한다.
 
-It is an implementation of the `Rust` version [JsonPath] (https://goessner.net/articles/JsonPath/). `Webassembly` and` Javascript` also provide the same API interface.
+It is an implementation for [JsonPath](https://goessner.net/articles/JsonPath/) written in `Rust`. it provide the same API interface in `Webassembly` and` Javascript` also.
 
 - [Webassembly Demo](https://freestrings.github.io/jsonpath/)
 - [Rust documentation](https://docs.rs/jsonpath_lib/0.1.6/jsonpath_lib)
