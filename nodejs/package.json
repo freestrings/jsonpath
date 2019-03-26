@@ -1,10 +1,11 @@
 {
   "name": "jsonpath-rs",
-  "version": "0.1.0",
-  "description": "JsonPath engine for NodeJs with Rust native implementation.",
+  "version": "0.1.1",
+  "description": "It is native binding of JsonPath engine written in Rust",
   "author": "Changseok Han <freestrings@gmail.com>",
   "repository": "git+https://github.com/freestrings/jsonpath",
   "license": "MIT",
+  "keywords": ["jsonpath", "native", "rustlang", "json"],
   "main": "lib/index.js",
   "dependencies": {
     "neon-cli": "^0.2.0",
