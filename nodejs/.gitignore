@@ -4,3 +4,4 @@ native/artifacts.json
 **/*~
 **/node_modules
 .idea
+build

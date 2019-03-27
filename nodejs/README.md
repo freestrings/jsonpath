@@ -5,6 +5,16 @@
 
 It is [JsonPath](https://goessner.net/articles/JsonPath/) implementation. The core implementation is written in Rust-lang.
 
+## Install
+
+```bash
+# package.json
+"dependencies": {
+    "node-pre-gyp": "0.12.0",
+    "jsonpath-rs": "0.1"
+}
+```
+
 ## 목차
 
 * [jsonpath.select(json: string|object, jsonpath: string)](#json-stringobject-jsonpath-string)
