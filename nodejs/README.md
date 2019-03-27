@@ -1,6 +1,7 @@
 # jsonpath-rs
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
+![npm](https://img.shields.io/npm/dt/jsonpath-rs.svg?label=%60jsonpath-rs%60%20npm%20downloads)
 
 It is [JsonPath](https://goessner.net/articles/JsonPath/) implementation. The core implementation is written in Rust-lang.
 
