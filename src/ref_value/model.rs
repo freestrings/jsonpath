@@ -13,15 +13,6 @@ pub struct RefValueWrapper {
     data: TypeRefValue
 }
 
-impl RefValueWrapper {
-    pub fn try_unwrap(self) -> RefValue {
-        match Arc::try_unwrap(self.data) {
-            Ok(ref_value) => *ref_value,
-            Err(e) => panic!("{:?}", e)
-        }
-    }
-}
-
 impl Eq for RefValueWrapper {}
 
 impl Deref for RefValueWrapper {
