@@ -1,8 +1,3 @@
-os:
-  - osx
-  - linux
-  - windows
-
 language: rust
 sudo: false
 
@@ -16,6 +11,20 @@ branches:
 matrix:
   include:
     - rust: stable
+      os: linux
+      env: RUST_BACKTRACE=1
+      before_script:
+        - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
+        - (test -x $HOME/.cargo/bin/cargo-generate || cargo install --vers "^0.2" cargo-generate)
+        - cargo install-update -a
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+      script:
+        - cargo build --verbose --all
+        - cargo test --verbose --all
+        - cd wasm
+        - wasm-pack build
+    - rust: stable
+      os: osx
       env: RUST_BACKTRACE=1
       before_script:
         - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
@@ -28,6 +37,26 @@ matrix:
         - cd wasm
         - wasm-pack build
     - language: node_js
+      os: linux
+      node_js:
+        - 'node'
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - cd nodejs
+        - node -v
+        - npm -v
+        - npm install
+      script:
+        - npm test
+    - language: node_js
+      os: osx
       node_js:
         - 'node'
         - '11'

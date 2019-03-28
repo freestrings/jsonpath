@@ -1,9 +1,9 @@
 [package]
-name = "jsonpath-rs"
-version = "0.1.2"
+name = "jsonpath4nodejs"
+version = "0.1.0"
 authors = ["Changseok Han <freestrings@gmail.com>"]
-description = "JsonPath engine for NodeJs with Rust native implementation."
-keywords = ["library", "jsonpath", "json"]
+description = "jsonpath_lib bindings for nodejs"
+keywords = ["library", "jsonpath", "json", "nodejs"]
 repository = "https://github.com/freestrings/jsonpath"
 license = "MIT"
 
@@ -20,5 +20,5 @@ neon-serde = "0.1.1"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [lib]
-name = "jsonpath_rs"
+name = "jsonpath4nodejs"
 crate-type = ["dylib"]
