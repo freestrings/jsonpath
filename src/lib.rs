@@ -296,7 +296,7 @@ pub fn read(json: &Value, path: &str) -> result::Result<Value, String> {
     select(json, path)
 }
 
-/// # Deprecaed. use `into_str`
+/// # Deprecaed. use `select_as_str`
 pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
     select_as_str(json, path)
 }
@@ -329,7 +329,7 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
 ///
 /// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Serialize, Deserialize, PartialEq, Debug)]
+/// #[derive(Deserialize, PartialEq, Debug)]
 /// struct Person {
 ///     name: String,
 ///     age: u8,

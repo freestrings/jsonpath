@@ -6,7 +6,7 @@
   "license": "MIT",
   "keywords": [
     "jsonpath",
-    "native",
+    "rust-binding",
     "rust",
     "json"
   ],

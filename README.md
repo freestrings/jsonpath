@@ -1,4 +1,4 @@
-# jsonpath-lib
+# jsonpath_lib
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
 ![crates.io](https://img.shields.io/crates/v/jsonpath_lib.svg)
