@@ -158,7 +158,6 @@
 //!    assert_eq!(ret, json);
 //! ```
 
-extern crate env_logger;
 extern crate indexmap;
 #[macro_use]
 extern crate log;
@@ -263,7 +262,7 @@ pub fn selector(json: &Value) -> impl FnMut(&str) -> result::Result<Value, Strin
     }
 }
 
-/// # Deprecated. use `selector`
+#[deprecated(since = "0.1.4", note = "Please use the selector function instead")]
 pub fn reader(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String> {
     selector(json)
 }
@@ -291,12 +290,12 @@ pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
     Ok(jf.take_value().into())
 }
 
-/// # Deprecated. use `select`
+#[deprecated(since = "0.1.4", note = "Please use the select function instead")]
 pub fn read(json: &Value, path: &str) -> result::Result<Value, String> {
     select(json, path)
 }
 
-/// # Deprecaed. use `select_as_str`
+#[deprecated(since = "0.1.7", note = "Please use the select_as_str function instead")]
 pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
     select_as_str(json, path)
 }

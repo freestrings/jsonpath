@@ -80,7 +80,7 @@ fn select() {
 #[test]
 fn select_str() {
     let json_str = read_contents("./benches/example.json");
-    let result_str = jsonpath::select_str(&json_str, "$..book[2]").unwrap();
+    let result_str = jsonpath::select_as_str(&json_str, "$..book[2]").unwrap();
     let ret = json!([{
             "category" : "fiction",
             "author" : "Herman Melville",

@@ -57,7 +57,7 @@ fn bench_select_str(b: &mut Bencher) {
     let json = get_string();
     b.iter(move || {
         for _ in 1..100 {
-            let _ = jsonpath::select_str(&json, get_path()).unwrap();
+            let _ = jsonpath::select_as_str(&json, get_path()).unwrap();
         }
     });
 }
