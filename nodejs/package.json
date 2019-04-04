@@ -1,6 +1,6 @@
 {
   "name": "jsonpath-rs",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "It is JsonPath implementation. The core implementation is written in Rust",
   "author": "Changseok Han <freestrings@gmail.com>",
   "license": "MIT",
@@ -8,6 +8,7 @@
     "jsonpath",
     "rust-binding",
     "rust",
+    "rustlang",
     "json"
   ],
   "main": "lib/index.js",
@@ -15,7 +16,8 @@
     "neon-cli": "^0.2.0"
   },
   "scripts": {
-    "install": "./build.sh"
+    "install": "./build.sh",
+    "test": "mocha"
   },
   "devDependencies": {
     "mocha": "^6.0.2"
