@@ -11,11 +11,11 @@ It is an implementation for [JsonPath](https://goessner.net/articles/JsonPath/) 
 - [Webassembly Demo](https://freestrings.github.io/jsonpath/)
 - [Rust documentation](https://docs.rs/jsonpath_lib/0.1.6/jsonpath_lib)
 
-## 왜?
+## Why?
 
 To enjoy Rust!
 
-## 목차
+## API
 
 [With Javascript](#with-javascript)
 
@@ -25,16 +25,17 @@ To enjoy Rust!
 - [javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
 - [javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
 - [javascript - alloc_json, dealloc_json](#javascript---alloc_json-dealloc_json)
-- [javascript-wasm - examples](https://github.com/freestrings/jsonpath/wiki/javascript-wasm-examples)
+- [javascript-wasm - examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
 
 [With Rust (as library)](#with-rust-as-library)
 
 - [jsonpath_lib library](#jsonpath_lib-library)
 - [rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
 - [rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
-- [rust - jsonpath::select_as\<T\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_astjson-str-jsonpath-str)
+- [rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_ast-serdededeserializeownedjson-str-jsonpath-str)
 - [rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
 - [rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
+- [rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
 - [rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
 
 [With AWS API Gateway](#)
@@ -118,9 +119,9 @@ console.log(JSON.stringify(template(jsonObj2)) == ret2);
 // 2. read as json string
 console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == ret2);
 ```
-
+    
 ### javascript - jsonpath.selector(json: string|object)
-
+    
 ```javascript
 let jsonObj = {
     "school": {
@@ -145,14 +146,13 @@ console.log(JSON.stringify(selector("$..friends[1]")) == ret2);
 
 ### javascript - alloc_json, dealloc_json
 
-*(in `jsonpath-rs` not yet supported)*
+*(not supported in `jsonpath-rs`)*
 
 wasm-bindgen은 Javascript와 Webassembly 간 값을 주고받을 때 JSON 객체는 String으로 변환되기 때문에, 반복해서 사용되는 JSON 객체를 Webassembly 영역에 생성해 두면 성능에 도움이 된다.
 
 Since wasm-bindgen converts JSON objects to String when exchanging values between Javascript and Webassembly, it is helpful to create repeated Json objects in Webassembly area.
 
 ```javascript
-
 let jsonObj = {
     "school": {
         "friends": [{"id": 0}, {"id": 1}]
@@ -183,7 +183,6 @@ console.log(
     JSON.stringify(ret1) == JSON.stringify(ret6));// true
 
 jsonpath.dealloc_json(ptr);
-
 ```
 
 ## With Rust (as library)
@@ -201,34 +200,56 @@ extern crate serde_json;
 ```rust
 let json_obj = json!({
     "school": {
-        "friends": [{"id": 0}, {"id": 1}]
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
     },
-    "friends": [{"id": 0}, {"id": 1}]
-});
-let json = jsonpath::select(json_obj, "$..friends[0]").unwrap();
-let ret = json!([ {"id": 0}, {"id": 0} ]);
-assert_eq!(json, ret)
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
+
+let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
+
+let ret = json!([
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+]);
+assert_eq!(json, ret);
 ```
 
 ### rust - jsonpath::select_as_str(json: &str, jsonpath: &str)
 
 ```rust
-let ret = jsonpath::select_as_str(r#"{
-    "school": { "friends": [{"id": 0}, {"id": 1}] },
-    "friends": [{"id": 0}, {"id": 1}]
-}"#, "$..friends[0]").unwrap();
-assert_eq!(ret, r#"[{"id":0},{"id":0}]"#);
+let ret = jsonpath::select_as_str(r#"
+{
+    "school": {
+        "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
+}
+"#, "$..friends[0]").unwrap();
+
+assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 ```
 
-### rust - jsonpath::select_as\<T\>(json: &str, jsonpath: &str)
+### rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json: &str, jsonpath: &str)
 
 ```rust
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, PartialEq, Debug)]
 struct Person {
     name: String,
     age: u8,
     phones: Vec<String>,
 }
+
 let ret: Person = jsonpath::select_as(r#"
 {
     "person":
@@ -242,11 +263,13 @@ let ret: Person = jsonpath::select_as(r#"
         }
 }
 "#, "$.person").unwrap();
+
 let person = Person {
     name: "Doe John".to_string(),
     age: 44,
     phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
 };
+
 assert_eq!(person, ret);
 ```
 
@@ -257,44 +280,99 @@ let mut template = jsonpath::compile("$..friends[0]");
 
 let json_obj = json!({
     "school": {
-        "friends": [ {"id": 0}, {"id": 1} ]
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
     },
-    "friends": [ {"id": 0}, {"id": 1} ]
-});
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
 
 let json = template(&json_obj).unwrap();
-let ret = json!([ {"id": 0}, {"id": 0} ]);
-assert_eq!(json, ret);
 
-let json_obj = json!({
-    "school": {
-        "friends": [ {"name": "Millicent Norman"}, {"name": "Vincent Cannon"} ]
-    },
-    "friends": [ {"id": 0}, {"id": 1} ]
-});
+let ret = json!([
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+]);
 
-let json = template(json_obj).unwrap();
-let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
 assert_eq!(json, ret);
 ```
 
-### rust - jsonpath::selector(&json: serde_json::value::Value)
+### rust - jsonpath::selector(json: &serde_json::value::Value)
 
 ```rust
 let json_obj = json!({
     "school": {
-        "friends": [{"id": 0}, {"id": 1}]
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
     },
-    "friends": [{"id": 0},{"id": 1}]
-});
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
 
 let mut selector = jsonpath::selector(&json_obj);
 
 let json = selector("$..friends[0]").unwrap();
-let ret = json!([ {"id": 0}, {"id": 0} ]);
+
+let ret = json!([
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+]);
+
 assert_eq!(json, ret);
 
 let json = selector("$..friends[1]").unwrap();
-let ret = json!([ {"id": 1}, {"id": 1} ]);
+
+let ret = json!([
+    {"name": "친구4"},
+    {"name": "친구2", "age": 20}
+]);
+
+assert_eq!(json, ret);
+```
+
+### rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)
+
+```rust
+let json_obj = json!({
+    "school": {
+       "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct Friend {
+    name: String,
+    age: Option<u8>,
+}
+
+let mut selector = jsonpath::selector_as::<Vec<Friend>>(&json_obj);
+
+let json = selector("$..friends[0]").unwrap();
+
+let ret = vec!(
+    Friend { name: "친구3".to_string(), age: Some(30) },
+    Friend { name: "친구1".to_string(), age: Some(20) }
+);
+assert_eq!(json, ret);
+
+let json = selector("$..friends[1]").unwrap();
+
+let ret = vec!(
+    Friend { name: "친구4".to_string(), age: None },
+    Friend { name: "친구2".to_string(), age: Some(20) }
+);
+
 assert_eq!(json, ret);
 ```

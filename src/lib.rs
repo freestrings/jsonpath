@@ -158,6 +158,7 @@
 //!    assert_eq!(ret, json);
 //! ```
 
+extern crate env_logger;
 extern crate indexmap;
 #[macro_use]
 extern crate log;
@@ -165,6 +166,7 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 
+use std::error::Error;
 use std::ops::Deref;
 use std::result;
 
@@ -172,7 +174,7 @@ use serde_json::Value;
 
 use filter::value_filter::JsonValueFilter;
 use parser::parser::{NodeVisitor, Parser};
-use ref_value::model::{RefValue, RefValueWrapper};
+use ref_value::model::RefValueWrapper;
 
 #[doc(hidden)]
 pub mod parser;
@@ -181,7 +183,23 @@ pub mod filter;
 #[doc(hidden)]
 pub mod ref_value;
 
-/// # Compile a Jsonpath so it select a JsonObject immediately.
+fn query_from_str(json: &str, path: &str) -> result::Result<JsonValueFilter, String> {
+    let mut jf = JsonValueFilter::new(json)?;
+    let mut parser = Parser::new(path);
+    parser.parse(&mut jf)?;
+    Ok(jf)
+}
+
+fn query_from_json_wrapper(json_wrapper: RefValueWrapper, path: &str) -> result::Result<JsonValueFilter, String> {
+    let mut jf = JsonValueFilter::new_from_value(json_wrapper);
+    let mut parser = Parser::new(path);
+    parser.parse(&mut jf)?;
+    Ok(jf)
+}
+
+/// It is a highorder function that compile a JsonPath then returns a function.
+///
+/// this return function can be reused for different JsonObjects.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -189,28 +207,23 @@ pub mod ref_value;
 ///
 /// let mut template = jsonpath::compile("$..friends[0]");
 ///
-///
 /// let json_obj = json!({
 /// "school": {
-///    "friends": [ {"id": 0}, {"id": 1} ]
+///    "friends": [
+///         {"name": "친구1", "age": 20},
+///         {"name": "친구2", "age": 20}
+///     ]
 /// },
-/// "friends": [ {"id": 0}, {"id": 1} ]
-/// });
+/// "friends": [
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구4"}
+/// ]});
 ///
 /// let json = template(&json_obj).unwrap();
-/// let ret = json!([ {"id": 0}, {"id": 0} ]);
-/// assert_eq!(json, ret);
-///
-///
-/// let json_obj = json!({
-/// "school": {
-///    "friends": [ {"name": "Millicent Norman"}, {"name": "Vincent Cannon"} ]
-/// },
-/// "friends": [ {"id": 0}, {"id": 1} ]
-/// });
-///
-/// let json = template(&json_obj).unwrap();
-/// let ret = json!([ {"id": 0}, {"name": "Millicent Norman"} ]);
+/// let ret = json!([
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구1", "age": 20}
+/// ]);
 /// assert_eq!(json, ret);
 /// ```
 pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value, String> + 'a {
@@ -221,15 +234,16 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value,
             Ok(n) => {
                 let mut jf = JsonValueFilter::new_from_value(json.into());
                 jf.visit(n.clone());
-                Ok(jf.take_value().into())
+                Ok((&jf.take_value()).into())
             }
             Err(e) => Err(e.clone())
         }
     }
 }
 
-
-/// # Use multiple JsonPaths for one JsonObject.
+/// It returns highorder function that return a function.
+///
+/// this function has a jsonpath as argument and return a serde_json::value::Value. so you can use different JsonPath for one JsonObject.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -237,28 +251,90 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value,
 ///
 /// let json_obj = json!({
 /// "school": {
-///    "friends": [{"id": 0}, {"id": 1}]
+///    "friends": [
+///         {"name": "친구1", "age": 20},
+///         {"name": "친구2", "age": 20}
+///     ]
 /// },
-/// "friends": [{"id": 0},{"id": 1}]
-/// });
+/// "friends": [
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구4"}
+/// ]});
 ///
 /// let mut selector = jsonpath::selector(&json_obj);
 ///
 /// let json = selector("$..friends[0]").unwrap();
-/// let ret = json!([ {"id": 0}, {"id": 0} ]);
+/// let ret = json!([
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구1", "age": 20}
+/// ]);
 /// assert_eq!(json, ret);
 ///
 /// let json = selector("$..friends[1]").unwrap();
-/// let ret = json!([ {"id": 1}, {"id": 1} ]);
+/// let ret = json!([
+///     {"name": "친구4"},
+///     {"name": "친구2", "age": 20}
+/// ]);
 /// assert_eq!(json, ret);
 /// ```
 pub fn selector(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String> {
     let wrapper: RefValueWrapper = json.into();
     move |path: &str| {
-        let mut jf = JsonValueFilter::new_from_value(wrapper.clone());
-        let mut parser = Parser::new(path);
-        parser.parse(&mut jf)?;
-        Ok(jf.take_value().into())
+        let mut jf = query_from_json_wrapper(wrapper.clone(), path)?;
+        Ok((&jf.take_value()).into())
+    }
+}
+
+/// It returns highorder function that returns a function.
+///
+/// this function has a jsonpath as argument and return a serde::Deserialize. so you can use different JsonPath for one JsonObject.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// extern crate serde;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde::{Deserialize, Serialize};
+///
+/// let json_obj = json!({
+/// "school": {
+///    "friends": [
+///         {"name": "친구1", "age": 20},
+///         {"name": "친구2", "age": 20}
+///     ]
+/// },
+/// "friends": [
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구4"}
+/// ]});
+///
+/// #[derive(Serialize, Deserialize, PartialEq, Debug)]
+/// struct Friend {
+///     name: String,
+///     age: Option<u8>,
+/// }
+///
+/// let mut selector = jsonpath::selector_as::<Vec<Friend>>(&json_obj);
+///
+/// let json = selector("$..friends[0]").unwrap();
+/// let ret = vec!(
+///     Friend { name: "친구3".to_string(), age: Some(30) },
+///     Friend { name: "친구1".to_string(), age: Some(20) }
+/// );
+/// assert_eq!(json, ret);
+///
+/// let json = selector("$..friends[1]").unwrap();
+/// let ret = vec!(
+///     Friend { name: "친구4".to_string(), age: None },
+///     Friend { name: "친구2".to_string(), age: Some(20) }
+/// );
+/// assert_eq!(json, ret);
+/// ```
+pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&str) -> result::Result<T, String> {
+    let wrapper: RefValueWrapper = json.into();
+    move |path: &str| {
+        let mut jf = query_from_json_wrapper(wrapper.clone(), path)?;
+        T::deserialize(jf.take_value().deref()).map_err(|e| format!("{:?}", e))
     }
 }
 
@@ -267,7 +343,7 @@ pub fn reader(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String>
     selector(json)
 }
 
-/// # Select a JsonObject
+/// Select a JsonObject. it return a serde_json::value::Value.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -275,19 +351,27 @@ pub fn reader(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String>
 ///
 /// let json_obj = json!({
 /// "school": {
-///    "friends": [{"id": 0}, {"id": 1}]
+///    "friends": [
+///         {"name": "친구1", "age": 20},
+///         {"name": "친구2", "age": 20}
+///     ]
 /// },
-/// "friends": [{"id": 0}, {"id": 1}]
-/// });
+/// "friends": [
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구4"}
+/// ]});
+///
 /// let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
-/// let ret = json!([ {"id": 0}, {"id": 0} ]);
+///
+/// let ret = json!([
+///     {"name": "친구3", "age": 30},
+///     {"name": "친구1", "age": 20}
+/// ]);
 /// assert_eq!(json, ret);
 /// ```
 pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
-    let mut jf = JsonValueFilter::new_from_value(json.into());
-    let mut parser = Parser::new(path);
-    parser.parse(&mut jf)?;
-    Ok(jf.take_value().into())
+    let mut jf = query_from_json_wrapper(json.into(), path)?;
+    Ok((&jf.take_value()).into())
 }
 
 #[deprecated(since = "0.1.4", note = "Please use the select function instead")]
@@ -300,27 +384,36 @@ pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
     select_as_str(json, path)
 }
 
-/// # Return to json string
+/// Select a JsonObject. it return a JsonObject as String.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
-/// let ret = jsonpath::select_as_str(r#"{
-///     "school": { "friends": [{"id": 0}, {"id": 1}] },
-///     "friends": [{"id": 0}, {"id": 1}]
-/// }"#, "$..friends[0]").unwrap();
-/// assert_eq!(ret, r#"[{"id":0},{"id":0}]"#);
+/// let ret = jsonpath::select_as_str(r#"
+/// {
+///     "school": {
+///         "friends": [
+///                 {"name": "친구1", "age": 20},
+///                 {"name": "친구2", "age": 20}
+///             ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+///     ]
+/// }
+/// "#, "$..friends[0]").unwrap();
+///
+/// assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 /// ```
 pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
-    let ref_value: RefValue = serde_json::from_str(json).map_err(|e| format!("{:?}", e))?;
-    let mut jf = JsonValueFilter::new_from_value(ref_value.into());
-    let mut parser = Parser::new(path);
-    parser.parse(&mut jf)?;
-    serde_json::to_string(&jf.take_value().deref()).map_err(|e| format!("{:?}", e))
+    let mut jf = query_from_str(json, path)?;
+    serde_json::to_string(&jf.take_value().deref()).map_err(|e| e.description().to_string())
 }
 
-/// # Return to deserializeable.
+/// Select a JsonObject. it return a deserialized instance of type `T`
+///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// extern crate serde;
@@ -357,10 +450,7 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
 ///
 /// assert_eq!(person, ret);
 /// ```
-pub fn select_as<'a, T: serde::Deserialize<'a>>(json: &str, path: &str) -> result::Result<T, String> {
-    let ref_value: RefValue = serde_json::from_str(json).map_err(|e| format!("{:?}", e))?;
-    let mut jf = JsonValueFilter::new_from_value(ref_value.into());
-    let mut parser = Parser::new(path);
-    parser.parse(&mut jf)?;
-    T::deserialize(jf.take_value().deref()).map_err(|e| format!("{:?}", e))
+pub fn select_as<T: serde::de::DeserializeOwned>(json: &str, path: &str) -> result::Result<T, String> {
+    let mut jf = query_from_str(json, path)?;
+    T::deserialize(jf.take_value().deref()).map_err(|e| e.description().to_string())
 }

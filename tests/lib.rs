@@ -64,6 +64,33 @@ fn selector() {
 }
 
 #[test]
+fn selector_as() {
+    let json_obj = read_json("./benches/data_obj.json");
+    let mut selector = jsonpath::selector_as::<Vec<Friend>>(&json_obj);
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct Friend {
+        id: u8,
+        name: Option<String>,
+    }
+
+    let json = selector("$..friends[2]").unwrap();
+
+    let ret = vec!(
+        Friend { id: 2, name: Some("Gray Berry".to_string()) },
+        Friend { id: 2, name: Some("Gray Berry".to_string()) },
+    );
+    assert_eq!(json, ret);
+
+    let json = selector("$..friends[0]").unwrap();
+    let ret = vec!(
+        Friend { id: 0, name: None },
+        Friend { id: 0, name: Some("Millicent Norman".to_string()) },
+    );
+    assert_eq!(json, ret);
+}
+
+#[test]
 fn select() {
     let json_obj = read_json("./benches/example.json");
     let json = jsonpath::select(&json_obj, "$..book[2]").unwrap();

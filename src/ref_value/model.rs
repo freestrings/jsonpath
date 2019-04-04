@@ -254,15 +254,6 @@ impl Into<RefValueWrapper> for &Value {
     }
 }
 
-impl Into<Value> for RefValueWrapper {
-    fn into(self) -> Value {
-        match serde_json::to_value(self.deref()) {
-            Ok(v) => v,
-            Err(e) => panic!("Error RefValueWrapper into Value: {:?}", e)
-        }
-    }
-}
-
 impl Into<Value> for &RefValueWrapper {
     fn into(self) -> Value {
         match serde_json::to_value(self.deref()) {

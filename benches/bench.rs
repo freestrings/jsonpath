@@ -43,6 +43,17 @@ fn bench_selector(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_selector_as(b: &mut Bencher) {
+    let json = get_json();
+    let mut selector = jsonpath::selector_as::<Value>(&json);
+    b.iter(move || {
+        for _ in 1..100 {
+            let _ = selector(get_path()).unwrap();
+        }
+    });
+}
+
+#[bench]
 fn bench_select_val(b: &mut Bencher) {
     let json = get_json();
     b.iter(move || {
@@ -53,7 +64,7 @@ fn bench_select_val(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_select_str(b: &mut Bencher) {
+fn bench_select_as_str(b: &mut Bencher) {
     let json = get_string();
     b.iter(move || {
         for _ in 1..100 {
@@ -73,7 +84,6 @@ fn bench_compile(b: &mut Bencher) {
     });
 }
 
-
 #[bench]
 fn bench_select_as(b: &mut Bencher) {
     let json = get_string();
@@ -83,7 +93,7 @@ fn bench_select_as(b: &mut Bencher) {
         category: String,
         author: String,
         title: String,
-        price: f64
+        price: f64,
     }
 
     b.iter(move || {

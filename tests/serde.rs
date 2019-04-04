@@ -19,7 +19,7 @@ fn de() {
     let json_str = read_json("./benches/example.json");
     // RefValue -> Value
     let ref_value: RefValue = serde_json::from_str(json_str.as_str()).unwrap();
-    let value_wrapper: RefValueWrapper = ref_value.into();
+    let ref value_wrapper: RefValueWrapper = ref_value.into();
     let value: Value = value_wrapper.into();
 
     // Value

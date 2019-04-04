@@ -277,9 +277,9 @@ pub struct JsonValueFilter {
 
 impl JsonValueFilter {
     pub fn new(json: &str) -> Result<Self, String> {
-        let json: Value = serde_json::from_str(json)
+        let json: RefValue = serde_json::from_str(json)
             .map_err(|e| e.description().to_string())?;
-        Ok(JsonValueFilter::new_from_value((&json).into()))
+        Ok(JsonValueFilter::new_from_value(json .into()))
     }
 
     pub fn new_from_value(json: RefValueWrapper) -> Self {
