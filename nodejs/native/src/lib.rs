@@ -29,7 +29,7 @@ fn select(mut ctx: FunctionContext) -> JsResult<JsValue> {
 fn select_str(mut ctx: FunctionContext) -> JsResult<JsValue> {
     let json_val = ctx.argument::<JsString>(0)?.value();
     let path = ctx.argument::<JsString>(1)?.value();
-    match jsonpath::select_str(&json_val, path.as_str()) {
+    match jsonpath::select_as_str(&json_val, path.as_str()) {
         Ok(value) => Ok(JsString::new(&mut ctx, &value).upcast()),
         Err(e) => panic!("{:?}", e)
     }

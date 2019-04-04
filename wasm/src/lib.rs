@@ -32,7 +32,7 @@ cfg_if! {
 fn filter_ref_value(json: RefValueWrapper, node: Node) -> JsValue {
     let mut jf = JsonValueFilter::new_from_value(json);
     jf.visit(node);
-    let taken: Value = jf.take_value().into();
+    let taken: Value = (&jf.take_value()).into();
     match JsValue::from_serde(&taken) {
         Ok(js_value) => js_value,
         Err(e) => JsValue::from_str(&format!("Json deserialize error: {:?}", e))
