@@ -24,56 +24,92 @@ Build from source instead of using pre-built binary, and if Rust is not installe
 
 ```javascript
 let jsonObj = {
-   "school": {
-       "friends": [{"id": 0}, {"id": 1}]
-   },
-   "friends": [{"id": 0}, {"id": 1}]
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
 };
-let ret = [{"id": 0}, {"id": 0}];
 
-let a = jsonpath.select(JSON.stringify(jsonObj), "$..friends[0]");
-let b = jsonpath.select(jsonObj, "$..friends[0]");
+let ret = [
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+];
+
+
+let selectAsString = jsonpath.select(JSON.stringify(jsonObj), '$..friends[0]');
+let selectAsObj = jsonpath.select(jsonObj, '$..friends[0]');
+
 console.log(
-    JSON.stringify(ret) == JSON.stringify(a),
-    JSON.stringify(a) == JSON.stringify(b)
+    JSON.stringify(ret) == JSON.stringify(selectAsString),
+    JSON.stringify(ret) == JSON.stringify(selectAsObj)
 );
+
+// => true, true
 ```
 
 ### jsonpath.compile(jsonpath: string)
 
 ```javascript
-let template = jsonpath.compile("$..friends[0]");
+let template = jsonpath.compile('$..friends[0]');
 
 let jsonObj = {
     "school": {
-        "friends": [ {"id": 0}, {"id": 1} ]
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
     },
-    "friends": [ {"id": 0}, {"id": 1} ]
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
 };
 
-let ret = JSON.stringify([ {"id": 0}, {"id": 0} ]);
+let ret = [
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+];
 
-// 1. read as json object
-console.log(JSON.stringify(template(jsonObj)) == ret);
-// 2. read as json string
-console.log(JSON.stringify(template(JSON.stringify(jsonObj))) == ret);
+let selectAsString = template(JSON.stringify(jsonObj));
+let selectAsObj = template(jsonObj);
+
+console.log(
+    JSON.stringify(ret) == JSON.stringify(selectAsString),
+    JSON.stringify(ret) == JSON.stringify(selectAsObj)
+);
+
+// => true, true
 
 let jsonObj2 = {
     "school": {
-        "friends": [ 
-            {"name": "Millicent Norman"}, 
-            {"name": "Vincent Cannon"} 
+        "friends": [
+            {"name": "Millicent Norman"},
+            {"name": "Vincent Cannon"}
         ]
     },
-    "friends": [ {"id": 0}, {"id": 1} ]
+    "friends": [ {"age": 30}, {"age": 40} ]
 };
 
-let ret2 = JSON.stringify([ {"id": 0}, {"name": "Millicent Norman"} ]);
+let ret2 = [
+    {"age": 30},
+    {"name": "Millicent Norman"}
+];
 
-// 1. read as json object
-console.log(JSON.stringify(template(jsonObj2)) == ret2);
-// 2. read as json string
-console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == ret2);
+let selectAsString2 = template(JSON.stringify(jsonObj2));
+let selectAsObj2 = template(jsonObj2);
+
+console.log(
+        JSON.stringify(ret2) == JSON.stringify(selectAsString2),
+        JSON.stringify(ret2) == JSON.stringify(selectAsObj2)
+);
+
+// => true, true
 ```
 
 ### jsonpath.selector(json: string|object)
@@ -81,21 +117,38 @@ console.log(JSON.stringify(template(JSON.stringify(jsonObj2))) == ret2);
 ```javascript
 let jsonObj = {
     "school": {
-        "friends": [{"id": 0}, {"id": 1}]
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
     },
-    "friends": [{"id": 0},{"id": 1}]
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
 };
 
-let ret1 = JSON.stringify([ {"id": 0}, {"id": 0} ]);
-let ret2 = JSON.stringify([ {"id": 1}, {"id": 1} ]);
+let ret1 = [
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+];
 
-// 1. read as json object
+let ret2 = [
+    {"name": "친구4"},
+    {"name": "친구2", "age": 20}
+];
+
 let selector = jsonpath.selector(jsonObj);
-console.log(JSON.stringify(selector("$..friends[0]")) == ret1);
-console.log(JSON.stringify(selector("$..friends[1]")) == ret2);
+// or as json string 
+// let selector = jsonpath.selector(JSON.stringify(jsonObj));
 
-// 2. read as json string
-let selector = jsonpath.selector(JSON.stringify(jsonObj));
-console.log(JSON.stringify(selector("$..friends[0]")) == ret1);
-console.log(JSON.stringify(selector("$..friends[1]")) == ret2);
+let select1 = selector('$..friends[0]');
+let select2 = selector('$..friends[1]');
+
+console.log(
+    JSON.stringify(ret1) == JSON.stringify(select1),
+    JSON.stringify(ret2) == JSON.stringify(select2)
+);
+
+// => true, true
 ```
