@@ -245,6 +245,15 @@ impl Into<RefValueWrapper> for RefValue {
     }
 }
 
+impl Into<RefValue> for &Value {
+    fn into(self) -> RefValue {
+        match self.serialize(super::ser::Serializer) {
+            Ok(v) => v,
+            Err(e) => panic!("Error Value into RefValue: {:?}", e)
+        }
+    }
+}
+
 impl Into<RefValueWrapper> for &Value {
     fn into(self) -> RefValueWrapper {
         match self.serialize(super::ser::Serializer) {

@@ -36,7 +36,7 @@ function initEvent() {
     }
 
     function read() {
-        let ret = jsonpath.read(getTextarea().value, getJsonpathInput().value);
+        let ret = jsonpath.select(getTextarea().value, getJsonpathInput().value);
         if(typeof ret === 'string') {
             getReadResult().innerText = ret;
         } else {

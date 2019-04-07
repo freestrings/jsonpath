@@ -120,14 +120,6 @@ pub fn compile(path: &str) -> JsValue {
     ret
 }
 
-///
-/// deprecated. use selector
-///
-#[wasm_bindgen]
-pub fn reader(js_value: JsValue) -> JsValue {
-    selector(js_value)
-}
-
 #[wasm_bindgen]
 pub fn selector(js_value: JsValue) -> JsValue {
     let json = match js_value.as_f64() {
@@ -165,14 +157,6 @@ pub fn select(js_value: JsValue, path: &str) -> JsValue {
         Ok(node) => get_ref_value(js_value, node),
         Err(e) => return JsValue::from_str(e.as_str())
     }
-}
-
-///
-/// deprecated. use select
-///
-#[wasm_bindgen]
-pub fn read(js_value: JsValue, path: &str) -> JsValue {
-    select(js_value, path)
 }
 
 #[wasm_bindgen]

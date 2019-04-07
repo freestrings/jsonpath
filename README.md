@@ -39,8 +39,6 @@ To enjoy Rust!
 - [rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
 - [rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
 
-[With AWS API Gateway](#)
-
 [Simple time check - webassembly](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck---jsonpath-wasm)
 
 [Simple time check - native addon for NodeJs](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck-jsonpath-native)

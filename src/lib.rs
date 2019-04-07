@@ -158,6 +158,7 @@
 //!    assert_eq!(ret, json);
 //! ```
 
+extern crate core;
 extern crate env_logger;
 extern crate indexmap;
 #[macro_use]
@@ -166,15 +167,10 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 
-use std::error::Error;
-use std::ops::Deref;
+use core::borrow::BorrowMut;
 use std::result;
 
 use serde_json::Value;
-
-use filter::value_filter::JsonValueFilter;
-use parser::parser::{NodeVisitor, Parser};
-use ref_value::model::RefValueWrapper;
 
 #[doc(hidden)]
 pub mod parser;
@@ -182,20 +178,10 @@ pub mod parser;
 pub mod filter;
 #[doc(hidden)]
 pub mod ref_value;
+#[doc(hidden)]
+pub mod select;
 
-fn query_from_str(json: &str, path: &str) -> result::Result<JsonValueFilter, String> {
-    let mut jf = JsonValueFilter::new(json)?;
-    let mut parser = Parser::new(path);
-    parser.parse(&mut jf)?;
-    Ok(jf)
-}
-
-fn query_from_json_wrapper(json_wrapper: RefValueWrapper, path: &str) -> result::Result<JsonValueFilter, String> {
-    let mut jf = JsonValueFilter::new_from_value(json_wrapper);
-    let mut parser = Parser::new(path);
-    parser.parse(&mut jf)?;
-    Ok(jf)
-}
+pub use select::Selector;
 
 /// It is a highorder function that compile a JsonPath then returns a function.
 ///
@@ -227,17 +213,13 @@ fn query_from_json_wrapper(json_wrapper: RefValueWrapper, path: &str) -> result:
 /// assert_eq!(json, ret);
 /// ```
 pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value, String> + 'a {
-    let mut parser = Parser::new(path);
-    let node = parser.compile();
+    let mut selector = select::Selector::new();
+    let _ = selector.path(path);
+    let mut selector = Box::new(selector);
     move |json| {
-        match &node {
-            Ok(n) => {
-                let mut jf = JsonValueFilter::new_from_value(json.into());
-                jf.visit(n.clone());
-                Ok((&jf.take_value()).into())
-            }
-            Err(e) => Err(e.clone())
-        }
+        let s: &mut select::Selector = selector.borrow_mut();
+        let _ = s.value(json.into());
+        s.select_to_value()
     }
 }
 
@@ -277,11 +259,13 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value,
 /// ]);
 /// assert_eq!(json, ret);
 /// ```
-pub fn selector(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String> {
-    let wrapper: RefValueWrapper = json.into();
-    move |path: &str| {
-        let mut jf = query_from_json_wrapper(wrapper.clone(), path)?;
-        Ok((&jf.take_value()).into())
+pub fn selector<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, String> {
+    let mut selector = select::Selector::new();
+    let _ = selector.value(json.into());
+    let mut selector = Box::new(selector);
+    move |path: &'a str| {
+        let s: &mut select::Selector = selector.borrow_mut();
+        s.path(path)?.select_to_value()
     }
 }
 
@@ -331,15 +315,15 @@ pub fn selector(json: &Value) -> impl FnMut(&str) -> result::Result<Value, Strin
 /// assert_eq!(json, ret);
 /// ```
 pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&str) -> result::Result<T, String> {
-    let wrapper: RefValueWrapper = json.into();
+    let mut selector = select::Selector::new();
+    let _ = selector.value(json.into());
     move |path: &str| {
-        let mut jf = query_from_json_wrapper(wrapper.clone(), path)?;
-        T::deserialize(jf.take_value().deref()).map_err(|e| format!("{:?}", e))
+        selector.path(path)?.select_to()
     }
 }
 
 #[deprecated(since = "0.1.4", note = "Please use the selector function instead")]
-pub fn reader(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String> {
+pub fn reader<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, String> {
     selector(json)
 }
 
@@ -370,8 +354,8 @@ pub fn reader(json: &Value) -> impl FnMut(&str) -> result::Result<Value, String>
 /// assert_eq!(json, ret);
 /// ```
 pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
-    let mut jf = query_from_json_wrapper(json.into(), path)?;
-    Ok((&jf.take_value()).into())
+    let mut selector = select::Selector::new();
+    selector.path(path)?.value(json.into())?.select_to_value()
 }
 
 #[deprecated(since = "0.1.4", note = "Please use the select function instead")]
@@ -408,8 +392,10 @@ pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
 /// assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 /// ```
 pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
-    let mut jf = query_from_str(json, path)?;
-    serde_json::to_string(&jf.take_value().deref()).map_err(|e| e.description().to_string())
+    select::Selector::new()
+        .path(path)?
+        .value_from_str(json)?
+        .select_to_str()
 }
 
 /// Select a JsonObject. it return a deserialized instance of type `T`
@@ -451,6 +437,8 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
 /// assert_eq!(person, ret);
 /// ```
 pub fn select_as<T: serde::de::DeserializeOwned>(json: &str, path: &str) -> result::Result<T, String> {
-    let mut jf = query_from_str(json, path)?;
-    T::deserialize(jf.take_value().deref()).map_err(|e| e.description().to_string())
+    select::Selector::new()
+        .path(path)?
+        .value_from_str(json)?
+        .select_to()
 }
