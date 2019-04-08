@@ -6,8 +6,8 @@ use serde_json::Value;
 
 use filter::term::*;
 use filter::value_wrapper::*;
+use parser::parser::{FilterToken, NodeVisitor, ParseToken};
 use ref_value::model::*;
-use parser::parser::{ParseToken, FilterToken, NodeVisitor};
 
 trait ArrayIndex {
     fn index(&self, v: &RefValueWrapper) -> usize;
@@ -56,14 +56,14 @@ pub enum ValueFilterKey {
 
 #[derive(Debug)]
 pub struct ValueFilter {
-    vw: ValueWrapper,
+    val_wrapper: ValueWrapper,
     last_key: Option<ValueFilterKey>,
     filter_mode: bool,
 }
 
 impl ValueFilter {
     pub fn new(v: RefValueWrapper, is_leaves: bool, filter_mode: bool) -> Self {
-        ValueFilter { vw: ValueWrapper::new(v, is_leaves), last_key: None, filter_mode }
+        ValueFilter { val_wrapper: ValueWrapper::new(v, is_leaves), last_key: None, filter_mode }
     }
 
     fn iter_to_value_vec<'a, I: Iterator<Item=&'a RefValueWrapper>>(iter: I) -> Vec<RefValueWrapper> {
@@ -130,11 +130,11 @@ impl ValueFilter {
     pub fn step_leaves_all(&mut self) -> &ValueWrapper {
         debug!("step_leaves_all");
         let mut buf = Vec::new();
-        Self::collect_all(None, &self.vw.get_val(), &mut buf);
+        Self::collect_all(None, &self.val_wrapper.get_val(), &mut buf);
         trace!("step_leaves_all - {:?}", buf);
         self.last_key = Some(ValueFilterKey::All);
-        self.vw = ValueWrapper::new(RefValue::Array(buf).into(), true);
-        &self.vw
+        self.val_wrapper = ValueWrapper::new(RefValue::Array(buf).into(), true);
+        &self.val_wrapper
     }
 
     pub fn step_leaves_str(&mut self, key: &str) -> &ValueWrapper {
@@ -144,17 +144,17 @@ impl ValueFilter {
     pub fn step_leaves_string(&mut self, key: &String) -> &ValueWrapper {
         debug!("step_leaves_string");
         let mut buf = Vec::new();
-        Self::collect_all(Some(key), &self.vw.get_val(), &mut buf);
+        Self::collect_all(Some(key), &self.val_wrapper.get_val(), &mut buf);
         trace!("step_leaves_string - {:?}", buf);
         self.last_key = Some(ValueFilterKey::String(key.clone()));
-        self.vw = ValueWrapper::new(RefValue::Array(buf).into(), true);
-        &self.vw
+        self.val_wrapper = ValueWrapper::new(RefValue::Array(buf).into(), true);
+        &self.val_wrapper
     }
 
     pub fn step_in_all(&mut self) -> &ValueWrapper {
         debug!("step_in_all");
 
-        let vec = match self.vw.get_val().deref() {
+        let vec = match self.val_wrapper.get_val().deref() {
             RefValue::Object(ref map) => {
                 Self::iter_to_value_vec(map.values())
             }
@@ -162,25 +162,25 @@ impl ValueFilter {
                 Self::iter_to_value_vec(list.iter())
             }
             RefValue::Null => Vec::new(),
-            _ => vec![self.vw.get_val().clone()]
+            _ => vec![self.val_wrapper.get_val().clone()]
         };
 
         self.last_key = Some(ValueFilterKey::All);
-        self.vw.replace(RefValue::Array(vec).into());
-        trace!("step_in_all - {:?}", self.vw.get_val());
-        &self.vw
+        self.val_wrapper.replace(RefValue::Array(vec).into());
+        trace!("step_in_all - {:?}", self.val_wrapper.get_val());
+        &self.val_wrapper
     }
 
     pub fn step_in_num(&mut self, key: &f64) -> &ValueWrapper {
         debug!("step_in_num");
         trace!("step_in_num - before: leaves {}, filterMode {} - {:?}"
-               , self.vw.is_leaves()
+               , self.val_wrapper.is_leaves()
                , self.filter_mode
-               , self.vw.get_val());
+               , self.val_wrapper.get_val());
 
-        let v = if self.vw.is_leaves() {
+        let v = if self.val_wrapper.is_leaves() {
             let filter_mode = self.filter_mode;
-            match self.vw.get_val().deref() {
+            match self.val_wrapper.get_val().deref() {
                 RefValue::Array(ref vec) => {
                     let mut ret = Vec::new();
                     for v in vec {
@@ -191,16 +191,16 @@ impl ValueFilter {
                     }
                     RefValue::Array(ret).into()
                 }
-                _ => key.take_value(&self.vw.get_val())
+                _ => key.take_value(&self.val_wrapper.get_val())
             }
         } else {
-            key.take_value(&self.vw.get_val())
+            key.take_value(&self.val_wrapper.get_val())
         };
 
         self.last_key = Some(ValueFilterKey::Num(key.index(&v)));
-        self.vw.replace(v);
-        trace!("step_in_num - after: {:?}", self.vw.get_val());
-        &self.vw
+        self.val_wrapper.replace(v);
+        trace!("step_in_num - after: {:?}", self.val_wrapper.get_val());
+        &self.val_wrapper
     }
 
     pub fn step_in_str(&mut self, key: &str) -> &ValueWrapper {
@@ -210,13 +210,13 @@ impl ValueFilter {
     pub fn step_in_string(&mut self, key: &String) -> &ValueWrapper {
         debug!("step_in_string");
         trace!("step_in_string - before: {},{},{:?}"
-               , self.vw.is_leaves()
+               , self.val_wrapper.is_leaves()
                , self.filter_mode
-               , self.vw.get_val());
+               , self.val_wrapper.get_val());
 
         let filter_mode = self.filter_mode;
-        let is_leaves = self.vw.is_leaves();
-        let val = match self.vw.get_val().deref() {
+        let is_leaves = self.val_wrapper.is_leaves();
+        let val = match self.val_wrapper.get_val().deref() {
             RefValue::Array(ref vec) if is_leaves => {
                 let mut buf = Vec::new();
                 for mut v in vec {
@@ -230,6 +230,11 @@ impl ValueFilter {
                             }
                         }
                         buf.append(&mut ret);
+                    } else if v.is_object() {
+                        let nested_wrapper = Self::get_nested_object(v, key, filter_mode);
+                        if !nested_wrapper.is_null() {
+                            buf.push(nested_wrapper.clone());
+                        }
                     } else {
                         match v.get(key.clone()) {
                             Some(v) => buf.push(v.clone()),
@@ -251,7 +256,7 @@ impl ValueFilter {
                 RefValue::Array(ret).into()
             }
             _ => {
-                match self.vw.get_val().get(key.clone()) {
+                match self.val_wrapper.get_val().get(key.clone()) {
                     Some(v) => v.clone(),
                     _ => RefValue::Null.into()
                 }
@@ -259,12 +264,12 @@ impl ValueFilter {
         };
 
         self.last_key = Some(ValueFilterKey::String(key.clone()));
-        self.vw.replace(val);
+        self.val_wrapper.replace(val);
         trace!("step_in_string - after: {},{},{:?}"
-               , self.vw.is_leaves()
+               , self.val_wrapper.is_leaves()
                , self.filter_mode
-               , self.vw.get_val());
-        &self.vw
+               , self.val_wrapper.get_val());
+        &self.val_wrapper
     }
 }
 
@@ -279,7 +284,7 @@ impl JsonValueFilter {
     pub fn new(json: &str) -> Result<Self, String> {
         let json: RefValue = serde_json::from_str(json)
             .map_err(|e| e.description().to_string())?;
-        Ok(JsonValueFilter::new_from_value(json .into()))
+        Ok(JsonValueFilter::new_from_value(json.into()))
     }
 
     pub fn new_from_value(json: RefValueWrapper) -> Self {
@@ -303,7 +308,7 @@ impl JsonValueFilter {
         if from_current {
             self.filter_stack.last()
                 .map(|vf| {
-                    ValueFilter::new(vf.vw.get_val().clone(), vf.vw.is_leaves(), from_current)
+                    ValueFilter::new(vf.val_wrapper.get_val().clone(), vf.val_wrapper.is_leaves(), from_current)
                 })
                 .and_then(|vf| {
                     Some(self.filter_stack.push(vf))
@@ -321,13 +326,13 @@ impl JsonValueFilter {
         } else {
             match self.filter_stack.last_mut() {
                 Some(vf) => {
-                    vf.vw.set_leaves(is_leaves);
+                    vf.val_wrapper.set_leaves(is_leaves);
                     if v.is_null() {
-                        vf.vw.replace(v);
+                        vf.val_wrapper.replace(v);
                     } else if v.is_array() && v.as_array().unwrap().is_empty() {
-                        vf.vw.replace(RefValue::Null.into());
-                    } else if vf.vw.is_array() {
-                        vf.vw.replace(v);
+                        vf.val_wrapper.replace(RefValue::Null.into());
+                    } else if vf.val_wrapper.is_array() {
+                        vf.val_wrapper.replace(v);
                     }
                 }
                 _ => {}
@@ -337,14 +342,14 @@ impl JsonValueFilter {
 
     pub fn into_value(&self) -> Value {
         match self.filter_stack.last() {
-            Some(v) => v.vw.into_value(),
+            Some(v) => v.val_wrapper.into_value(),
             _ => Value::Null
         }
     }
 
     pub fn take_value(&mut self) -> RefValueWrapper {
         match self.filter_stack.last_mut() {
-            Some(v) => v.vw.get_val().clone(),
+            Some(v) => v.val_wrapper.get_val().clone(),
             _ => RefValue::Null.into()
         }
     }
@@ -353,9 +358,9 @@ impl JsonValueFilter {
         self.token_stack.pop();
 
         match self.filter_stack.last_mut() {
-            Some(ref mut vf) if vf.vw.is_array() && vf.vw.is_leaves() => {
+            Some(ref mut vf) if vf.val_wrapper.is_array() && vf.val_wrapper.is_leaves() => {
                 let mut ret = Vec::new();
-                if let RefValue::Array(val) = vf.vw.get_val().deref() {
+                if let RefValue::Array(val) = vf.val_wrapper.get_val().deref() {
                     for mut v in val {
                         for i in &indices {
                             let v = i.take_value(v);
@@ -365,17 +370,17 @@ impl JsonValueFilter {
                         }
                     }
                 }
-                vf.vw.replace(RefValue::Array(ret).into());
+                vf.val_wrapper.replace(RefValue::Array(ret).into());
             }
-            Some(ref mut vf) if vf.vw.is_array() && !vf.vw.is_leaves() => {
+            Some(ref mut vf) if vf.val_wrapper.is_array() && !vf.val_wrapper.is_leaves() => {
                 let mut ret = Vec::new();
                 for i in indices {
-                    let wrapper = i.take_value(&vf.vw.get_val());
+                    let wrapper = i.take_value(&vf.val_wrapper.get_val());
                     if !wrapper.is_null() {
                         ret.push(wrapper.clone());
                     }
                 }
-                vf.vw.replace(RefValue::Array(ret).into());
+                vf.val_wrapper.replace(RefValue::Array(ret).into());
             }
             _ => {}
         }
@@ -413,21 +418,21 @@ impl JsonValueFilter {
         }
 
         match self.filter_stack.last_mut() {
-            Some(ref mut vf) if vf.vw.is_array() && vf.vw.is_leaves() => {
+            Some(ref mut vf) if vf.val_wrapper.is_array() && vf.val_wrapper.is_leaves() => {
                 let mut buf = Vec::new();
-                if let RefValue::Array(vec) = vf.vw.get_val().deref() {
+                if let RefValue::Array(vec) = vf.val_wrapper.get_val().deref() {
                     for mut v in vec {
                         let (from, to) = _from_to(from, to, v);
                         let mut v: Vec<RefValueWrapper> = _range(from, to, v);
                         buf.append(&mut v);
                     }
                 }
-                vf.vw.replace(RefValue::Array(buf).into());
+                vf.val_wrapper.replace(RefValue::Array(buf).into());
             }
-            Some(ref mut vf) if vf.vw.is_array() && !vf.vw.is_leaves() => {
-                let (from, to) = _from_to(from, to, &vf.vw.get_val());
-                let vec: Vec<RefValueWrapper> = _range(from, to, vf.vw.get_val());
-                vf.vw.replace(RefValue::Array(vec).into());
+            Some(ref mut vf) if vf.val_wrapper.is_array() && !vf.val_wrapper.is_leaves() => {
+                let (from, to) = _from_to(from, to, &vf.val_wrapper.get_val());
+                let vec: Vec<RefValueWrapper> = _range(from, to, vf.val_wrapper.get_val());
+                vf.val_wrapper.replace(RefValue::Array(vec).into());
             }
             _ => {}
         }
@@ -491,13 +496,13 @@ impl JsonValueFilter {
             _ => {
                 match self.filter_stack.pop() {
                     Some(mut vf) => {
-                        let is_leaves = vf.vw.is_leaves();
-                        match vf.vw.get_val().deref() {
+                        let is_leaves = vf.val_wrapper.is_leaves();
+                        match vf.val_wrapper.get_val().deref() {
                             RefValue::Null | RefValue::Bool(false) => {
                                 self.replace_filter_stack(RefValue::Null.into(), is_leaves);
                             }
                             _ => {
-                                self.replace_filter_stack(vf.vw.get_val().clone(), is_leaves);
+                                self.replace_filter_stack(vf.val_wrapper.get_val().clone(), is_leaves);
                             }
                         }
                     }
@@ -548,8 +553,13 @@ impl NodeVisitor for JsonValueFilter {
                 self.push_value_filter(ParseToken::Relative == token);
             }
             ParseToken::In
-            | ParseToken::Leaves
-            | ParseToken::Array => {
+            | ParseToken::Leaves => {
+                self.token_stack.push(token);
+            }
+            ParseToken::Array => {
+                if let Some(ParseToken::Leaves) = self.token_stack.last() {
+                    self.token_all();
+                }
                 self.token_stack.push(token);
             }
             ParseToken::ArrayEof => {
@@ -593,7 +603,7 @@ impl NodeVisitor for JsonValueFilter {
         if self.token_stack.is_empty() && self.filter_stack.len() > 1 {
             match self.filter_stack.pop() {
                 Some(vf) => {
-                    self.term_stack.push(TermContext::Json(vf.last_key, vf.vw));
+                    self.term_stack.push(TermContext::Json(vf.last_key, vf.val_wrapper));
                 }
                 _ => {}
             }

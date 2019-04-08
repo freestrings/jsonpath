@@ -201,6 +201,18 @@ fn op_default() {
     let jf = do_filter("$..book[?( (@.price == 12.99 || @.category == 'reference') && @.price > 10)].price", "./benches/example.json");
     let friends = json!([12.99]);
     assert_eq!(friends, jf.into_value());
+
+    let ref value = json!([
+        { "name": "이름1", "age": 40, "phone": "+33 12341234" },
+        { "name": "이름2", "age": 42, "phone": "++44 12341234" }
+    ]);
+    let mut jf = JsonValueFilter::new_from_value(value.into());
+    let mut parser = Parser::new("$..[?(@.age > 40)]");
+    parser.parse(&mut jf).unwrap();
+    let friends = json!([
+       { "name" : "이름2", "age" : 42, "phone" : "++44 12341234" }
+    ]);
+    assert_eq!(friends, jf.into_value());
 }
 
 #[test]
