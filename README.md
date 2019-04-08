@@ -31,6 +31,7 @@ To enjoy Rust!
 [With Rust (as library)](#with-rust-as-library)
 
 - [jsonpath_lib library](#jsonpath_lib-library)
+- [rust - jsonpath::Selector struct](#rust---jsonpathselector-struct)
 - [rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
 - [rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
 - [rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_ast-serdededeserializeownedjson-str-jsonpath-str)
@@ -263,6 +264,45 @@ jsonpath.dealloc_json(ptr);
 extern crate jsonpath_lib as jsonpath;
 #[macro_use]
 extern crate serde_json;
+```
+
+### rust - jsonpath::Selector struct
+
+```rust
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct Friend {
+    name: String,
+    age: Option<u8>,
+}
+
+let json_obj = json!({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
+
+let mut selector = Selector::new();
+
+let result = selector
+    .path("$..[?(@.age >= 30)]").unwrap()
+//    .value_from_str(&serde_json::to_string(&json_obj).unwrap() /*&str*/).unwrap()
+//    .value_from(&json_obj /*&impl serde::ser::Serialize*/).unwrap()
+    .value((&json_obj /*serde_json::value::Value*/ ).into()).unwrap()
+    .select_to_value().unwrap();
+
+assert_eq!(json!([{"name": "친구3", "age": 30}]), result);
+
+let result = selector.select_to_str().unwrap();
+assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
+
+let result = selector.select_to::<Vec<Friend>>().unwrap();
+assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
 ```
 
 ### rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)

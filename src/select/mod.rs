@@ -7,43 +7,73 @@ use super::filter::value_filter::*;
 use super::parser::parser::*;
 use super::ref_value::model::*;
 
-/// Utility structure. Functions like jsonpath :: selector or jsonpath :: compile are also implemented using this structure.
+/// Utility. Functions like jsonpath::selector or jsonpath::compile are also implemented using this structure.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// extern crate serde;
-/// #[macro_use] extern crate serde_json;
+/// extern crate serde_json;
 ///
 /// use serde::{Deserialize, Serialize};
+/// use serde_json::Value;
 ///
-/// #[derive(Deserialize, PartialEq, Debug)]
+/// use jsonpath::Selector;
+///
+/// #[derive(Serialize, Deserialize, PartialEq, Debug)]
 /// struct Person {
 ///     name: String,
 ///     age: u8,
-///     phones: Vec<String>,
+///     phone: String,
 /// }
 ///
-/// let ret: Person = jsonpath::select_as(r#"
-/// {
-///     "person":
+/// fn input_str() -> &'static str {
+///     r#"[
 ///         {
-///             "name": "Doe John",
-///             "age": 44,
-///             "phones": [
-///                 "+44 1234567",
-///                 "+44 2345678"
-///             ]
+///             "name": "이름1",
+///             "age": 40,
+///             "phone": "+33 12341234"
+///         },
+///         {
+///             "name": "이름2",
+///             "age": 42,
+///             "phone": "++44 12341234"
 ///         }
+///     ]"#
 /// }
-/// "#, "$.person").unwrap();
 ///
-/// let person = Person {
-///     name: "Doe John".to_owned(),
-///     age: 44,
-///     phones: vec!["+44 1234567".to_owned(), "+44 2345678".to_owned()],
-/// };
+/// fn input_json() -> Value {
+///     serde_json::from_str(input_str()).unwrap()
+/// }
 ///
-/// assert_eq!(person, ret);
+/// fn input_person() -> Vec<Person> {
+///     serde_json::from_str(input_str()).unwrap()
+/// }
+///
+///
+/// let mut selector = Selector::new();
+///
+/// let result = selector
+///     .path("$..[?(@.age > 40)]").unwrap()
+///     .value_from_str(input_str()).unwrap()
+///     .select_to_value().unwrap();
+/// assert_eq!(input_json()[1], result[0]);
+///
+/// let result = selector.select_to_str().unwrap();
+/// assert_eq!(serde_json::to_string(&vec![&input_json()[1].clone()]).unwrap(), result);
+///
+/// let result = selector.select_to::<Vec<Person>>().unwrap();
+/// assert_eq!(input_person()[1], result[0]);
+///
+/// let _ = selector.path("$..[?(@.age == 40)]");
+///
+/// let result = selector.select_to_value().unwrap();
+/// assert_eq!(input_json()[0], result[0]);
+///
+/// let result = selector.select_to_str().unwrap();
+/// assert_eq!(serde_json::to_string(&vec![&input_json()[0].clone()]).unwrap(), result);
+///
+/// let result = selector.select_to::<Vec<Person>>().unwrap();
+/// assert_eq!(input_person()[0], result[0]);
 /// ```
 pub struct Selector {
     pub(crate) node: Option<Node>,
