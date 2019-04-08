@@ -79,15 +79,15 @@ impl ValueWrapper {
 
         match self.val.deref() {
             RefValue::Array(vec) => {
-                let mut ret = Vec::new();
+                let mut set = IndexSet::new();
                 for v in vec {
                     if _filter_with_object(v, key, |vv| {
                         Self::cmp_with_term(vv, et, cmp, false, reverse)
                     }) {
-                        ret.push(v.clone());
+                        set.insert(v.clone());
                     }
                 }
-
+                let ret = set.into_iter().collect();
                 Some(ValueWrapper::new(RefValue::Array(ret).into(), false))
             }
             _ => None
@@ -109,12 +109,13 @@ impl ValueWrapper {
             _ => {
                 match &(*self.val) {
                     RefValue::Array(vec) => {
-                        let mut ret = Vec::new();
+                        let mut set = IndexSet::new();
                         for v in vec {
                             if Self::cmp_with_term(v, et, &cmp, false, reverse) {
-                                ret.push(v.clone());
+                                set.insert(v.clone());
                             }
                         }
+                        let ret = set.into_iter().collect();
                         ValueWrapper::new(RefValue::Array(ret).into(), false)
                     }
                     _ => {

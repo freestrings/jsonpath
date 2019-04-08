@@ -213,6 +213,24 @@ fn op_default() {
        { "name" : "이름2", "age" : 42, "phone" : "++44 12341234" }
     ]);
     assert_eq!(friends, jf.into_value());
+
+    let ref value = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
+    let mut jf = JsonValueFilter::new_from_value(value.into());
+    let mut parser = Parser::new("$..[?(@.age >= 30)]");
+    parser.parse(&mut jf).unwrap();
+    let friends = json!([{ "name" : "친구3", "age" : 30 }]);
+    assert_eq!(friends, jf.into_value());
+
 }
 
 #[test]
