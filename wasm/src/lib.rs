@@ -9,9 +9,9 @@ extern crate web_sys;
 use std::collections::HashMap;
 use std::result::Result;
 use std::sync::Mutex;
+use std::ops::Deref;
 
 use cfg_if::cfg_if;
-use serde_json::Value;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
@@ -40,8 +40,8 @@ cfg_if! {
 fn filter_ref_value(json: RefValueWrapper, node: Node) -> JsValue {
     let mut jf = JsonValueFilter::new_from_value(json);
     jf.visit(node);
-    let taken: Value = (&jf.take_value()).into();
-    match JsValue::from_serde(&taken) {
+    let taken = &jf.take_value();
+    match JsValue::from_serde(taken.deref()) {
         Ok(js_value) => js_value,
         Err(e) => JsValue::from_str(&format!("Json deserialize error: {:?}", e))
     }
