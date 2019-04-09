@@ -86,7 +86,7 @@ function wasmCompile() {
 }
 
 function wasmCompileAlloc() {
-    let ptr = jpw.alloc_json(getJson());
+    let ptr = jpw.allocJson(getJson());
     if (ptr == 0) {
         console.error('Invalid pointer');
         return;
@@ -98,7 +98,7 @@ function wasmCompileAlloc() {
             let _ = template(ptr);
         }
     } finally {
-        jpw.dealloc_json(ptr);
+        jpw.deallocJson(ptr);
     }
 }
 
@@ -109,7 +109,7 @@ function wasmSelect() {
 }
 
 function wasmSelectAlloc() {
-    let ptr = jpw.alloc_json(getJson());
+    let ptr = jpw.allocJson(getJson());
     if (ptr == 0) {
         console.error('Invalid pointer');
         return;
@@ -120,7 +120,16 @@ function wasmSelectAlloc() {
             let _ = jpw.select(ptr, path);
         }
     } finally {
-        jpw.dealloc_json(ptr);
+        jpw.deallocJson(ptr);
+    }
+}
+
+function wasmSelectorClass() {
+    let selector = new jpw.Selector();
+    for (var i = 0; i < iter; i++) {
+        selector.path(path);
+        selector.value(jsonStr);
+        let _ = selector.selectToStr();
     }
 }
 

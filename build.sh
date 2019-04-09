@@ -54,11 +54,11 @@ echo
 echo
 __msg "wasm-pack"
 cd "${WASM}" && \
-    wasm-pack build --target=nodejs --scope nodejs --out-dir nodejs_pkg && \
+    wasm-pack build --release --target=nodejs --scope nodejs --out-dir nodejs_pkg && \
     cd "${WASM_NODEJS_PKG}" && npm link
 
 cd "${WASM}" && \
-    wasm-pack build --target=browser --scope browser --out-dir browser_pkg && \
+    wasm-pack build --release --target=browser --scope browser --out-dir browser_pkg && \
     cd "${WASM_BROWSER_PKG}" && npm link
 
 echo

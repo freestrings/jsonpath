@@ -37,6 +37,8 @@ __extra () {
     printf "\n"
     sleep 1
     cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm - compile-alloc: " && time ./bench.sh wasmCompileAlloc ${ITER}
+    sleep 1
+    cd "${DIR}"/javascript && echo "NodeJs - jsonpath-wasm - Selector: " && time ./bench.sh wasmSelectorClass ${ITER}
 }
 
 if [ "$1" = "extra" ]; then
