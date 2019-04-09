@@ -183,9 +183,7 @@ pub mod select;
 
 pub use select::Selector;
 
-/// It is a highorder function that compile a JsonPath then returns a function.
-///
-/// this return function can be reused for different JsonObjects.
+/// It is a high-order function. it compile a JsonPath and then returns a function. this return-function can be reused for different JsonObjects.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -223,9 +221,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value,
     }
 }
 
-/// It returns highorder function that return a function.
-///
-/// this function has a jsonpath as argument and return a serde_json::value::Value. so you can use different JsonPath for one JsonObject.
+/// It is a high-order function that return a function. this return-function has a jsonpath as argument and return a serde_json::value::Value. so you can use different JsonPath for one JsonObject.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -269,9 +265,7 @@ pub fn selector<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value
     }
 }
 
-/// It returns highorder function that returns a function.
-///
-/// this function has a jsonpath as argument and return a serde::Deserialize. so you can use different JsonPath for one JsonObject.
+/// It is a high-order function that returns a function. this return-function has a jsonpath as argument and return a serde::Deserialize. so you can use different JsonPath for one JsonObject.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -327,7 +321,7 @@ pub fn reader<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, 
     selector(json)
 }
 
-/// Select a JsonObject. it return a serde_json::value::Value.
+/// This function compile a jsonpath everytime and it convert `serde_json's Value` to `jsonpath's RefValue` everytime and then it return a `serde_json::value::Value`.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -368,7 +362,7 @@ pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
     select_as_str(json, path)
 }
 
-/// Select a JsonObject. it return a JsonObject as String.
+/// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a json string.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -398,7 +392,7 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
         .select_to_str()
 }
 
-/// Select a JsonObject. it return a deserialized instance of type `T`
+/// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a deserialized-instance of type `T`.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;

@@ -5,12 +5,12 @@
 ![Crates.io](https://img.shields.io/crates/d/jsonpath_lib.svg?label=%60jsonpath_lib%60%20crates.io%20downloads)
 ![npm](https://img.shields.io/npm/dt/jsonpath-rs.svg?label=%60jsonpath-rs%60%20npm%20downloads)
 
-`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 역시 동일한 API 인터페이스를 제공 한다.
+`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 유사한 API 인터페이스를 제공 한다.
 
-It is an implementation for [JsonPath](https://goessner.net/articles/JsonPath/) written in `Rust`. it provide the same API interface in `Webassembly` and` Javascript` also.
+It is an implementation for [JsonPath](https://goessner.net/articles/JsonPath/) written in `Rust`. it provide a similar API interface in `Webassembly` and` Javascript` also.
 
 - [Webassembly Demo](https://freestrings.github.io/jsonpath/)
-- [Rust documentation](https://docs.rs/jsonpath_lib/0.1.6/jsonpath_lib)
+- [Rust documentation](https://docs.rs/jsonpath_lib)
 
 ## Why?
 
@@ -22,23 +22,23 @@ To enjoy Rust!
 
 - [jsonpath-wasm library](#jsonpath-wasm-library)
 - [jsonpath-rs library](#jsonpath-rs-library-only-nodejs)
-- [javascript - jsonpath.select(json: string|object, jsonpath: string)](#javascript---jsonpathselectjson-stringobject-jsonpath-string)
-- [javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
-- [javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
-- [javascript - alloc_json, dealloc_json](#javascript---alloc_json-dealloc_json)
-- [javascript-wasm - examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
+- [Javascript - jsonpath.select(json: string|object, jsonpath: string)](#javascript---jsonpathselectjson-stringobject-jsonpath-string)
+- [Javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
+- [Javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
+- [Javascript - alloc_json, dealloc_json](#javascript---alloc_json-dealloc_json)
+- [Javascript-wasm - examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
 
-[With Rust (as library)](#with-rust-as-library)
+[With Rust](#with-rust)
 
 - [jsonpath_lib library](#jsonpath_lib-library)
-- [rust - jsonpath::Selector struct](#rust---jsonpathselector-struct)
-- [rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
-- [rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
-- [rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_ast-serdededeserializeownedjson-str-jsonpath-str)
-- [rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
-- [rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
-- [rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
-- [rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
+- [Rust - jsonpath::Selector struct](#rust---jsonpathselector-struct)
+- [Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
+- [Rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
+- [Rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_ast-serdededeserializeownedjson-str-jsonpath-str)
+- [Rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
+- [Rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
+- [Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
+- [Rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
 
 [Simple time check - webassembly](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck---jsonpath-wasm)
 
@@ -64,7 +64,7 @@ const jsonpath = require('jsonpath-wasm');
 const jsonpath = require('jsonpath-rs');
 ```
 
-### javascript - jsonpath.select(json: string|object, jsonpath: string)
+### Javascript - jsonpath.select(json: string|object, jsonpath: string)
 
 ```javascript
 let jsonObj = {
@@ -97,7 +97,7 @@ console.log(
 // => true, true
 ```
 
-### javascript - jsonpath.compile(jsonpath: string)
+### Javascript - jsonpath.compile(jsonpath: string)
 
 ```javascript
 let template = jsonpath.compile('$..friends[0]');
@@ -156,7 +156,7 @@ console.log(
 // => true, true
 ```
     
-### javascript - jsonpath.selector(json: string|object)
+### Javascript - jsonpath.selector(json: string|object)
     
 ```javascript
 let jsonObj = {
@@ -197,7 +197,7 @@ console.log(
 // => true, true
 ```
 
-### javascript - alloc_json, dealloc_json
+### Javascript - alloc_json, dealloc_json
 
 *(not supported in `jsonpath-rs`)*
 
@@ -256,7 +256,7 @@ console.log(
 jsonpath.dealloc_json(ptr);
 ```
 
-## With Rust (as library)
+## With Rust
 
 ### jsonpath_lib library
 
@@ -266,7 +266,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 ```
 
-### rust - jsonpath::Selector struct
+### Rust - jsonpath::Selector struct
 
 ```rust
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -329,7 +329,7 @@ let ret = json!([
 assert_eq!(json, ret);
 ```
 
-### rust - jsonpath::select_as_str(json: &str, jsonpath: &str)
+### Rust - jsonpath::select_as_str(json: &str, jsonpath: &str)
 
 ```rust
 let ret = jsonpath::select_as_str(r#"
@@ -350,7 +350,7 @@ let ret = jsonpath::select_as_str(r#"
 assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 ```
 
-### rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json: &str, jsonpath: &str)
+### Rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json: &str, jsonpath: &str)
 
 ```rust
 #[derive(Deserialize, PartialEq, Debug)]
@@ -383,7 +383,7 @@ let person = Person {
 assert_eq!(person, ret);
 ```
 
-### rust - jsonpath::compile(jsonpath: &str)
+### Rust - jsonpath::compile(jsonpath: &str)
 
 ```rust
 let mut template = jsonpath::compile("$..friends[0]");
@@ -410,7 +410,7 @@ let ret = json!([
 assert_eq!(json, ret);
 ```
 
-### rust - jsonpath::selector(json: &serde_json::value::Value)
+### Rust - jsonpath::selector(json: &serde_json::value::Value)
 
 ```rust
 let json_obj = json!({
@@ -446,7 +446,7 @@ let ret = json!([
 assert_eq!(json, ret);
 ```
 
-### rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)
+### Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)
 
 ```rust
 let json_obj = json!({
