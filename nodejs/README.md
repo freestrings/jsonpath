@@ -12,13 +12,51 @@ Build from source instead of using pre-built binary, and if Rust is not installe
 
 > Not yet tested in Windows
 
-## 목차
+## APIs
 
+* [jsonpath.Selector](#jsonpathselector)
 * [jsonpath.select(json: string|object, jsonpath: string)](#json-stringobject-jsonpath-string)
 * [jsonpath.compile(jsonpath: string)](#compilejsonpath-string)
 * [jsonpath.selector(json: string|object)](#selectorjson-stringobject)
 * [Simple time check](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck-jsonpath-native)
 * [Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
+
+### jsonpath.Selector
+
+```javascript
+let jsonObj = {
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
+};
+
+let selector = new jsonpath.Selector().value(jsonObj);
+
+{
+    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectTo();
+    let resultObj = [{"name": "친구3", "age": 30}];
+    console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
+}
+
+{
+    let jsonObj = selector.path('$..[?(@.age == 20)]').selectTo();
+    let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
+    console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
+}
+
+{
+    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectTo();
+    let resultObj = [{"name": "친구5", "age": 20}];
+    console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
+}
+```
 
 ### jsonpath.select(json: string|object, jsonpath: string)
 

@@ -4,13 +4,13 @@ extern crate neon;
 extern crate neon_serde;
 extern crate serde_json;
 
-use std::ops::Deref;
-
 use jsonpath::filter::value_filter::JsonValueFilter;
 use jsonpath::parser::parser::{Node, NodeVisitor, Parser};
 use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
+use jsonpath::Selector;
 use neon::prelude::*;
 use serde_json::Value;
+use std::ops::Deref;
 
 ///
 /// `neon_serde::from_value` has very poor performance.
@@ -35,16 +35,20 @@ fn select_str(mut ctx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
-pub struct Compile {
+pub struct CompileFn {
     node: Node
 }
 
-pub struct Selector {
+pub struct SelectorFn {
     json: RefValueWrapper
 }
 
+pub struct SelectorCls {
+    selector: Selector
+}
+
 declare_types! {
-    pub class JsCompile for Compile {
+    pub class JsCompileFn for CompileFn {
         init(mut ctx) {
             let path = ctx.argument::<JsString>(0)?.value();
             let mut parser = Parser::new(path.as_str());
@@ -54,7 +58,7 @@ declare_types! {
                 Err(e) => panic!("{:?}", e)
             };
 
-            Ok(Compile { node })
+            Ok(CompileFn { node })
         }
 
         method template(mut ctx) {
@@ -81,7 +85,7 @@ declare_types! {
         }
     }
 
-    pub class JsSelector for Selector {
+    pub class JsSelectorFn for SelectorFn {
         init(mut ctx) {
             let json_str = ctx.argument::<JsString>(0)?.value();
             let ref_value: RefValue = match serde_json::from_str(&json_str) {
@@ -89,10 +93,10 @@ declare_types! {
                 Err(e) => panic!("{:?}", e)
             };
 
-            Ok(Selector { json: ref_value.into() })
+            Ok(SelectorFn { json: ref_value.into() })
         }
 
-        method selector(mut ctx) {
+        method select(mut ctx) {
             let this = ctx.this();
 
             let json = {
@@ -117,9 +121,55 @@ declare_types! {
             }
         }
     }
+
+    pub class JsSelector for SelectorCls {
+        init(mut _ctx) {
+            Ok(SelectorCls { selector: Selector::new() })
+        }
+
+        method path(mut ctx) {
+            let mut this = ctx.this();
+
+            let path = ctx.argument::<JsString>(0)?.value();
+            {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                let _ = this.selector.path(&path);
+            }
+            Ok(JsUndefined::new().upcast())
+        }
+
+        method value_from_str(mut ctx) {
+            let mut this = ctx.this();
+
+            let json_str = ctx.argument::<JsString>(0)?.value();
+            {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                let _ = this.selector.value_from_str(&json_str);
+            }
+            Ok(JsUndefined::new().upcast())
+        }
+
+        method select_to_str(mut ctx) {
+             let mut this = ctx.this();
+
+             let result = {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                this.selector.select_to_str()
+             };
+
+             match result {
+                Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
+                Err(e) => panic!("{:?}", e)
+             }
+        }
+    }
 }
 register_module!(mut m, {
-    m.export_class::<JsCompile>("Compile").expect("Compile class error");
+    m.export_class::<JsCompileFn>("CompileFn").expect("CompileFn class error");
+    m.export_class::<JsSelectorFn>("SelectorFn").expect("SelectorFn class error");
     m.export_class::<JsSelector>("Selector").expect("Selector class error");
     m.export_function("select", select)?;
     m.export_function("selectStr", select_str)?;
