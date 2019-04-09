@@ -16,6 +16,10 @@ function getReadResult() {
     return document.querySelector('#read-result');
 }
 
+function getLinks() {
+    return document.querySelectorAll('.path>a');
+}
+
 function initData(url) {
     return fetch(url)
         .then((res) => res.text())
@@ -35,6 +39,10 @@ function initEvent() {
         read();
     }
 
+    getLinks().forEach(function(anchor) {
+        anchor.href = "#" + encodeURIComponent(anchor.textContent);
+    });
+
     function read() {
         let ret = jsonpath.select(getTextarea().value, getJsonpathInput().value);
         if(typeof ret === 'string') {
@@ -46,22 +54,26 @@ function initEvent() {
 }
 
 function readPathParam() {
-    let params = location.search.substr(1)
-        .split('&')
-        .map((item) => item.split('='))
-        .reduce((acc, param) => {
-            acc[param[0]] = decodeURIComponent(param[1]);
-            return acc;
-        }, {});
-
-    if(params.path) {
-        getJsonpathInput().value = params.path;
-        let doc = getReadBtn().ownerDocument;
-        let event = doc.createEvent('MouseEvents');
-        event.initEvent('click', true, true);
-        event.synthetic = true;
-        getReadBtn().dispatchEvent(event, true);
+    if(location.href.indexOf('#') > -1) {
+        readPath()
     }
 }
+
+function forceClick(ctrl) {
+    let doc = ctrl.ownerDocument;
+    let event = doc.createEvent('MouseEvents');
+    event.initEvent('click', true, true);
+    event.synthetic = true;
+    ctrl.dispatchEvent(event, true);
+}
+
+function readPath() {
+    let query = location.href.substring(location.href.indexOf('#') + 1);
+    let path = decodeURIComponent(query);
+    getJsonpathInput().value = path;
+    forceClick(getReadBtn());
+}
+
+window.onpopstate = readPath;
 
 initData('data/example.json').then(initEvent).then(readPathParam);
