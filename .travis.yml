@@ -14,7 +14,6 @@ matrix:
       os: linux
       env: RUST_BACKTRACE=1
       addons:
-        firefox: latest
         chrome: stable
       before_script:
         - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
@@ -26,12 +25,11 @@ matrix:
         - cargo test --verbose --all
         - cd wasm
         - wasm-pack build
-        - wasm-pack test --chrome --firefox --headless
+        - wasm-pack test --chrome --headless
     - rust: stable
       os: osx
       env: RUST_BACKTRACE=1
       addons:
-        firefox: latest
         chrome: stable
       before_script:
         - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
@@ -43,7 +41,7 @@ matrix:
         - cargo test --verbose --all
         - cd wasm
         - wasm-pack build
-        - wasm-pack test --chrome --firefox --headless
+        - wasm-pack test --chrome --headless
     - language: node_js
       os: linux
       node_js:
