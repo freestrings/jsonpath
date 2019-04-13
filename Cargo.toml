@@ -6,13 +6,13 @@ authors = ["Changseok Han <freestrings@gmail.com>"]
 description = "It is JsonPath engine written in Rust. it provide a similar API interface in Webassembly and Javascript also. - Webassembly Demo: https://freestrings.github.io/jsonpath"
 readme = "README.md"
 
-keywords = ["library", "jsonpath", "json", "webassembly", "nodejs", "javascript"]
+keywords = ["jsonpath", "json", "webassembly", "nodejs", "javascript"]
 
 repository = "https://github.com/freestrings/jsonpath"
 documentation = "https://docs.rs/jsonpath_lib/0.1.0/jsonpath_lib"
 license = "MIT"
 
-categories = ["Parsing"]
+categories = ["parsing"]
 
 [badges]
 travis-ci = { repository = "freestrings/jsonpath", branch = "master" }
