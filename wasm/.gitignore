@@ -2,7 +2,9 @@ target
 **/*.rs.bk
 Cargo.lock
 bin/
-pkg/
+browser_pkg
+nodejs_pkg
+all_pkg
 wasm-pack.log
 .idea/*
 .vscode

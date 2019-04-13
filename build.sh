@@ -75,6 +75,7 @@ cp -r "${WASM_BROWSER_PKG}" "${WASM_ALL_PKG}/" && \
         > "${WASM_ALL_PKG}/jsonpath_wasm_nodejs.js" && \
     jq ".files += [\"jsonpath_wasm_nodejs.js\"]" ${WASM_ALL_PKG}/package.json \
         | jq ".main = \"jsonpath_wasm_main.js\"" \
+        | jq ".keywords += [\"jsonpath\", \"json\", \"webassembly\", \"parsing\", \"rust\"]" \
         > ${WASM_ALL_PKG}/temp.json && \
     mv -v "${WASM_ALL_PKG}/temp.json" "${WASM_ALL_PKG}/package.json" && \
     cd "${WASM_ALL_PKG}" && npm link
