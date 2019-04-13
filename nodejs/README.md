@@ -15,9 +15,9 @@ Build from source instead of using pre-built binary, and if Rust is not installe
 ## APIs
 
 * [jsonpath.Selector](#jsonpathselector)
-* [jsonpath.select(json: string|object, jsonpath: string)](#json-stringobject-jsonpath-string)
-* [jsonpath.compile(jsonpath: string)](#compilejsonpath-string)
-* [jsonpath.selector(json: string|object)](#selectorjson-stringobject)
+* [jsonpath.select(json: string|object, jsonpath: string)](#jsonpathselectjson-stringobject-jsonpath-string)
+* [jsonpath.compile(jsonpath: string)](#jsonpathcompilejsonpath-string)
+* [jsonpath.selector(json: string|object)](#jsonpathselectorjson-stringobject)
 * [Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
 
 ### jsonpath.Selector
