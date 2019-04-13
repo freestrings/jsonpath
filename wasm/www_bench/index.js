@@ -1,4 +1,4 @@
-import * as jpw from "@browser/jsonpath-wasm";
+import * as jpw from "jsonpath-wasm";
 import * as jp from "jsonpath/jsonpath.js";
 
 function run(message, iter, cb) {

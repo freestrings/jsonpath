@@ -1,16 +1,8 @@
-# jsonpath-rs
+# jsonpath-wasm
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
 
-It is native-addon of [jsonpath_lib](https://github.com/freestrings/jsonpath) that is [JsonPath](https://goessner.net/articles/JsonPath/) engine written in Rust.
-
-## Notice
-
-Pre-built 바이너리는 제공하진 않고 소스를 컴파일해서 설치한다. 만약 Rust가 설치되지 않았다면 자동으로 설치된다.
-
-Build from source instead of using pre-built binary, and if Rust is not installed, the latest version is automatically installed.
-
-> Not yet tested in Windows
+It is Webassembly version of [jsonpath_lib](https://github.com/freestrings/jsonpath) that is [JsonPath](https://goessner.net/articles/JsonPath/) engine written in Rust. 
 
 ## APIs
 

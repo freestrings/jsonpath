@@ -1,4 +1,4 @@
-import * as jsonpath from "@browser/jsonpath-wasm";
+import * as jsonpath from "jsonpath-wasm";
 
 function getTextarea() {
     return document.querySelector('#json-example');

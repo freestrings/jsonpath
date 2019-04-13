@@ -8,6 +8,7 @@ extern crate web_sys;
 
 use std::collections::HashMap;
 use std::ops::Deref;
+use std::result;
 use std::result::Result;
 use std::sync::Mutex;
 
@@ -18,8 +19,6 @@ use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
 use jsonpath::Selector as _Selector;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
-
-use std::result;
 
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
@@ -179,7 +178,6 @@ pub struct Selector {
 
 #[wasm_bindgen]
 impl Selector {
-
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Selector { selector: _Selector::new() }
@@ -213,5 +211,12 @@ impl Selector {
     }
 }
 
-#[wasm_bindgen]
-pub fn testa() {}
+#[wasm_bindgen(catch)]
+pub fn testa(js_value: JsValue, path: &str, iter: usize) -> result::Result<(), JsValue> {
+    for _ in 0..iter {
+        let mut parser = Parser::new(path);
+        let node = parser.compile().unwrap();
+        into_ref_value(&js_value, node);
+    }
+    Ok(())
+}

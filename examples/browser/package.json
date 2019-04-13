@@ -1,5 +1,5 @@
 {
-  "name": "jsonpath-wasm-bench",
+  "name": "jsonpath-wasm-browser-example",
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
@@ -7,12 +7,9 @@
     "start": "webpack-dev-server"
   },
   "devDependencies": {
-    "copy-webpack-plugin": "^5.0.0",
+    "copy-webpack-plugin": "^5.0.1",
     "webpack": "^4.29.6",
-    "webpack-cli": "^3.1.0",
-    "webpack-dev-server": "^3.1.5"
-  },
-  "dependencies": {
-    "jsonpath": "*"
+    "webpack-cli": "^3.3.0",
+    "webpack-dev-server": "^3.2.1"
   }
 }

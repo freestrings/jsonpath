@@ -42,7 +42,7 @@ function getJson() {
 }
 const path = '$..book[?(@.price<30 && @.category=="fiction")]';
 const jp = require('jsonpath');
-const jpw = require('@nodejs/jsonpath-wasm');
+const jpw = require('jsonpath-wasm');
 const jpwRs = require('jsonpath-rs');
 
 function jsonpath() {

@@ -5,17 +5,15 @@
 ![Crates.io](https://img.shields.io/crates/d/jsonpath_lib.svg?label=%60jsonpath_lib%60%20downloads)
 ![npm](https://img.shields.io/npm/v/jsonpath-rs.svg?label=npm%20%60jsonpath-rs%60)
 ![npm](https://img.shields.io/npm/dt/jsonpath-rs.svg?label=%60jsonpath-rs%60%20downloads)
+![npm](https://img.shields.io/npm/v/jsonpath-wasm.svg?label=npm%20%60jsonpath-wasm%60)
 
 `Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 유사한 API 인터페이스를 제공 한다.
 
-It is an implementation for [JsonPath](https://goessner.net/articles/JsonPath/) written in `Rust`. it provide a similar API interface in `Webassembly` and` Javascript` also.
+It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine written in `Rust`. it provide a similar API interface in `Webassembly` and` Javascript` also.
 
 - [Webassembly Demo](https://freestrings.github.io/jsonpath/)
-- [Rust documentation](https://docs.rs/jsonpath_lib)
-
-## Why?
-
-To enjoy Rust!
+- [NPM jsonpath-wasm - webassembly](https://www.npmjs.com/package/jsonpath-wasm)
+- [NPM jsonpath-rs - native addon](https://www.npmjs.com/package/jsonpath-rs)
 
 ## Rust API
 
@@ -27,7 +25,7 @@ To enjoy Rust!
 - [Rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
 - [Rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
 - [Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
-- [Rust - examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
+- [Rust - Other Examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
 
 ## Javascript API
 
@@ -37,11 +35,7 @@ To enjoy Rust!
 - [Javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
 - [Javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
 - [Javascript - allocJson, deallocJson (Webassembly Only)](#javascript---allocjson-deallocjson-webassembly-only)
-- [Javascript - examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
-
-## Simple time check
-- [jsonpath-wasm](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck---jsonpath-wasm)
-- [jsonpath-rs](https://github.com/freestrings/jsonpath/wiki/Simple-timecheck-jsonpath-native)
+- [Javascript - Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
 
 ---
 
@@ -283,7 +277,7 @@ assert_eq!(json, ret);
 
 #### npm package
 
-##### jsonpath-wasm (Not yet published)
+##### jsonpath-wasm
 
 ```javascript
 // browser
@@ -303,7 +297,7 @@ const jsonpath = require('jsonpath-rs');
 #### javascript - Selector class
 
 ##### jsonpath-wasm
-`wasm-bindgen` 리턴타입 제약 때문에 빌더 패턴은 지원하지 않는다.
+`wasm-bindgen` 리턴 타입 제약 때문에 빌더 패턴은 지원하지 않는다.
 
 It does not support `builder-pattern` due to the `return type` restriction of `wasm-bindgen`.
 
@@ -516,7 +510,7 @@ wasm-bindgen은 Javascript와 Webassembly간 값을 주고받을 때 JSON 객체
 Since wasm-bindgen converts JSON objects to String when exchanging values between Javascript and Webassembly, creating frequently used JSON objects in the WebAssembly area helps performance.
 
 ```javascript
-const jsonpath = require('@nodejs/jsonpath-wasm');
+const jsonpath = require('jsonpath-wasm');
 
 let jsonObj = {
     "school": {

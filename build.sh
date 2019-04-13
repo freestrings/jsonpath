@@ -9,6 +9,7 @@ WASM_WWW="${WASM}"/www
 WASM_WWW_BENCH="${WASM}"/www_bench
 WASM_BROWSER_PKG="${WASM}"/browser_pkg
 WASM_NODEJS_PKG="${WASM}"/nodejs_pkg
+WASM_ALL_PKG="${WASM}"/all_pkg
 BENCHES="${DIR}"/benches
 BENCHES_JS="${BENCHES}"/javascript
 NODEJS="${DIR}"/nodejs
@@ -31,6 +32,7 @@ __msg "clean"
 rm -rf \
     "${WASM_NODEJS_PKG}" \
     "${WASM_BROWSER_PKG}" \
+    "${WASM_ALL_PKG}" \
     "${BENCHES_JS}"/node_modules \
     "${NODEJS}"/node_modules \
     "${WASM_WWW}"/node_modules \
@@ -52,25 +54,41 @@ cd "${BENCHES_JS}" && npm install
 
 echo
 echo
+__msg "nodejs"
+cd "${NODEJS}" && npm test
+
+echo
+echo
 __msg "wasm-pack"
 cd "${WASM}" && \
-    wasm-pack build --release --target=nodejs --scope nodejs --out-dir nodejs_pkg && \
-    cd "${WASM_NODEJS_PKG}" && npm link
+    wasm-pack build --release --target=nodejs --out-dir "${WASM_NODEJS_PKG}"
 
 cd "${WASM}" && \
-    wasm-pack build --release --target=browser --scope browser --out-dir browser_pkg && \
-    cd "${WASM_BROWSER_PKG}" && npm link
+    wasm-pack build --release --target=browser --out-dir "${WASM_BROWSER_PKG}" && \
+    wasm-pack test --chrome --firefox --headless
+
+__msg "wasm npm packaging"
+cp -r "${WASM_BROWSER_PKG}" "${WASM_ALL_PKG}/" && \
+    sed "s/require[\(]'\.\/jsonpath_wasm_bg/require\('\.\/jsonpath_wasm_nodejs/" "${WASM_NODEJS_PKG}/jsonpath_wasm.js" \
+        > "${WASM_ALL_PKG}/jsonpath_wasm_main.js" && \
+    sed "s/require[\(]'\.\/jsonpath_wasm/require\('\.\/jsonpath_wasm_main/" "${WASM_NODEJS_PKG}/jsonpath_wasm_bg.js" \
+        > "${WASM_ALL_PKG}/jsonpath_wasm_nodejs.js" && \
+    jq ".files += [\"jsonpath_wasm_nodejs.js\"]" ${WASM_ALL_PKG}/package.json \
+        | jq ".main = \"jsonpath_wasm_main.js\"" \
+        > ${WASM_ALL_PKG}/temp.json && \
+    mv -v "${WASM_ALL_PKG}/temp.json" "${WASM_ALL_PKG}/package.json" && \
+    cd "${WASM_ALL_PKG}" && npm link
 
 echo
 __msg "link"
 cd "${WASM_WWW}" && \
-    npm link @browser/jsonpath-wasm
+    npm link jsonpath-wasm
 
 cd "${WASM_WWW_BENCH}" && \
-    npm link @browser/jsonpath-wasm
+    npm link jsonpath-wasm
 
 cd "${BENCHES_JS}" && \
-    npm link @nodejs/jsonpath-wasm && \
+    npm link jsonpath-wasm && \
     npm link jsonpath-rs
 
 echo

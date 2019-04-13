@@ -1,16 +1,16 @@
 {
   "name": "jsonpath-rs",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "It is JsonPath implementation. The core implementation is written in Rust",
   "author": "Changseok Han <freestrings@gmail.com>",
   "license": "MIT",
   "keywords": [
     "jsonpath",
-    "rust-addon",
+    "native-addon",
     "rust-binding",
     "rust",
-    "rustlang",
-    "json"
+    "json",
+    "parsing"
   ],
   "main": "lib/index.js",
   "dependencies": {

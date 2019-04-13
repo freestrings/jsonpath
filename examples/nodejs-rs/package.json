@@ -1,0 +1,9 @@
+{
+  "name": "jsonpath-rs-example",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "jsonpath-rs": "0"
+  }
+}
