@@ -1,5 +1,6 @@
 extern crate jsonpath_lib as jsonpath;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 
 use serde::{Deserialize, Serialize};
@@ -101,4 +102,108 @@ fn selector_select_to() {
 
     let result = selector.select_to::<Vec<Person>>().unwrap();
     assert_eq!(input_person()[0], result[0]);
+}
+
+fn _remove_name(v: Value) -> Option<Value> {
+    let r = match v {
+        Value::Array(mut vec) => {
+            for mut v in &mut vec {
+                v.as_object_mut().unwrap().remove("name");
+            }
+            Value::Array(vec)
+        }
+        _ => Value::Null
+    };
+    Some(r)
+}
+
+fn _change_phone_number(v: Value) -> Option<Value> {
+    let r = match v {
+        Value::Array(mut vec) => {
+            let mut v = vec.pop().unwrap();
+            v.as_object_mut().unwrap()
+                .insert("phone".to_string(), Value::String("1234".to_string()));
+            v
+        }
+        _ => Value::Null
+    };
+    Some(r)
+}
+
+fn _rejuvenate(mut vec: Vec<Person>) -> Option<Vec<Person>> {
+    for p in &mut vec {
+        p.age = p.age - 10;
+    }
+    Some(vec)
+}
+
+#[test]
+fn selector_map_basic() {
+    let mut selector = Selector::new();
+
+    let result = selector
+        .path("$..[?(@.age > 40)]").unwrap()
+        .value_from_str(input_str()).unwrap()
+        .map(_remove_name).unwrap()
+        .get();
+
+    assert_eq!(result, json!([
+        {"phone": "++44 12341234", "age": 42},
+        {"phone": "++55 111111", "age": 50},
+        {"phone": "++55 12341234", "age": 51},
+    ]));
+}
+
+#[test]
+fn selector_map_chain() {
+    let mut selector = Selector::new();
+
+    let result = selector
+        .path("$..[?(@.age > 40)]").unwrap()
+        .value_from_str(input_str()).unwrap()
+        .map(_remove_name).unwrap()
+        .path("$..[?(@.age == 50)]").unwrap()
+        .map(_change_phone_number).unwrap()
+        .get();
+
+    assert_eq!(result, json!({
+        "phone": "1234",
+        "age": 50,
+    }));
+}
+
+#[test]
+fn selector_map_as_basic() {
+    let mut selector = Selector::new();
+
+    let result = selector
+        .path("$..[?(@.age > 40)]").unwrap()
+        .value_from_str(input_str()).unwrap()
+        .map_as(_rejuvenate).unwrap()
+        .get();
+
+    assert_eq!(result, json!([
+        {"name": "이름2", "phone": "++44 12341234", "age": 32},
+        {"name": "이름3", "phone": "++55 111111", "age": 40},
+        {"name": "이름4", "phone": "++55 12341234", "age": 41},
+    ]));
+}
+
+#[test]
+fn selector_map_as_chain() {
+    let mut selector = Selector::new();
+
+    let result = selector
+        .path("$..[?(@.age > 40)]").unwrap()
+        .value_from_str(input_str()).unwrap()
+        .map_as(_rejuvenate).unwrap()
+        .path("$..[?(@.age == 40)]").unwrap()
+        .map(_change_phone_number).unwrap()
+        .get();
+
+    assert_eq!(result, json!({
+        "name": "이름3",
+        "phone": "1234",
+        "age": 40,
+    }));
 }

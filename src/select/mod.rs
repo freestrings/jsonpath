@@ -1,5 +1,5 @@
+use std::{fmt, result};
 use std::ops::Deref;
-use std::result;
 
 use serde_json::Value;
 
@@ -100,21 +100,21 @@ impl Selector {
     pub fn value_from(&mut self, serializable: &impl serde::ser::Serialize) -> result::Result<&mut Self, String> {
         let ref_value: RefValue = serializable
             .serialize(super::ref_value::ser::Serializer)
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| e.to_string())?;
         self.value = Some(ref_value.into());
         Ok(self)
     }
 
     pub fn value_from_str(&mut self, json_str: &str) -> result::Result<&mut Self, String> {
         let value = serde_json::from_str(json_str)
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| e.to_string())?;
         self.value(&value)
     }
 
     fn jf(&self) -> result::Result<JsonValueFilter, String> {
         match &self.value {
             Some(v) => Ok(JsonValueFilter::new_from_value(v.clone())),
-            _ => return Err("Empty value".to_owned())
+            _ => return Err(SelectorErrorMessage::EmptyValue.to_string())
         }
     }
 
@@ -126,12 +126,12 @@ impl Selector {
                 jf.visit(node.clone());
                 Ok(jf.take_value())
             }
-            _ => Err("Empty path".to_owned())
+            _ => Err(SelectorErrorMessage::EmptyPath.to_string())
         }
     }
 
     pub fn select_to_str(&self) -> result::Result<String, String> {
-        serde_json::to_string(self.select()?.deref()).map_err(|e| format!("{:?}", e))
+        serde_json::to_string(self.select()?.deref()).map_err(|e| e.to_string())
     }
 
     pub fn select_to_value(&self) -> result::Result<Value, String> {
@@ -139,13 +139,59 @@ impl Selector {
     }
 
     pub fn select_to<T: serde::de::DeserializeOwned>(&self) -> result::Result<T, String> {
-        let mut jf = self.jf()?;
-        match &self.node {
-            Some(node) => {
-                jf.visit(node.clone());
-                T::deserialize(jf.take_value().deref()).map_err(|e| format!("{:?}", e))
+        T::deserialize(self.select()?.deref()).map_err(|e| e.to_string())
+    }
+
+    pub fn map<F>(&mut self, func: F) -> result::Result<&mut Self, String>
+        where F: FnOnce(Value) -> Option<Value>
+    {
+        self.value = func((&self.select()?).into()).map(|ref v| v.into());
+        Ok(self)
+    }
+
+    pub fn map_as<F, D, S>(&mut self, func: F) -> result::Result<&mut Self, String>
+        where F: FnOnce(D) -> Option<S>,
+              D: serde::de::DeserializeOwned,
+              S: serde::ser::Serialize
+    {
+        let ret = func(D::deserialize(self.select()?.deref()).map_err(|e| e.to_string())?)
+            .map(|ref ser| ser.serialize(super::ref_value::ser::Serializer));
+
+        self.value = match ret {
+            Some(ret) => match ret {
+                Ok(v) => Some(v.into()),
+                Err(e) => return Err(e.to_string())
             }
-            _ => Err("Path is empty".to_owned())
+            _ => None
+        };
+        Ok(self)
+    }
+
+    pub fn get(&self) -> Value {
+        match &self.value {
+            Some(value) => value.into(),
+            _ => Value::Null
+        }
+    }
+
+    pub fn get_as<T: serde::de::DeserializeOwned>(&self) -> result::Result<T, String> {
+        match &self.value {
+            Some(value) => T::deserialize(value.deref()).map_err(|e| e.to_string()),
+            _ => Err(SelectorErrorMessage::EmptyValue.to_string())
+        }
+    }
+}
+
+enum SelectorErrorMessage {
+    EmptyValue,
+    EmptyPath,
+}
+
+impl fmt::Display for SelectorErrorMessage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SelectorErrorMessage::EmptyValue => write!(f, "Empty value"),
+            SelectorErrorMessage::EmptyPath => write!(f, "Empty path"),
         }
     }
 }
