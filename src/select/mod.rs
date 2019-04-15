@@ -91,6 +91,7 @@ impl Selector {
         Ok(self)
     }
 
+    #[deprecated(since = "0.1.12", note = "Parameter type will be changed from `RefValue` to `&Value` since `0.1.12`")]
     pub fn value(&mut self, ref_value: RefValue) -> result::Result<&mut Self, String> {
         self.value = Some(ref_value.into());
         Ok(self)

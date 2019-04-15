@@ -77,7 +77,7 @@ let result = selector
     .path("$..[?(@.age >= 30)]").unwrap()
 //    .value_from_str(&serde_json::to_string(&json_obj).unwrap() /*&str*/).unwrap()
 //    .value_from(&json_obj /*&impl serde::ser::Serialize*/).unwrap()
-    .value((&json_obj /*serde_json::value::Value*/ ).into()).unwrap()
+    .value((&json_obj).into() /*Parameter type will be changed from `RefValue` to `&Value` since `0.1.12`*/ ).unwrap()
     .select_to_value().unwrap();
 
 assert_eq!(json!([{"name": "친구3", "age": 30}]), result);
