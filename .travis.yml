@@ -45,7 +45,6 @@ matrix:
     - language: node_js
       os: linux
       node_js:
-        - 'node'
         - '11'
         - '10'
         - '9'
@@ -55,6 +54,7 @@ matrix:
         - sh /tmp/rustup.sh -y
         - export PATH="$HOME/.cargo/bin:$PATH"
         - source "$HOME/.cargo/env"
+        - npm install -g neon-cli
         - cd nodejs
         - node -v
         - npm -v
@@ -64,7 +64,6 @@ matrix:
     - language: node_js
       os: osx
       node_js:
-        - 'node'
         - '11'
         - '10'
         - '9'
@@ -74,6 +73,7 @@ matrix:
         - sh /tmp/rustup.sh -y
         - export PATH="$HOME/.cargo/bin:$PATH"
         - source "$HOME/.cargo/env"
+        - npm install -g neon-cli
         - cd nodejs
         - node -v
         - npm -v
