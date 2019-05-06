@@ -25,6 +25,16 @@ fn input_str() -> &'static str {
             "name": "이름2",
             "age": 42,
             "phone": "++44 12341234"
+        },
+        {
+            "name": "이름3",
+            "age": 50,
+            "phone": "++55 111111"
+        },
+        {
+            "name": "이름4",
+            "age": 51,
+            "phone": "++55 12341234"
         }
     ]"#
 }
@@ -36,6 +46,7 @@ fn input_json() -> Value {
 fn input_person() -> Vec<Person> {
     serde_json::from_str(input_str()).unwrap()
 }
+
 #[test]
 fn selector_value_from() {
     let result = Selector::new()
@@ -74,7 +85,8 @@ fn selector_select_to() {
     assert_eq!(input_json()[1], result[0]);
 
     let result = selector.select_to_str().unwrap();
-    assert_eq!(serde_json::to_string(&vec![&input_json()[1].clone()]).unwrap(), result);
+    let value: Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(input_json()[1], value[0]);
 
     let result = selector.select_to::<Vec<Person>>().unwrap();
     assert_eq!(input_person()[1], result[0]);

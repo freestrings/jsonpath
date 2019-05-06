@@ -91,11 +91,11 @@
 /******/ 					"__wbindgen_rethrow": function(p0i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_rethrow"](p0i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper104": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper104"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper111": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper111"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper106": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper106"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper113": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper113"](p0i32,p1i32,p2i32);
 /******/ 					}
 /******/ 				}
 /******/ 			};
@@ -195,7 +195,7 @@
 /******/ 				promises.push(installedWasmModuleData);
 /******/ 			else {
 /******/ 				var importObject = wasmImportObjects[wasmModuleId]();
-/******/ 				var req = fetch(__webpack_require__.p + "" + {"../all_pkg/jsonpath_wasm_bg.wasm":"ddd003b015308ef8b732"}[wasmModuleId] + ".module.wasm");
+/******/ 				var req = fetch(__webpack_require__.p + "" + {"../all_pkg/jsonpath_wasm_bg.wasm":"89ad85706c624c3a6274"}[wasmModuleId] + ".module.wasm");
 /******/ 				var promise;
 /******/ 				if(importObject instanceof Promise && typeof WebAssembly.compileStreaming === 'function') {
 /******/ 					promise = Promise.all([WebAssembly.compileStreaming(req), importObject]).then(function(items) {

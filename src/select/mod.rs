@@ -75,6 +75,7 @@ use super::ref_value::model::*;
 /// let result = selector.select_to::<Vec<Person>>().unwrap();
 /// assert_eq!(input_person()[0], result[0]);
 /// ```
+#[derive(Debug)]
 pub struct Selector {
     pub(crate) node: Option<Node>,
     pub(crate) value: Option<RefValueWrapper>,
@@ -91,9 +92,8 @@ impl Selector {
         Ok(self)
     }
 
-    #[deprecated(since = "0.1.12", note = "Parameter type will be changed from `RefValue` to `&Value` since `0.1.12`")]
-    pub fn value(&mut self, ref_value: RefValue) -> result::Result<&mut Self, String> {
-        self.value = Some(ref_value.into());
+    pub fn value(&mut self, value: &Value) -> result::Result<&mut Self, String> {
+        self.value = Some(value.into());
         Ok(self)
     }
 
@@ -101,43 +101,41 @@ impl Selector {
         let ref_value: RefValue = serializable
             .serialize(super::ref_value::ser::Serializer)
             .map_err(|e| format!("{:?}", e))?;
-        self.value(ref_value)
+        self.value = Some(ref_value.into());
+        Ok(self)
     }
 
     pub fn value_from_str(&mut self, json_str: &str) -> result::Result<&mut Self, String> {
-        let ref_value: RefValue = serde_json::from_str(json_str)
+        let value = serde_json::from_str(json_str)
             .map_err(|e| format!("{:?}", e))?;
-        self.value(ref_value)
+        self.value(&value)
     }
 
     fn jf(&mut self) -> result::Result<JsonValueFilter, String> {
         match &self.value {
             Some(v) => Ok(JsonValueFilter::new_from_value(v.clone())),
-            _ => return Err("Value is empty".to_owned())
+            _ => return Err("Empty value".to_owned())
+        }
+    }
+
+    fn select(&mut self) -> result::Result<RefValueWrapper, String> {
+        let mut jf = self.jf()?;
+
+        match &mut self.node {
+            Some(node) => {
+                jf.visit(node.clone());
+                Ok(jf.take_value())
+            }
+            _ => Err("Empty path".to_owned())
         }
     }
 
     pub fn select_to_str(&mut self) -> result::Result<String, String> {
-        let mut jf = self.jf()?;
-
-        match &mut self.node {
-            Some(node) => {
-                jf.visit(node.clone());
-                return serde_json::to_string(jf.take_value().deref()).map_err(|e| format!("{:?}", e));
-            }
-            _ => return Err("Path is empty".to_owned())
-        };
+        serde_json::to_string(self.select()?.deref()).map_err(|e| format!("{:?}", e))
     }
 
     pub fn select_to_value(&mut self) -> result::Result<Value, String> {
-        let mut jf = self.jf()?;
-        match &mut self.node {
-            Some(node) => {
-                jf.visit(node.clone());
-                Ok((&jf.take_value()).into())
-            }
-            _ => Err("Path is empty".to_owned())
-        }
+        Ok((&self.select()?).into())
     }
 
     pub fn select_to<T: serde::de::DeserializeOwned>(&mut self) -> result::Result<T, String> {

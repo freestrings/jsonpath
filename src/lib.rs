@@ -216,7 +216,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value,
     let mut selector = Box::new(selector);
     move |json| {
         let s: &mut select::Selector = selector.borrow_mut();
-        let _ = s.value(json.into());
+        let _ = s.value(&json);
         s.select_to_value()
     }
 }

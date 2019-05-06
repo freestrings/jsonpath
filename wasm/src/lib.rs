@@ -2,6 +2,7 @@ extern crate cfg_if;
 extern crate jsonpath_lib as jsonpath;
 #[macro_use]
 extern crate lazy_static;
+extern crate serde;
 extern crate serde_json;
 extern crate wasm_bindgen;
 extern crate web_sys;
@@ -48,7 +49,9 @@ fn filter_ref_value(json: RefValueWrapper, node: Node) -> JsValue {
     }
 }
 
-fn into_serde_json(js_value: &JsValue) -> Result<RefValue, String> {
+fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
+    where D: for<'a> serde::de::Deserialize<'a>
+{
     if js_value.is_string() {
         match serde_json::from_str(js_value.as_string().unwrap().as_str()) {
             Ok(json) => Ok(json),
@@ -63,7 +66,8 @@ fn into_serde_json(js_value: &JsValue) -> Result<RefValue, String> {
 }
 
 fn into_ref_value(js_value: &JsValue, node: Node) -> JsValue {
-    match into_serde_json(js_value) {
+    let result: result::Result<RefValue, String> = into_serde_json::<RefValue>(js_value);
+    match result {
         Ok(json) => filter_ref_value(json.into(), node),
         Err(e) => JsValue::from_str(&format!("Json serialize error: {}", e))
     }
@@ -88,7 +92,8 @@ lazy_static! {
 
 #[wasm_bindgen(js_name = allocJson)]
 pub extern fn alloc_json(js_value: JsValue) -> usize {
-    match into_serde_json(&js_value) {
+    let result: result::Result<RefValue, String> = into_serde_json(&js_value);
+    match result {
         Ok(json) => {
             let mut map = CACHE_JSON.lock().unwrap();
             if map.len() >= std::u8::MAX as usize {
@@ -139,7 +144,7 @@ pub fn selector(js_value: JsValue) -> JsValue {
             }
         }
         _ => {
-            match into_serde_json(&js_value) {
+            match into_serde_json::<RefValue>(&js_value) {
                 Ok(json) => json.into(),
                 Err(e) => return JsValue::from_str(e.as_str())
             }
@@ -191,7 +196,7 @@ impl Selector {
 
     #[wasm_bindgen(catch)]
     pub fn value(&mut self, value: JsValue) -> result::Result<(), JsValue> {
-        let ref_value = into_serde_json(&value)?;
+        let ref ref_value = into_serde_json(&value)?;
         let _ = self.selector.value(ref_value)?;
         Ok(())
     }
