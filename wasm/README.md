@@ -14,6 +14,8 @@ It is Webassembly version of [jsonpath_lib](https://github.com/freestrings/jsonp
 
 ### jsonpath.Selector
 
+> Selector's selectTo function is deprecated since 0.1.3
+
 ```javascript
 let jsonObj = {
     "school": {
@@ -31,19 +33,19 @@ let jsonObj = {
 let selector = new jsonpath.Selector().value(jsonObj);
 
 {
-    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectTo();
+    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectAs();
     let resultObj = [{"name": "친구3", "age": 30}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }
 
 {
-    let jsonObj = selector.path('$..[?(@.age == 20)]').selectTo();
+    let jsonObj = selector.path('$..[?(@.age == 20)]').selectAs();
     let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }
 
 {
-    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectTo();
+    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectAs();
     let resultObj = [{"name": "친구5", "age": 20}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }

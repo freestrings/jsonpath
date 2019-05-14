@@ -55,12 +55,12 @@ fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
     if js_value.is_string() {
         match serde_json::from_str(js_value.as_string().unwrap().as_str()) {
             Ok(json) => Ok(json),
-            Err(e) => Err(format!("{:?}", e))
+            Err(e) => Err(e.to_string())
         }
     } else {
         match js_value.into_serde() {
             Ok(json) => Ok(json),
-            Err(e) => Err(format!("{:?}", e))
+            Err(e) => Err(e.to_string())
         }
     }
 }
@@ -203,13 +203,23 @@ impl Selector {
 
     #[wasm_bindgen(catch, js_name = selectToStr)]
     pub fn select_to_str(&mut self) -> result::Result<JsValue, JsValue> {
-        let json_str = self.selector.select_to_str()?;
+        self.select_as_str()
+    }
+
+    #[wasm_bindgen(catch, js_name = selectAsStr)]
+    pub fn select_as_str(&mut self) -> result::Result<JsValue, JsValue> {
+        let json_str = self.selector.select_as_str()?;
         Ok(JsValue::from_str(&json_str))
     }
 
     #[wasm_bindgen(catch, js_name = selectTo)]
     pub fn select_to(&mut self) -> result::Result<JsValue, JsValue> {
-        let ref_value = self.selector.select_to::<RefValue>()
+        self.select_as()
+    }
+
+    #[wasm_bindgen(catch, js_name = selectAs)]
+    pub fn select_as(&mut self) -> result::Result<JsValue, JsValue> {
+        let ref_value = self.selector.select_as::<RefValue>()
             .map_err(|e| JsValue::from_str(&e))?;
         Ok(JsValue::from_serde(&ref_value)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?)

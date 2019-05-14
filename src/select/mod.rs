@@ -130,15 +130,30 @@ impl Selector {
         }
     }
 
+    #[deprecated(since = "0.1.13", note = "Please use the select_as_str function instead")]
     pub fn select_to_str(&self) -> result::Result<String, String> {
+        self.select_as_str()
+    }
+
+    #[deprecated(since = "0.1.13", note = "Please use the select_as_value function instead")]
+    pub fn select_to_value(&self) -> result::Result<Value, String> {
+        self.select_as_value()
+    }
+
+    #[deprecated(since = "0.1.13", note = "Please use the select_as function instead")]
+    pub fn select_to<T: serde::de::DeserializeOwned>(&self) -> result::Result<T, String> {
+        self.select_as()
+    }
+
+    pub fn select_as_str(&self) -> result::Result<String, String> {
         serde_json::to_string(self.select()?.deref()).map_err(|e| e.to_string())
     }
 
-    pub fn select_to_value(&self) -> result::Result<Value, String> {
+    pub fn select_as_value(&self) -> result::Result<Value, String> {
         Ok((&self.select()?).into())
     }
 
-    pub fn select_to<T: serde::de::DeserializeOwned>(&self) -> result::Result<T, String> {
+    pub fn select_as<T: serde::de::DeserializeOwned>(&self) -> result::Result<T, String> {
         T::deserialize(self.select()?.deref()).map_err(|e| e.to_string())
     }
 

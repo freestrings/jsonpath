@@ -217,7 +217,7 @@ pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value,
     move |json| {
         let s: &mut Selector = selector.borrow_mut();
         let _ = s.value(&json);
-        s.select_to_value()
+        s.select_as_value()
     }
 }
 
@@ -261,7 +261,7 @@ pub fn selector<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value
     let mut selector = Box::new(selector);
     move |path: &'a str| {
         let s: &mut Selector = selector.borrow_mut();
-        s.path(path)?.select_to_value()
+        s.path(path)?.select_as_value()
     }
 }
 
@@ -312,7 +312,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&
     let mut selector = Selector::new();
     let _ = selector.value(json.into());
     move |path: &str| {
-        selector.path(path)?.select_to()
+        selector.path(path)?.select_as()
     }
 }
 
@@ -349,7 +349,7 @@ pub fn reader<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, 
 /// ```
 pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
     let mut selector = Selector::new();
-    selector.path(path)?.value(json.into())?.select_to_value()
+    selector.path(path)?.value(json.into())?.select_as_value()
 }
 
 #[deprecated(since = "0.1.4", note = "Please use the select function instead")]
@@ -389,7 +389,7 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
     Selector::new()
         .path(path)?
         .value_from_str(json)?
-        .select_to_str()
+        .select_as_str()
 }
 
 /// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a deserialized-instance of type `T`.
@@ -434,5 +434,5 @@ pub fn select_as<T: serde::de::DeserializeOwned>(json: &str, path: &str) -> resu
     Selector::new()
         .path(path)?
         .value_from_str(json)?
-        .select_to()
+        .select_as()
 }

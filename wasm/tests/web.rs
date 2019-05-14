@@ -113,6 +113,6 @@ fn selector_struct() {
     let mut selector = jsonpath::Selector::new();
     selector.path("$..book[2]").unwrap();
     selector.value(JsValue::from_str(json_str())).unwrap();
-    let json: Value = selector.select_to().unwrap().into_serde().unwrap();
+    let json: Value = selector.select_as().unwrap().into_serde().unwrap();
     assert_eq!(json, target_json());
 }
