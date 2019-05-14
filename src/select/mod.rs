@@ -111,17 +111,17 @@ impl Selector {
         self.value(&value)
     }
 
-    fn jf(&mut self) -> result::Result<JsonValueFilter, String> {
+    fn jf(&self) -> result::Result<JsonValueFilter, String> {
         match &self.value {
             Some(v) => Ok(JsonValueFilter::new_from_value(v.clone())),
             _ => return Err("Empty value".to_owned())
         }
     }
 
-    fn select(&mut self) -> result::Result<RefValueWrapper, String> {
+    fn select(&self) -> result::Result<RefValueWrapper, String> {
         let mut jf = self.jf()?;
 
-        match &mut self.node {
+        match &self.node {
             Some(node) => {
                 jf.visit(node.clone());
                 Ok(jf.take_value())
@@ -130,17 +130,17 @@ impl Selector {
         }
     }
 
-    pub fn select_to_str(&mut self) -> result::Result<String, String> {
+    pub fn select_to_str(&self) -> result::Result<String, String> {
         serde_json::to_string(self.select()?.deref()).map_err(|e| format!("{:?}", e))
     }
 
-    pub fn select_to_value(&mut self) -> result::Result<Value, String> {
+    pub fn select_to_value(&self) -> result::Result<Value, String> {
         Ok((&self.select()?).into())
     }
 
-    pub fn select_to<T: serde::de::DeserializeOwned>(&mut self) -> result::Result<T, String> {
+    pub fn select_to<T: serde::de::DeserializeOwned>(&self) -> result::Result<T, String> {
         let mut jf = self.jf()?;
-        match &mut self.node {
+        match &self.node {
             Some(node) => {
                 jf.visit(node.clone());
                 T::deserialize(jf.take_value().deref()).map_err(|e| format!("{:?}", e))
