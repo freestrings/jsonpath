@@ -14,6 +14,7 @@
   ],
   "main": "lib/index.js",
   "dependencies": {
+    "check-node-version": "*",
     "neon-cli": "^0.2.0"
   },
   "scripts": {

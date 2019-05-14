@@ -45,16 +45,18 @@ if [ "$1" = "all" ]; then
     __cargo_clean
 fi
 
-__msg "npm install"
-echo
+__msg "npm install: wasm"
 cd "${WASM_WWW}" && npm install
+__msg "npm install: wasm_bench"
 cd "${WASM_WWW_BENCH}" && npm install
+__msg "npm install: nodejs"
 cd "${NODEJS}" && npm install
+__msg "npm install: benches_js"
 cd "${BENCHES_JS}" && npm install
 
 echo
 echo
-__msg "nodejs"
+__msg "nodejs test"
 cd "${NODEJS}" && npm test
 
 echo

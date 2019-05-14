@@ -11,6 +11,7 @@ Pre-built 바이너리는 제공하진 않고 소스를 컴파일해서 설치�
 Build from source instead of using pre-built binary, and if Rust is not installed, the latest version is automatically installed.
 
 > Not yet tested in Windows
+> Supported node version is under v12.0
 
 ## APIs
 

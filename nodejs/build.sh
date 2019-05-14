@@ -7,5 +7,4 @@ if ! [ -x "$(command -v rustc)" ]; then
     export PATH="$HOME/.cargo/bin:$PATH"
     source "$HOME/.cargo/env"
 fi
-
-neon build --release
+check-node-version --node '<12.0' && neon build --release
