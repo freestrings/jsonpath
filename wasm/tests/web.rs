@@ -10,6 +10,7 @@ extern crate wasm_bindgen_test;
 
 use serde_json::Value;
 use wasm_bindgen::*;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -113,6 +114,27 @@ fn selector_struct() {
     let mut selector = jsonpath::Selector::new();
     selector.path("$..book[2]").unwrap();
     selector.value(JsValue::from_str(json_str())).unwrap();
+
     let json: Value = selector.select_as().unwrap().into_serde().unwrap();
     assert_eq!(json, target_json());
+
+    let cb = Closure::wrap(Box::new(|js_value: JsValue| {
+        match js_value.into_serde().unwrap() {
+            Value::Array(mut vec) => {
+                match vec.pop().unwrap() {
+                    Value::Object(mut map) => {
+                        map.clear();
+                        map.insert("key".to_string(), Value::String("value".to_string()));
+                        JsValue::from_serde(&Value::Object(map)).unwrap()
+                    }
+                    _ => return JsValue::NULL
+                }
+            }
+            _ => return JsValue::NULL
+        }
+    }) as Box<Fn(JsValue) -> JsValue>);
+
+    selector.map(cb.as_ref().clone()).unwrap();
+    let js_value = selector.get().unwrap();
+    assert_eq!(js_value.into_serde::<Value>().unwrap(), json!({ "key": "value" }));
 }

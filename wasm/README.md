@@ -14,9 +14,11 @@ It is Webassembly version of [jsonpath_lib](https://github.com/freestrings/jsonp
 
 ### jsonpath.Selector
 
-> Selector's selectTo function is deprecated since 0.1.3
+> Selector's selectTo function is deprecated. since 0.1.3
 
 ```javascript
+let jsonpath = require('jsonpath-wasm');
+
 let jsonObj = {
     "school": {
         "friends": [
@@ -30,24 +32,44 @@ let jsonObj = {
     ]
 };
 
-let selector = new jsonpath.Selector().value(jsonObj);
+let selector = new jsonpath.Selector();
+selector.value(jsonObj);
 
 {
-    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectAs();
+    selector.path('$..[?(@.age >= 30)]');
+    let jsonObj = selector.selectAs();
     let resultObj = [{"name": "친구3", "age": 30}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }
 
 {
-    let jsonObj = selector.path('$..[?(@.age == 20)]').selectAs();
+    selector.path('$..[?(@.age == 20)]');
+    let jsonObj = selector.selectAs();
     let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }
 
 {
-    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectAs();
+    selector.value({"friends": [ {"name": "친구5", "age": 20} ]});
+    let jsonObj = selector.selectAs();
     let resultObj = [{"name": "친구5", "age": 20}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
+}
+
+{
+    selector.value(jsonObj);
+    selector.map(function(v) {
+        let f1 = v[0];
+        f1.age = 30;
+        return v;
+    });
+    let resultObj1 = [{"name": "친구1", "age": 30}, {"name": "친구2", "age": 20}];
+    console.log(JSON.stringify(selector.get()) === JSON.stringify(resultObj1));
+
+    selector.path('$..[?(@.age == 20)]');
+    let jsonObj1 = selector.selectAs();
+    let resultObj2 = [{"name": "친구2", "age": 20}];
+    console.log(JSON.stringify(jsonObj1) === JSON.stringify(resultObj2));
 }
 ```
 

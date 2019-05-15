@@ -1,4 +1,5 @@
 extern crate cfg_if;
+extern crate js_sys;
 extern crate jsonpath_lib as jsonpath;
 #[macro_use]
 extern crate lazy_static;
@@ -18,6 +19,8 @@ use jsonpath::filter::value_filter::JsonValueFilter;
 use jsonpath::parser::parser::{Node, NodeVisitor, Parser};
 use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
 use jsonpath::Selector as _Selector;
+use serde_json::Value;
+use wasm_bindgen::*;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
@@ -106,7 +109,7 @@ pub extern fn alloc_json(js_value: JsValue) -> usize {
             *idx
         }
         Err(e) => {
-            console::log_1(&e.into());
+            console::error_1(&e.into());
             0
         }
     }
@@ -222,7 +225,49 @@ impl Selector {
         let ref_value = self.selector.select_as::<RefValue>()
             .map_err(|e| JsValue::from_str(&e))?;
         Ok(JsValue::from_serde(&ref_value)
-            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?)
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn map(&mut self, func: JsValue) -> result::Result<(), JsValue> {
+        if !func.is_function() {
+            return Err(JsValue::from_str("Not a function argument"));
+        }
+
+        let cb: &js_sys::Function = JsCast::unchecked_ref(func.as_ref());
+
+        self.selector.map(|v| {
+            let str_value = match JsValue::from_serde(&v) {
+                Ok(str_value) => str_value,
+                Err(e) => return {
+                    console::error_1(&JsValue::from_str(&e.to_string()));
+                    None
+                }
+            };
+
+            match cb.call1(&func, &str_value) {
+                Ok(ret) => {
+                    match into_serde_json::<Value>(&ret) {
+                        Ok(value) => Some(value),
+                        Err(e) => {
+                            console::error_1(&JsValue::from_str(&e.to_string()));
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    console::error_1(&e);
+                    None
+                }
+            }
+        }).map_err(|e| JsValue::from_str(&e))?;
+
+        Ok(())
+    }
+
+    #[wasm_bindgen(catch)]
+    pub fn get(&mut self) -> result::Result<JsValue, JsValue> {
+        JsValue::from_serde(&self.selector.get()).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }
 
