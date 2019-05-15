@@ -22,7 +22,7 @@ use super::ref_value::model::*;
 /// #[derive(Serialize, Deserialize, PartialEq, Debug)]
 /// struct Person {
 ///     name: String,
-///     age: u8,
+///     age: Option<u8>,
 ///     phone: String,
 /// }
 ///
@@ -55,25 +55,52 @@ use super::ref_value::model::*;
 /// let result = selector
 ///     .path("$..[?(@.age > 40)]").unwrap()
 ///     .value_from_str(input_str()).unwrap()
-///     .select_to_value().unwrap();
+///     .select_as_value().unwrap();
 /// assert_eq!(input_json()[1], result[0]);
 ///
-/// let result = selector.select_to_str().unwrap();
+/// let result = selector.select_as_str().unwrap();
 /// assert_eq!(serde_json::to_string(&vec![&input_json()[1].clone()]).unwrap(), result);
 ///
-/// let result = selector.select_to::<Vec<Person>>().unwrap();
+/// let result = selector.select_as::<Vec<Person>>().unwrap();
 /// assert_eq!(input_person()[1], result[0]);
 ///
 /// let _ = selector.path("$..[?(@.age == 40)]");
 ///
-/// let result = selector.select_to_value().unwrap();
+/// let result = selector.select_as_value().unwrap();
 /// assert_eq!(input_json()[0], result[0]);
 ///
-/// let result = selector.select_to_str().unwrap();
+/// let result = selector.select_as_str().unwrap();
 /// assert_eq!(serde_json::to_string(&vec![&input_json()[0].clone()]).unwrap(), result);
 ///
-/// let result = selector.select_to::<Vec<Person>>().unwrap();
+/// let result = selector.select_as::<Vec<Person>>().unwrap();
 /// assert_eq!(input_person()[0], result[0]);
+///
+/// selector.map(|v| {
+///    let r = match v {
+///        Value::Array(mut vec) => {
+///            for mut v in &mut vec {
+///                v.as_object_mut().unwrap().remove("age");
+///            }
+///            Value::Array(vec)
+///        }
+///        _ => Value::Null
+///    };
+///    Some(r)
+/// });
+/// assert_eq!(
+///   serde_json::from_str::<Value>(r#"[{ "name": "이름1", "phone": "+33 12341234"}]"#).unwrap(),
+///   selector.get().unwrap());
+///
+/// selector.value_from_str(input_str()).unwrap()
+///     .map_as(|mut v: Vec<Person>| {
+///        let mut p = v.pop().unwrap();
+///        p.name = "name1".to_string();
+///        p.age = None;
+///        Some(vec![p])
+///     });
+/// assert_eq!(
+///   vec![Person { name: "name1".to_string(), age: None, phone: "+33 12341234".to_string() }],
+///   selector.get_as::<Vec<Person>>().unwrap());
 /// ```
 #[derive(Debug)]
 pub struct Selector {
@@ -182,10 +209,10 @@ impl Selector {
         Ok(self)
     }
 
-    pub fn get(&self) -> Value {
+    pub fn get(&self) -> result::Result<Value, String> {
         match &self.value {
-            Some(value) => value.into(),
-            _ => Value::Null
+            Some(value) => Ok(value.into()),
+            _ => Err(SelectorErrorMessage::EmptyValue.to_string())
         }
     }
 

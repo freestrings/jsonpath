@@ -75,16 +75,41 @@ let result = selector
     .path("$..[?(@.age >= 30)]").unwrap()
 //    .value_from_str(&serde_json::to_string(&json_obj).unwrap() /*&str*/).unwrap()
 //    .value_from(&json_obj /*&impl serde::ser::Serialize*/).unwrap()
-    .value(&json_obj /*serde_json::value::Value*/ ).unwrap()
-    .select_to_value().unwrap();
+    .value(&json_obj /*serde_json::value::Value*/).unwrap()
+    .select_as_value().unwrap();
 
 assert_eq!(json!([{"name": "친구3", "age": 30}]), result);
 
-let result = selector.select_to_str().unwrap();
+let result = selector.select_as_str().unwrap();
 assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
 
-let result = selector.select_to::<Vec<Friend>>().unwrap();
+let result = selector.select_as::<Vec<Friend>>().unwrap();
 assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
+
+let _ = selector.map(|v| {
+    let r = match v {
+        Value::Array(mut vec) => {
+            for mut v in &mut vec {
+                v.as_object_mut().unwrap().remove("age");
+            }
+            Value::Array(vec)
+        }
+        _ => Value::Null
+    };
+    Some(r)
+});
+assert_eq!(json!([{ "name": "친구3" }]), selector.get().unwrap());
+
+let _ = selector.value(&json_obj).unwrap()
+    .map_as(|mut v: Vec<Friend>| {
+        let mut f = v.pop().unwrap();
+        f.name = "friend3".to_string();
+        f.age = None;
+        Some(vec![f])
+    });
+
+assert_eq!(vec![Friend { name: "friend3".to_string(), age: None }],
+           selector.get_as::<Vec<Friend>>().unwrap());
 ```
 
 #### Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)
@@ -322,15 +347,22 @@ let selector = new jsonpath.Selector();
 selector.path('$..friends[0]');
 selector.value(jsonObj);
 
-let selectToObj = selector.selectTo();
-let selectToString = selector.selectToStr();
+let selectAsObj = selector.selectAs();
+let selectAsString = selector.selectAsStr();
 
 console.log(
-    JSON.stringify(ret) == JSON.stringify(selectToObj),
-    JSON.stringify(ret) == selectToString
+    JSON.stringify(ret) == JSON.stringify(selectAsObj),
+    JSON.stringify(ret) == selectAsString
 );
 
-// => true, true
+selector.map(function(v) {
+    let f1 = v[0];
+    f1.name = 'friend3';
+    return [f1];
+});
+
+console.log(JSON.stringify(selector.get()) === JSON.stringify([{"name": "friend3", "age": 30}]));
+// => true
 ```
 
 ##### jsonpath-rs
@@ -358,12 +390,12 @@ let selector = new jsonpath.Selector()
     .path('$..friends[0]')
     .value(jsonObj);
 
-let selectToObj = selector.selectTo();
-let selectToString = selector.selectToStr();
+let selectAsObj = selector.selectAs();
+let selectAsString = selector.selectAsStr();
 
 console.log(
-    JSON.stringify(ret) == JSON.stringify(selectToObj),
-    JSON.stringify(ret) == selectToString
+    JSON.stringify(ret) == JSON.stringify(selectAsObj),
+    JSON.stringify(ret) == selectAsString
 );
 
 // => true, true
