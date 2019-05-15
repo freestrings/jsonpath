@@ -267,7 +267,8 @@ impl Selector {
 
     #[wasm_bindgen(catch)]
     pub fn get(&mut self) -> result::Result<JsValue, JsValue> {
-        JsValue::from_serde(&self.selector.get()).map_err(|e| JsValue::from_str(&e.to_string()))
+        let v = self.selector.get().map_err(|e| JsValue::from_str(&e.to_string()))?;
+        JsValue::from_serde(&v).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }
 

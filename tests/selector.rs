@@ -53,7 +53,7 @@ fn selector_value_from() {
     let result = Selector::new()
         .path("$..[?(@.age > 40)]").unwrap()
         .value_from(&input_person()).unwrap()
-        .select_to::<Vec<Person>>().unwrap();
+        .select_as::<Vec<Person>>().unwrap();
     assert_eq!(input_person()[1], result[0]);
 }
 
@@ -62,7 +62,7 @@ fn selector_value() {
     let result = Selector::new()
         .path("$..[?(@.age > 40)]").unwrap()
         .value((&input_json()).into()).unwrap()
-        .select_to_value().unwrap();
+        .select_as_value().unwrap();
     assert_eq!(input_json()[1], result[0]);
 }
 
@@ -71,7 +71,7 @@ fn selector_value_from_str() {
     let result = Selector::new()
         .path("$..[?(@.age > 40)]").unwrap()
         .value_from_str(input_str()).unwrap()
-        .select_to_value().unwrap();
+        .select_as_value().unwrap();
     assert_eq!(input_json()[1], result[0]);
 }
 
@@ -82,25 +82,25 @@ fn selector_select_to() {
     let result = selector
         .path("$..[?(@.age > 40)]").unwrap()
         .value_from_str(input_str()).unwrap()
-        .select_to_value().unwrap();
+        .select_as_value().unwrap();
     assert_eq!(input_json()[1], result[0]);
 
-    let result = selector.select_to_str().unwrap();
+    let result = selector.select_as_str().unwrap();
     let value: Value = serde_json::from_str(&result).unwrap();
     assert_eq!(input_json()[1], value[0]);
 
-    let result = selector.select_to::<Vec<Person>>().unwrap();
+    let result = selector.select_as::<Vec<Person>>().unwrap();
     assert_eq!(input_person()[1], result[0]);
 
     let _ = selector.path("$..[?(@.age == 40)]");
 
-    let result = selector.select_to_value().unwrap();
+    let result = selector.select_as_value().unwrap();
     assert_eq!(input_json()[0], result[0]);
 
-    let result = selector.select_to_str().unwrap();
+    let result = selector.select_as_str().unwrap();
     assert_eq!(serde_json::to_string(&vec![&input_json()[0].clone()]).unwrap(), result);
 
-    let result = selector.select_to::<Vec<Person>>().unwrap();
+    let result = selector.select_as::<Vec<Person>>().unwrap();
     assert_eq!(input_person()[0], result[0]);
 }
 
@@ -145,7 +145,7 @@ fn selector_map_basic() {
         .path("$..[?(@.age > 40)]").unwrap()
         .value_from_str(input_str()).unwrap()
         .map(_remove_name).unwrap()
-        .get();
+        .get().unwrap();
 
     assert_eq!(result, json!([
         {"phone": "++44 12341234", "age": 42},
@@ -155,7 +155,7 @@ fn selector_map_basic() {
 }
 
 #[test]
-fn selector_map_chain() {
+fn selector_map() {
     let mut selector = Selector::new();
 
     let result = selector
@@ -164,7 +164,7 @@ fn selector_map_chain() {
         .map(_remove_name).unwrap()
         .path("$..[?(@.age == 50)]").unwrap()
         .map(_change_phone_number).unwrap()
-        .get();
+        .get().unwrap();
 
     assert_eq!(result, json!({
         "phone": "1234",
@@ -180,7 +180,7 @@ fn selector_map_as_basic() {
         .path("$..[?(@.age > 40)]").unwrap()
         .value_from_str(input_str()).unwrap()
         .map_as(_rejuvenate).unwrap()
-        .get();
+        .get().unwrap();
 
     assert_eq!(result, json!([
         {"name": "이름2", "phone": "++44 12341234", "age": 32},
@@ -190,7 +190,7 @@ fn selector_map_as_basic() {
 }
 
 #[test]
-fn selector_map_as_chain() {
+fn selector_map_as() {
     let mut selector = Selector::new();
 
     let result = selector
@@ -199,7 +199,7 @@ fn selector_map_as_chain() {
         .map_as(_rejuvenate).unwrap()
         .path("$..[?(@.age == 40)]").unwrap()
         .map(_change_phone_number).unwrap()
-        .get();
+        .get().unwrap();
 
     assert_eq!(result, json!({
         "name": "이름3",

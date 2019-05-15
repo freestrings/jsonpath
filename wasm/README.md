@@ -14,7 +14,7 @@ It is Webassembly version of [jsonpath_lib](https://github.com/freestrings/jsonp
 
 ### jsonpath.Selector
 
-> Selector's selectTo function is deprecated. since 0.1.3
+> The selectTo function is deprecated since 0.1.3. please use the selectAs function instead.
 
 ```javascript
 let jsonpath = require('jsonpath-wasm');
