@@ -139,7 +139,7 @@ declare_types! {
             Ok(JsUndefined::new().upcast())
         }
 
-        method value_from_str(mut ctx) {
+        method valueFromStr(mut ctx) {
             let mut this = ctx.this();
 
             let json_str = ctx.argument::<JsString>(0)?.value();
@@ -151,19 +151,63 @@ declare_types! {
             Ok(JsUndefined::new().upcast())
         }
 
-        method select_to_str(mut ctx) {
+        method selectAsStr(mut ctx) {
              let mut this = ctx.this();
 
              let result = {
                 let guard = ctx.lock();
                 let mut this = this.borrow_mut(&guard);
-                this.selector.select_to_str()
+                this.selector.select_as_str()
              };
 
              match result {
                 Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
                 Err(e) => panic!("{:?}", e)
              }
+        }
+
+        method map(mut ctx) {
+            let null = ctx.null();
+            let mut this = ctx.this();
+
+            let func = ctx.argument::<JsFunction>(0)?;
+
+            let value = {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                match this.selector.select_as_str() {
+                    Ok(v) => v,
+                    Err(e) => panic!("{:?}", e)
+                }
+            };
+
+            let js_value = JsString::new(&mut ctx, &value);
+            let json_str = func.call(&mut ctx, null, vec![js_value])?
+                .downcast::<JsString>()
+                .or_throw(&mut ctx)?
+                .value();
+            {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                let _ = this.selector.value_from_str(&json_str);
+            }
+
+            Ok(JsUndefined::new().upcast())
+        }
+
+        method get(mut ctx) {
+            let mut this = ctx.this();
+
+            let result = {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                match this.selector.get() {
+                    Ok(v) => v,
+                    Err(e) => panic!("{:?}", e)
+                }
+            };
+
+            Ok(JsString::new(&mut ctx, &result.to_string()).upcast())
         }
     }
 }

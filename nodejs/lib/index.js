@@ -42,18 +42,40 @@ class Selector {
         if(typeof json != 'string') {
             json = JSON.stringify(json)
         }
-        this._selector.value_from_str(json);
+        this._selector.valueFromStr(json);
         return this;
     }
 
     selectToStr() {
-        return this._selector.select_to_str();
+        return this.selectAsStr();
     }
 
     selectTo() {
-        return JSON.parse(this.selectToStr());
+        return this.selectAs();
     }
 
+    selectAsStr() {
+        return this._selector.selectAsStr();
+    }
+
+    selectAs() {
+        return JSON.parse(this.selectAsStr());
+    }
+
+    map(func) {
+        this._selector.map((json) => {
+            var result = func.call(null, JSON.parse(json));
+            if(typeof result !== 'string') {
+                result = JSON.stringify(result);
+            }
+            return result;
+        });
+        return this;
+    }
+
+    get() {
+        return JSON.parse(this._selector.get());
+    }
 }
 
 module.exports = {

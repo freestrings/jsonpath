@@ -41,21 +41,37 @@ let jsonObj = {
 let selector = new jsonpath.Selector().value(jsonObj);
 
 {
-    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectTo();
+    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectAs();
     let resultObj = [{"name": "친구3", "age": 30}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }
 
 {
-    let jsonObj = selector.path('$..[?(@.age == 20)]').selectTo();
+    let jsonObj = selector.path('$..[?(@.age == 20)]').selectAs();
     let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
 }
 
 {
-    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectTo();
+    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectAs();
     let resultObj = [{"name": "친구5", "age": 20}];
     console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
+}
+
+{
+    let jsonObj1 = selector.value(jsonObj).map(function(v) {
+        let f1 = v[0];
+        f1.age = 30;
+        return v;
+    }).get();
+
+    let resultObj1 = [{"name": "친구1", "age": 30}, {"name": "친구2", "age": 20}];
+    console.log(JSON.stringify(jsonObj1) === JSON.stringify(resultObj1));
+
+    selector.path('$..[?(@.age == 20)]');
+    let jsonObj2 = selector.selectAs();
+    let resultObj2 = [{"name": "친구2", "age": 20}];
+    console.log(JSON.stringify(jsonObj2) === JSON.stringify(resultObj2));
 }
 ```
 

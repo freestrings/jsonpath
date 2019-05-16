@@ -1,6 +1,6 @@
 {
   "name": "jsonpath-rs",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "It is JsonPath implementation. The core implementation is written in Rust",
   "author": "Changseok Han <freestrings@gmail.com>",
   "license": "MIT",

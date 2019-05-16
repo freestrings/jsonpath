@@ -34,6 +34,9 @@ __extra () {
     printf "\n"
     sleep 1
     cd "${DIR}"/javascript && echo "NodeJs - jsonpath-rs - compile: " && time ./bench.sh nativeCompile ${ITER}
+    printf "\n"
+    sleep 1
+    cd "${DIR}"/javascript && echo "NodeJs - jsonpath-rs - selectorClassMap: " && time ./bench.sh nativeSelectorClassMap ${ITER}
 }
 
 if [ "$1" = "extra" ]; then
