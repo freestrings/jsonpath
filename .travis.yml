@@ -23,9 +23,6 @@ matrix:
       script:
         - cargo build --verbose --all
         - cargo test --verbose --all
-        - cd wasm
-        - wasm-pack build
-        - wasm-pack test --chrome --headless
     - rust: stable
       os: osx
       env: RUST_BACKTRACE=1
@@ -39,9 +36,6 @@ matrix:
       script:
         - cargo build --verbose --all
         - cargo test --verbose --all
-        - cd wasm
-        - wasm-pack build
-        - wasm-pack test --chrome --headless
     - language: node_js
       os: linux
       node_js:
