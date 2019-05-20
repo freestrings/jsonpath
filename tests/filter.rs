@@ -1,3 +1,4 @@
+extern crate core;
 extern crate env_logger;
 extern crate jsonpath_lib as jsonpath;
 #[macro_use]
@@ -6,7 +7,8 @@ extern crate serde_json;
 use std::io::Read;
 
 use serde_json::Value;
-use jsonpath::filter::value_filter::{ValueFilter, JsonValueFilter};
+
+use jsonpath::filter::value_filter::{JsonValueFilter, ValueFilter};
 use jsonpath::parser::parser::Parser;
 
 fn setup() {
@@ -230,7 +232,6 @@ fn op_default() {
     parser.parse(&mut jf).unwrap();
     let friends = json!([{ "name" : "친구3", "age" : 30 }]);
     assert_eq!(friends, jf.into_value());
-
 }
 
 #[test]
@@ -308,6 +309,7 @@ fn op_complex() {
     let ret = jsonpath::select(&json, r#"$.[?(@.a > "1")]"#).unwrap();
     assert_eq!(Value::Null, ret);
 }
+
 #[test]
 fn example() {
     setup();
@@ -448,4 +450,21 @@ fn example() {
     let jf = do_filter("$..*", "./benches/example.json");
     let json: Value = serde_json::from_str(read_json("./benches/giveme_every_thing_result.json").as_str()).unwrap();
     assert_eq!(json, jf.into_value());
+}
+
+#[test]
+fn filer_same_obj() {
+    setup();
+
+    let mut jf = JsonValueFilter::new(r#"
+    {
+        "a": 1,
+        "b" : {"a": 1},
+        "c" : {"a": 1}
+    }
+    "#).unwrap();
+    let mut parser = Parser::new("$..[?(@.a == 1)]");
+    parser.parse(&mut jf).unwrap();
+    let ret = jf.into_value();
+    println!("{:?}", ret);
 }

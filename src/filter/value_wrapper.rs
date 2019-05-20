@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use indexmap::IndexSet;
+use indexmap::{IndexSet, IndexMap};
 use serde_json::Value;
 
 use ref_value::model::*;
@@ -87,6 +87,7 @@ impl ValueWrapper {
                         set.insert(v.clone());
                     }
                 }
+
                 let ret = set.into_iter().collect();
                 Some(ValueWrapper::new(RefValue::Array(ret).into(), false))
             }
@@ -155,20 +156,36 @@ impl ValueWrapper {
         self.val.is_array()
     }
 
-    fn into_hashset(&self) -> IndexSet<RefValueWrapper> {
+    fn into_hashset(&self) -> IndexSet<&RefValue> {
         trace!("into_hashset");
         let mut hashset = IndexSet::new();
         match self.val.deref() {
             RefValue::Array(ref v1) => {
                 for v in v1 {
-                    hashset.insert(v.clone());
+                    hashset.insert(v.deref());
                 }
             }
             _ => {
-                hashset.insert(self.val.clone());
+                hashset.insert(self.val.deref());
             }
         }
         hashset
+    }
+
+    fn into_hashmap(&self) -> IndexMap<&RefValue, RefValueWrapper> {
+        trace!("into_hashmap");
+        let mut hashmap = IndexMap::new();
+        match self.val.deref() {
+            RefValue::Array(ref v1) => {
+                for v in v1 {
+                    hashmap.insert(v.deref(), v.clone());
+                }
+            }
+            _ => {
+                hashmap.insert(self.val.deref(), self.val.clone());
+            }
+        }
+        hashmap
     }
 
     pub fn except(&self, other: &Self) -> Self {
@@ -178,13 +195,13 @@ impl ValueWrapper {
         match other.val.deref() {
             RefValue::Array(ref v1) => {
                 for v in v1 {
-                    if !hashset.contains(v) {
+                    if !hashset.contains(v.deref()) {
                         ret.insert(v.clone());
                     }
                 }
             }
             _ => {
-                if !hashset.contains(&other.val) {
+                if !hashset.contains(&other.val.deref()) {
                     ret.insert(other.val.clone());
                 }
             }
@@ -201,13 +218,13 @@ impl ValueWrapper {
         match other.val.deref() {
             RefValue::Array(ref v1) => {
                 for v in v1 {
-                    if hashset.contains(v) {
+                    if hashset.contains(v.deref()) {
                         ret.insert(v.clone());
                     }
                 }
             }
-            _ => {
-                if hashset.contains(&other.val) {
+            e => {
+                if hashset.contains(e) {
                     ret.insert(other.val.clone());
                 }
             }
@@ -219,24 +236,30 @@ impl ValueWrapper {
 
     pub fn union(&self, other: &Self) -> Self {
         trace!("union");
-        let mut hashset = self.into_hashset();
+        let origin = self.into_hashmap();
+        let mut ret = IndexSet::new();
+
+        for o in origin.values() {
+            ret.insert(o.clone());
+        }
+
         match other.val.deref() {
             RefValue::Array(ref v1) => {
                 for v in v1 {
-                    if !hashset.contains(v) {
-                        hashset.insert(v.clone());
+                    if !origin.contains_key(v.deref()) {
+                        ret.insert(v.clone());
                     }
                 }
             }
             _ => {
-                if !hashset.contains(&other.val) {
-                    hashset.insert(other.val.clone());
+                if !origin.contains_key(&other.val.deref()) {
+                    ret.insert(other.val.clone());
                 }
             }
         }
 
         let mut vw = ValueWrapper::new(RefValue::Null.into(), false);
-        let list = hashset.into_iter().map(|val| val.clone()).collect();
+        let list = ret.iter().map(|v| v.clone()).collect();
         vw.replace(RefValue::Array(list).into());
         vw
     }

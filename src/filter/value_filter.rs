@@ -232,14 +232,14 @@ impl ValueFilter {
                         for v in vec {
                             let nested_wrapper = get_nested_object(v, key, filter_mode);
                             if !nested_wrapper.is_null() {
-                                ret.push(nested_wrapper.clone());
+                                ret.push(nested_wrapper);
                             }
                         }
                         buf.append(&mut ret);
                     } else if v.is_object() {
                         let nested_wrapper = get_nested_object(v, key, filter_mode);
                         if !nested_wrapper.is_null() {
-                            buf.push(nested_wrapper.clone());
+                            buf.push(nested_wrapper);
                         }
                     } else {
                         match v.get(key.clone()) {
@@ -256,7 +256,7 @@ impl ValueFilter {
                 for v in vec {
                     let wrapper = get_nested_object(v, key, filter_mode);
                     if !wrapper.is_null() {
-                        ret.push(wrapper.clone());
+                        ret.push(wrapper);
                     }
                 }
                 RefValue::Array(ret).into()

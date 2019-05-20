@@ -5,12 +5,19 @@ use std::sync::Arc;
 use indexmap::map::IndexMap;
 use serde::ser::Serialize;
 use serde_json::{Number, Value};
+use std::collections::hash_map::DefaultHasher;
 
 type TypeRefValue = Arc<Box<RefValue>>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct RefValueWrapper {
     data: TypeRefValue
+}
+
+impl PartialEq for RefValueWrapper {
+    fn eq(&self, other: &RefValueWrapper) -> bool {
+        Arc::ptr_eq(&self.data, &other.data)
+    }
 }
 
 impl Eq for RefValueWrapper {}
@@ -113,7 +120,7 @@ impl RefIndex for String {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum RefValue {
     Null,
     Bool(bool),
@@ -121,6 +128,18 @@ pub enum RefValue {
     String(String),
     Array(Vec<RefValueWrapper>),
     Object(IndexMap<String, RefValueWrapper>),
+}
+
+impl PartialEq for RefValue {
+    fn eq(&self, other: &RefValue) -> bool {
+        let mut hasher1 = DefaultHasher::new();
+        let mut hasher2 = DefaultHasher::new();
+
+        self.hash(&mut hasher1);
+        other.hash(&mut hasher2);
+
+        hasher1.finish() == hasher2.finish()
+    }
 }
 
 static REF_VALUE_NULL: &'static str = "$jsonpath::ref_value::model::RefValue::Null";
@@ -147,7 +166,8 @@ impl Hash for RefValue {
                 s.hash(state)
             }
             RefValue::Object(map) => {
-                for (_, v) in map {
+                for (k, v) in map {
+                    k.hash(state);
                     v.hash(state);
                 }
             }
