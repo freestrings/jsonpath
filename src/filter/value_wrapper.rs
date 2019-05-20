@@ -9,6 +9,28 @@ use super::cmp::*;
 use super::term::*;
 use super::value_filter::*;
 
+fn cmp_with_term<F: PrivCmp>(val: &RefValueWrapper, et: &ExprTerm, cmp_fn: &F, default: bool, reverse: bool) -> bool {
+    match val.deref() {
+        RefValue::Bool(ref v1) => {
+            match et {
+                ExprTerm::Bool(v2) => if reverse { cmp_fn.cmp_bool(v2, v1) } else { cmp_fn.cmp_bool(v1, v2) },
+                _ => default
+            }
+        }
+        RefValue::Number(ref v1) => match et {
+            ExprTerm::Number(v2) => if reverse { cmp_fn.cmp_f64(v2, &v1.as_f64().unwrap()) } else { cmp_fn.cmp_f64(&v1.as_f64().unwrap(), v2) },
+            _ => default
+        },
+        RefValue::String(ref v1) => {
+            match et {
+                ExprTerm::String(v2) => if reverse { cmp_fn.cmp_string(v2, v1) } else { cmp_fn.cmp_string(v1, v2) },
+                _ => default
+            }
+        }
+        _ => default
+    }
+}
+
 #[derive(Debug)]
 pub struct ValueWrapper {
     val: RefValueWrapper,
@@ -42,28 +64,6 @@ impl ValueWrapper {
         }
     }
 
-    fn cmp_with_term<F: PrivCmp>(val: &RefValueWrapper, et: &ExprTerm, cmp_fn: &F, default: bool, reverse: bool) -> bool {
-        match val.deref() {
-            RefValue::Bool(ref v1) => {
-                match et {
-                    ExprTerm::Bool(v2) => if reverse { cmp_fn.cmp_bool(v2, v1) } else { cmp_fn.cmp_bool(v1, v2) },
-                    _ => default
-                }
-            }
-            RefValue::Number(ref v1) => match et {
-                ExprTerm::Number(v2) => if reverse { cmp_fn.cmp_f64(v2, &v1.as_f64().unwrap()) } else { cmp_fn.cmp_f64(&v1.as_f64().unwrap(), v2) },
-                _ => default
-            },
-            RefValue::String(ref v1) => {
-                match et {
-                    ExprTerm::String(v2) => if reverse { cmp_fn.cmp_string(v2, v1) } else { cmp_fn.cmp_string(v1, v2) },
-                    _ => default
-                }
-            }
-            _ => default
-        }
-    }
-
     fn take_object_in_array<F: PrivCmp>(&self, key: &String, et: &ExprTerm, cmp: &F, reverse: bool) -> Option<Self> {
         fn _filter_with_object<F: Fn(&RefValueWrapper) -> bool>(v: &RefValueWrapper, key: &String, fun: F) -> bool {
             match v.deref() {
@@ -82,7 +82,7 @@ impl ValueWrapper {
                 let mut set = IndexSet::new();
                 for v in vec {
                     if _filter_with_object(v, key, |vv| {
-                        Self::cmp_with_term(vv, et, cmp, false, reverse)
+                        cmp_with_term(vv, et, cmp, false, reverse)
                     }) {
                         set.insert(v.clone());
                     }
@@ -111,7 +111,7 @@ impl ValueWrapper {
                     RefValue::Array(vec) => {
                         let mut set = IndexSet::new();
                         for v in vec {
-                            if Self::cmp_with_term(v, et, &cmp, false, reverse) {
+                            if cmp_with_term(v, et, &cmp, false, reverse) {
                                 set.insert(v.clone());
                             }
                         }
@@ -119,7 +119,7 @@ impl ValueWrapper {
                         ValueWrapper::new(RefValue::Array(ret).into(), false)
                     }
                     _ => {
-                        if Self::cmp_with_term(&self.val, et, &cmp, false, reverse) {
+                        if cmp_with_term(&self.val, et, &cmp, false, reverse) {
                             ValueWrapper::new(self.val.clone(), false)
                         } else {
                             ValueWrapper::new(RefValue::Null.into(), false)
@@ -132,8 +132,8 @@ impl ValueWrapper {
 
     pub fn replace(&mut self, val: RefValueWrapper) {
         let is_null = match val.deref() {
-            RefValue::Array(v) => if v.is_empty() { true } else { false },
-            RefValue::Object(m) => if m.is_empty() { true } else { false },
+            RefValue::Array(v) => v.is_empty(),
+            RefValue::Object(m) => m.is_empty(),
             _ => val.is_null()
         };
         self.val = if is_null {

@@ -48,7 +48,7 @@ fn readme_selector() {
     let _ = selector.map(|v| {
         let r = match v {
             Value::Array(mut vec) => {
-                for mut v in &mut vec {
+                for v in &mut vec {
                     v.as_object_mut().unwrap().remove("age");
                 }
                 Value::Array(vec)

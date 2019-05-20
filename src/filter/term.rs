@@ -35,12 +35,12 @@ impl TermContext {
                             }
                         }
 
-                        let mut c = v.into_term(key);
-                        let mut oc = ov.into_term(key_other);
+                        let c = v.into_term(key);
+                        let oc = ov.into_term(key_other);
                         if is_json(&c) && is_json(&oc) {
                             v.cmp(&ov, cmp_fn.into_type())
                         } else {
-                            c.cmp(&mut oc, cmp_fn, default)
+                            c.cmp(&oc, cmp_fn, default)
                         }
                     }
                     TermContext::Constants(et) => {
