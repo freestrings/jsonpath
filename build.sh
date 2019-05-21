@@ -10,6 +10,7 @@ WASM_WWW_BENCH="${WASM}"/www_bench
 WASM_BROWSER_PKG="${WASM}"/browser_pkg
 WASM_NODEJS_PKG="${WASM}"/nodejs_pkg
 WASM_ALL_PKG="${WASM}"/all_pkg
+WASM_TEST="${WASM}"/tests
 BENCHES="${DIR}"/benches
 BENCHES_JS="${BENCHES}"/javascript
 NODEJS="${DIR}"/nodejs
@@ -38,7 +39,8 @@ rm -rf \
     "${WASM_WWW}"/node_modules \
     "${WASM_WWW_BENCH}"/node_modules \
     "${WASM_WWW}"/dist \
-    "${WASM_WWW_BENCH}"/dist
+    "${WASM_WWW_BENCH}"/dist \
+    "${WASM_TEST}"/node_modules
 
 if [ "$1" = "all" ]; then
     __msg "clean targets"
@@ -53,6 +55,8 @@ __msg "npm install: nodejs"
 cd "${NODEJS}" && npm install
 __msg "npm install: benches_js"
 cd "${BENCHES_JS}" && npm install
+__msg "npm install: wasm test"
+cd "${WASM_TEST}" && npm install
 
 echo
 echo
@@ -66,8 +70,9 @@ cd "${WASM}" && \
     wasm-pack build --release --target=nodejs --out-dir "${WASM_NODEJS_PKG}"
 
 cd "${WASM}" && \
-    wasm-pack build --release --target=browser --out-dir "${WASM_BROWSER_PKG}" && \
-    wasm-pack test --chrome --firefox --headless
+    wasm-pack build --release --target=browser --out-dir "${WASM_BROWSER_PKG}"
+#    && \
+#    wasm-pack test --chrome --firefox --headless
 
 __msg "wasm npm packaging"
 cp -r "${WASM_BROWSER_PKG}" "${WASM_ALL_PKG}/" && \
@@ -93,6 +98,15 @@ cd "${WASM_WWW_BENCH}" && \
 cd "${BENCHES_JS}" && \
     npm link jsonpath-wasm && \
     npm link jsonpath-rs
+
+cd "${WASM_TEST}" && \
+    npm link jsonpath-wasm
+
+echo
+echo
+__msg "wasm test"
+cd "${WASM_TEST}" && npm test
+
 
 echo
 __msg "docs"

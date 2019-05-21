@@ -156,7 +156,7 @@ declare_types! {
 
              let result = {
                 let guard = ctx.lock();
-                let mut this = this.borrow_mut(&guard);
+                let this = this.borrow_mut(&guard);
                 this.selector.select_as_str()
              };
 
@@ -174,7 +174,7 @@ declare_types! {
 
             let value = {
                 let guard = ctx.lock();
-                let mut this = this.borrow_mut(&guard);
+                let this = this.borrow_mut(&guard);
                 match this.selector.select_as_str() {
                     Ok(v) => v,
                     Err(e) => panic!("{:?}", e)
@@ -200,7 +200,7 @@ declare_types! {
 
             let result = {
                 let guard = ctx.lock();
-                let mut this = this.borrow_mut(&guard);
+                let this = this.borrow_mut(&guard);
                 match this.selector.get() {
                     Ok(v) => v,
                     Err(e) => panic!("{:?}", e)

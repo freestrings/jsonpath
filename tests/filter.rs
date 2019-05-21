@@ -466,5 +466,8 @@ fn filer_same_obj() {
     let mut parser = Parser::new("$..[?(@.a == 1)]");
     parser.parse(&mut jf).unwrap();
     let ret = jf.into_value();
-    println!("{:?}", ret);
+    assert_eq!(ret, json!([
+        {"a": 1},
+        {"a": 1}
+    ]));
 }
