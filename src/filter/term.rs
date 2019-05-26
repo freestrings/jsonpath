@@ -1,15 +1,18 @@
 use super::cmp::*;
 use super::value_filter::ValueFilterKey;
-use super::value_wrapper::*;
+use super::value_manager::*;
+use std::cell::RefCell;
+use select::path_map::PathMap;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum TermContext {
     Constants(ExprTerm),
-    Json(Option<ValueFilterKey>, ValueWrapper),
+    Json(Option<ValueFilterKey>, ValueManager),
 }
 
 impl TermContext {
-    fn cmp<F: PrivCmp + IntoType>(&self, other: &TermContext, cmp_fn: F, default: bool) -> TermContext {
+    fn cmp<F: PrivCmp + IntoType>(&mut self, other: &mut TermContext, cmp_fn: F, default: bool) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
@@ -17,9 +20,9 @@ impl TermContext {
                         trace!("const-const");
                         TermContext::Constants(ExprTerm::Bool(et.cmp(oet, cmp_fn, default)))
                     }
-                    TermContext::Json(key, v) => {
+                    TermContext::Json(ref mut key, ref mut v) => {
                         trace!("const-json");
-                        TermContext::Json(None, v.take_with(key, et, cmp_fn, true))
+                        TermContext::Json(None, v.get_compare_with(key, et, cmp_fn, true))
                     }
                 }
             }
@@ -35,24 +38,24 @@ impl TermContext {
                             }
                         }
 
-                        let c = v.into_term(key);
-                        let oc = ov.into_term(key_other);
+                        let mut c = v.into_term(key);
+                        let mut oc = ov.into_term(key_other);
                         if is_json(&c) && is_json(&oc) {
                             v.cmp(&ov, cmp_fn.into_type())
                         } else {
-                            c.cmp(&oc, cmp_fn, default)
+                            c.cmp(&mut oc, cmp_fn, default)
                         }
                     }
                     TermContext::Constants(et) => {
                         trace!("json-const");
-                        TermContext::Json(None, v.take_with(key, et, cmp_fn, false))
+                        TermContext::Json(None, v.get_compare_with(key, et, cmp_fn, false))
                     }
                 }
             }
         }
     }
 
-    fn cmp_cond(&self, other: &TermContext, cmp_cond_type: CmpCondType) -> TermContext {
+    fn cmp_cond(&self, other: &TermContext, cmp_cond_type: CmpCondType, path_map: Arc<RefCell<PathMap>>) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
@@ -67,7 +70,7 @@ impl TermContext {
                         }
                     }
                     TermContext::Json(_, v) => {
-                        TermContext::Json(None, ValueWrapper::new(v.get_val().clone(), false))
+                        TermContext::Json(None, ValueManager::new(v.get_val().clone(), false, path_map))
                     }
                 }
             }
@@ -80,49 +83,49 @@ impl TermContext {
                         }
                     }
                     _ => {
-                        TermContext::Json(None, ValueWrapper::new(v.get_val().clone(), false))
+                        TermContext::Json(None, ValueManager::new(v.get_val().clone(), false, path_map))
                     }
                 }
             }
         }
     }
 
-    pub fn eq(&self, other: &TermContext) -> TermContext {
+    pub fn eq(&mut self, other: &mut TermContext) -> TermContext {
         trace!("eq");
         self.cmp(other, CmpEq, false)
     }
 
-    pub fn ne(&self, other: &TermContext) -> TermContext {
+    pub fn ne(&mut self, other: &mut TermContext) -> TermContext {
         trace!("ne");
         self.cmp(other, CmpNe, true)
     }
 
-    pub fn gt(&self, other: &TermContext) -> TermContext {
+    pub fn gt(&mut self, other: &mut TermContext) -> TermContext {
         trace!("gt");
         self.cmp(other, CmpGt, false)
     }
 
-    pub fn ge(&self, other: &TermContext) -> TermContext {
+    pub fn ge(&mut self, other: &mut TermContext) -> TermContext {
         trace!("ge");
         self.cmp(other, CmpGe, false)
     }
 
-    pub fn lt(&self, other: &TermContext) -> TermContext {
+    pub fn lt(&mut self, other: &mut TermContext) -> TermContext {
         trace!("lt");
         self.cmp(other, CmpLt, false)
     }
 
-    pub fn le(&self, other: &TermContext) -> TermContext {
+    pub fn le(&mut self, other: &mut TermContext) -> TermContext {
         trace!("le");
         self.cmp(other, CmpLe, false)
     }
 
-    pub fn and(&self, other: &TermContext) -> TermContext {
-        self.cmp_cond(other, CmpCondType::And)
+    pub fn and(&mut self, other: &mut TermContext, path_map: Arc<RefCell<PathMap>>) -> TermContext {
+        self.cmp_cond(other, CmpCondType::And, path_map)
     }
 
-    pub fn or(&self, other: &TermContext) -> TermContext {
-        self.cmp_cond(other, CmpCondType::Or)
+    pub fn or(&mut self, other: &mut TermContext, path_map: Arc<RefCell<PathMap>>) -> TermContext {
+        self.cmp_cond(other, CmpCondType::Or, path_map)
     }
 }
 

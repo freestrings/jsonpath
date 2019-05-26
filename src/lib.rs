@@ -172,6 +172,8 @@ use std::result;
 
 use serde_json::Value;
 
+pub use select::selector::Selector;
+
 #[doc(hidden)]
 pub mod parser;
 #[doc(hidden)]
@@ -180,8 +182,6 @@ pub mod filter;
 pub mod ref_value;
 #[doc(hidden)]
 pub mod select;
-
-pub use select::Selector;
 
 /// It is a high-order function. it compile a JsonPath and then returns a function. this return-function can be reused for different JsonObjects.
 ///
@@ -349,7 +349,7 @@ pub fn reader<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, 
 /// ```
 pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
     let mut selector = Selector::new();
-    selector.path(path)?.value(json.into())?.select_as_value()
+    selector.path(path)?.value(json)?.select_as_value()
 }
 
 #[deprecated(since = "0.1.4", note = "Please use the select function instead")]

@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -5,13 +7,25 @@ use std::sync::Arc;
 use indexmap::map::IndexMap;
 use serde::ser::Serialize;
 use serde_json::{Number, Value};
-use std::collections::hash_map::DefaultHasher;
+use std::fmt;
 
-type TypeRefValue = Arc<Box<RefValue>>;
+type TypeRefValue = Arc<RefCell<RefValue>>;
 
-#[derive(Debug)]
 pub struct RefValueWrapper {
-    data: TypeRefValue
+    data: TypeRefValue,
+}
+
+impl fmt::Debug for RefValueWrapper {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.deref().fmt(f)
+    }
+}
+
+impl RefValueWrapper {
+    pub fn ref_count(&self) -> usize {
+        Arc::strong_count(&self.data)
+    }
 }
 
 impl PartialEq for RefValueWrapper {
@@ -26,9 +40,15 @@ impl Deref for RefValueWrapper {
     type Target = RefValue;
 
     fn deref(&self) -> &Self::Target {
-        &(**self.data)
+        unsafe { self.data.as_ptr().as_mut().unwrap() }
     }
 }
+
+//impl DerefMut for RefValueWrapper {
+//    fn deref_mut(&mut self) -> &mut RefValue {
+//        unsafe { self.data.as_ptr().as_mut().unwrap() }
+//    }
+//}
 
 impl Hash for RefValueWrapper {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -120,7 +140,6 @@ impl RefIndex for String {
     }
 }
 
-#[derive(Debug)]
 pub enum RefValue {
     Null,
     Bool(bool),
@@ -128,6 +147,12 @@ pub enum RefValue {
     String(String),
     Array(Vec<RefValueWrapper>),
     Object(IndexMap<String, RefValueWrapper>),
+}
+
+impl fmt::Debug for RefValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
 }
 
 impl PartialEq for RefValue {
@@ -146,6 +171,9 @@ static REF_VALUE_NULL: &'static str = "$jsonpath::ref_value::model::RefValue::Nu
 
 impl Hash for RefValue {
     fn hash<H: Hasher>(&self, state: &mut H) {
+
+//        println!("###hash - RefValue - {:?}", self);
+
         match self {
             RefValue::Null => {
                 REF_VALUE_NULL.hash(state)
@@ -188,71 +216,40 @@ impl RefValue {
     }
 
     pub fn is_object(&self) -> bool {
-        self.as_object().is_some()
-    }
-
-    pub fn as_object(&self) -> Option<&IndexMap<String, RefValueWrapper>> {
         match *self {
-            RefValue::Object(ref map) => Some(map),
-            _ => None,
-        }
-    }
-
-    pub fn is_array(&self) -> bool {
-        self.as_array().is_some()
-    }
-
-    pub fn as_array(&self) -> Option<&Vec<RefValueWrapper>> {
-        match *self {
-            RefValue::Array(ref array) => Some(&*array),
-            _ => None,
-        }
-    }
-
-    pub fn is_string(&self) -> bool {
-        self.as_str().is_some()
-    }
-
-    pub fn as_str(&self) -> Option<&str> {
-        match *self {
-            RefValue::String(ref s) => Some(s),
-            _ => None,
-        }
-    }
-
-    pub fn is_number(&self) -> bool {
-        match *self {
-            RefValue::Number(_) => true,
+            RefValue::Object(_) => true,
             _ => false,
         }
     }
 
-    pub fn as_number(&self) -> Option<Number> {
+    pub fn is_array(&self) -> bool {
         match *self {
-            RefValue::Number(ref n) => Some(n.clone()),
-            _ => None,
+            RefValue::Array(_) => true,
+            _ => false,
         }
     }
 
-    pub fn is_boolean(&self) -> bool {
-        self.as_bool().is_some()
+    pub fn len(&self) -> usize {
+        match &self {
+            RefValue::Object(m) => m.len(),
+            RefValue::Array(v) => v.len(),
+            _ => 0,
+        }
     }
 
-    pub fn as_bool(&self) -> Option<bool> {
-        match *self {
-            RefValue::Bool(b) => Some(b),
-            _ => None,
+    pub fn is_empty(&self) -> bool {
+        match &self {
+            RefValue::Object(m) => m.is_empty(),
+            RefValue::Array(v) => v.is_empty(),
+            RefValue::Null => true,
+            _ => false,
         }
     }
 
     pub fn is_null(&self) -> bool {
-        self.as_null().is_some()
-    }
-
-    pub fn as_null(&self) -> Option<()> {
         match *self {
-            RefValue::Null => Some(()),
-            _ => None,
+            RefValue::Null => true,
+            _ => false,
         }
     }
 }
@@ -260,14 +257,14 @@ impl RefValue {
 impl Into<RefValueWrapper> for RefValue {
     fn into(self) -> RefValueWrapper {
         RefValueWrapper {
-            data: Arc::new(Box::new(self))
+            data: Arc::new(RefCell::new(self))
         }
     }
 }
 
 impl Into<RefValue> for &Value {
     fn into(self) -> RefValue {
-        match self.serialize(super::ser::Serializer) {
+        match self.serialize(super::ser::RefValueSerializer) {
             Ok(v) => v,
             Err(e) => panic!("Error Value into RefValue: {:?}", e)
         }
@@ -276,7 +273,7 @@ impl Into<RefValue> for &Value {
 
 impl Into<RefValueWrapper> for &Value {
     fn into(self) -> RefValueWrapper {
-        match self.serialize(super::ser::Serializer) {
+        match self.serialize(super::ser::RefValueSerializer) {
             Ok(v) => v.into(),
             Err(e) => panic!("Error Value into RefValue: {:?}", e)
         }

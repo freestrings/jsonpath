@@ -41,9 +41,9 @@ impl Serialize for RefValue {
     }
 }
 
-pub struct Serializer;
+pub struct RefValueSerializer;
 
-impl serde::Serializer for Serializer {
+impl serde::Serializer for RefValueSerializer {
     type Ok = RefValue;
     type Error = SerdeError;
 
@@ -170,7 +170,7 @@ impl serde::Serializer for Serializer {
     {
         let mut values: IndexMap<String, RefValueWrapper> = IndexMap::new();
         values.insert(String::from(variant), {
-            value.serialize(Serializer)?.into()
+            value.serialize(RefValueSerializer)?.into()
         });
         Ok(RefValue::Object(values))
     }
@@ -280,7 +280,7 @@ impl serde::ser::SerializeSeq for SerializeVec {
             T: Serialize,
     {
         self.vec.push({
-            value.serialize(Serializer)?.into()
+            value.serialize(RefValueSerializer)?.into()
         });
         Ok(())
     }
@@ -331,7 +331,7 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
             T: Serialize,
     {
         self.vec.push({
-            let a: RefValue = value.serialize(Serializer)?;
+            let a: RefValue = value.serialize(RefValueSerializer)?;
             a.into()
         });
         Ok(())
@@ -378,7 +378,7 @@ impl serde::ser::SerializeMap for SerializeMap {
                 // expected failure.
                 let key = key.expect("serialize_value called before serialize_key");
                 map.insert(key, {
-                    let a: RefValue = value.serialize(Serializer)?;
+                    let a: RefValue = value.serialize(RefValueSerializer)?;
                     a.into()
                 });
                 Ok(())
@@ -608,7 +608,7 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
             T: Serialize,
     {
         self.map.insert(String::from(key), {
-            let a: RefValue = value.serialize(Serializer)?;
+            let a: RefValue = value.serialize(RefValueSerializer)?;
             a.into()
         });
         Ok(())
