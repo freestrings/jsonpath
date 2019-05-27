@@ -92,42 +92,9 @@ function wasmCompile() {
     }
 }
 
-function wasmCompileAlloc() {
-    let ptr = jpw.allocJson(getJson());
-    if (ptr == 0) {
-        console.error('Invalid pointer');
-        return;
-    }
-
-    try {
-        let template = jpw.compile(path);
-        for (var i = 0; i < iter; i++) {
-            let _ = template(ptr);
-        }
-    } finally {
-        jpw.deallocJson(ptr);
-    }
-}
-
 function wasmSelect() {
     for (var i = 0; i < iter; i++) {
         let _ = jpw.select(getJson(), path);
-    }
-}
-
-function wasmSelectAlloc() {
-    let ptr = jpw.allocJson(getJson());
-    if (ptr == 0) {
-        console.error('Invalid pointer');
-        return;
-    }
-
-    try {
-        for (var i = 0; i < iter; i++) {
-            let _ = jpw.select(ptr, path);
-        }
-    } finally {
-        jpw.deallocJson(ptr);
     }
 }
 

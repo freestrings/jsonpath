@@ -12,6 +12,7 @@ use std::io::Read;
 use serde_json::Value;
 
 use self::test::Bencher;
+use jsonpath::ref_value::model::RefValueWrapper;
 
 fn read_json(path: &str) -> String {
     let mut f = std::fs::File::open(path).unwrap();
@@ -50,32 +51,70 @@ fn get_path(i: usize) -> &'static str {
     paths[i]
 }
 
-macro_rules! example {
+fn _as_value(b: &mut Bencher, index: usize) {
+    let json = get_json();
+    b.iter(move || {
+        for _ in 1..100 {
+            let _ = jsonpath::select(&json, get_path(index));
+        }
+    });
+}
+
+fn _as_ref_value(b: &mut Bencher, index: usize) {
+    let ref json = get_json();
+    let rv: RefValueWrapper = json.into();
+    b.iter(move || {
+        for _ in 1..100 {
+            let mut selector = jsonpath::Selector::new();
+            let _ = selector.path(get_path(index));
+            let _ = selector.value_from_ref_value(rv.clone());
+            let _ = selector.select_as_value();
+        }
+    });
+}
+
+macro_rules! example_val {
     ($name:ident, $i:expr) => {
         #[bench]
-        fn $name(b: &mut Bencher) {
-            let json = get_json();
-            b.iter(move || {
-                for _ in 1..100 {
-                    let _ = jsonpath::select(&json, get_path($i));
-                }
-            });
-        }
+        fn $name(b: &mut Bencher) { _as_value(b, $i); }
     };
 }
 
-example!(example0, 0);
-example!(example1, 1);
-example!(example2, 2);
-example!(example3, 3);
-example!(example4, 4);
-example!(example5, 5);
-example!(example6, 6);
-example!(example7, 7);
-example!(example8, 8);
-example!(example9, 9);
-example!(example10, 10);
-example!(example11, 11);
-example!(example12, 12);
-example!(example13, 13);
-example!(example14, 14);
+macro_rules! example_val_ref {
+    ($name:ident, $i:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) { _as_ref_value(b, $i); }
+    };
+}
+
+example_val!(example_val_0, 0);
+example_val!(example_val_1, 1);
+example_val!(example_val_2, 2);
+example_val!(example_val_3, 3);
+example_val!(example_val_4, 4);
+example_val!(example_val_5, 5);
+example_val!(example_val_6, 6);
+example_val!(example_val_7, 7);
+example_val!(example_val_8, 8);
+example_val!(example_val_9, 9);
+example_val!(example_val_10, 10);
+example_val!(example_val_11, 11);
+example_val!(example_val_12, 12);
+example_val!(example_val_13, 13);
+example_val!(example_val_14, 14);
+
+example_val_ref!(example_val_ref_0, 0);
+example_val_ref!(example_val_ref_1, 1);
+example_val_ref!(example_val_ref_2, 2);
+example_val_ref!(example_val_ref_3, 3);
+example_val_ref!(example_val_ref_4, 4);
+example_val_ref!(example_val_ref_5, 5);
+example_val_ref!(example_val_ref_6, 6);
+example_val_ref!(example_val_ref_7, 7);
+example_val_ref!(example_val_ref_8, 8);
+example_val_ref!(example_val_ref_9, 9);
+example_val_ref!(example_val_ref_10, 10);
+example_val_ref!(example_val_ref_11, 11);
+example_val_ref!(example_val_ref_12, 12);
+example_val_ref!(example_val_ref_13, 13);
+example_val_ref!(example_val_ref_14, 14);

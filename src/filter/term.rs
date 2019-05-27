@@ -1,9 +1,6 @@
 use super::cmp::*;
 use super::value_filter::ValueFilterKey;
 use super::value_manager::*;
-use std::cell::RefCell;
-use select::path_map::PathMap;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum TermContext {
@@ -55,7 +52,7 @@ impl TermContext {
         }
     }
 
-    fn cmp_cond(&self, other: &TermContext, cmp_cond_type: CmpCondType, path_map: Arc<RefCell<PathMap>>) -> TermContext {
+    fn cmp_cond(&self, other: &TermContext, cmp_cond_type: CmpCondType) -> TermContext {
         match self {
             TermContext::Constants(et) => {
                 match other {
@@ -70,7 +67,7 @@ impl TermContext {
                         }
                     }
                     TermContext::Json(_, v) => {
-                        TermContext::Json(None, ValueManager::new(v.get_val().clone(), false, path_map))
+                        TermContext::Json(None, ValueManager::new(v.get_val().clone(), false))
                     }
                 }
             }
@@ -83,7 +80,7 @@ impl TermContext {
                         }
                     }
                     _ => {
-                        TermContext::Json(None, ValueManager::new(v.get_val().clone(), false, path_map))
+                        TermContext::Json(None, ValueManager::new(v.get_val().clone(), false))
                     }
                 }
             }
@@ -120,12 +117,12 @@ impl TermContext {
         self.cmp(other, CmpLe, false)
     }
 
-    pub fn and(&mut self, other: &mut TermContext, path_map: Arc<RefCell<PathMap>>) -> TermContext {
-        self.cmp_cond(other, CmpCondType::And, path_map)
+    pub fn and(&mut self, other: &mut TermContext) -> TermContext {
+        self.cmp_cond(other, CmpCondType::And)
     }
 
-    pub fn or(&mut self, other: &mut TermContext, path_map: Arc<RefCell<PathMap>>) -> TermContext {
-        self.cmp_cond(other, CmpCondType::Or, path_map)
+    pub fn or(&mut self, other: &mut TermContext) -> TermContext {
+        self.cmp_cond(other, CmpCondType::Or)
     }
 }
 

@@ -161,3 +161,13 @@ fn refval_copy(b: &mut Bencher) {
         }
     });
 }
+
+#[bench]
+fn value_clone(b: &mut Bencher) {
+    let json = get_json();
+    b.iter(move || {
+        for _ in 1..100 {
+            let _ = json.clone();
+        }
+    });
+}

@@ -1,6 +1,4 @@
-use std::cell::RefCell;
 use std::ops::Deref;
-use std::sync::Arc;
 
 use serde_json::Value;
 
@@ -8,7 +6,6 @@ use filter::term::*;
 use filter::value_manager::*;
 use parser::parser::{FilterToken, NodeVisitor, ParseToken};
 use ref_value::model::*;
-use select::path_map::PathMap;
 
 #[derive(Debug, Clone)]
 pub enum ValueFilterKey {
@@ -52,16 +49,14 @@ pub struct ValueFilter {
     value_mgr: ValueManager,
     last_key: Option<ValueFilterKey>,
     is_relative: bool,
-    path_map: Arc<RefCell<PathMap>>,
 }
 
 impl ValueFilter {
-    pub fn new(v: RefValueWrapper, is_leaves: bool, is_relative: bool, path_map: Arc<RefCell<PathMap>>) -> Self {
+    pub fn new(v: RefValueWrapper, is_leaves: bool, is_relative: bool) -> Self {
         ValueFilter {
-            value_mgr: ValueManager::new(v, is_leaves, path_map.clone()),
+            value_mgr: ValueManager::new(v, is_leaves),
             last_key: None,
             is_relative,
-            path_map,
         }
     }
 
@@ -69,7 +64,7 @@ impl ValueFilter {
         let mut buf = Vec::new();
         collect_all(key, &self.value_mgr.get_val(), &mut buf);
         trace!("step_leaves - {:?}", buf);
-        self.value_mgr = ValueManager::new(RefValue::Array(buf).into(), true, self.path_map.clone());
+        self.value_mgr = ValueManager::new(RefValue::Array(buf).into(), true);
     }
 
     pub fn step_leaves_all(&mut self) -> &ValueManager {
@@ -136,17 +131,15 @@ impl ValueFilter {
 
 pub struct JsonValueFilter {
     json: RefValueWrapper,
-    path_map: Arc<RefCell<PathMap>>,
     filter_stack: Vec<ValueFilter>,
     token_stack: Vec<ParseToken>,
     term_stack: Vec<TermContext>,
 }
 
 impl JsonValueFilter {
-    pub fn new(json: RefValueWrapper, path_map: Arc<RefCell<PathMap>>) -> Self {
+    pub fn new(json: RefValueWrapper) -> Self {
         JsonValueFilter {
             json,
-            path_map,
             filter_stack: Vec::new(),
             token_stack: Vec::new(),
             term_stack: Vec::new(),
@@ -164,7 +157,6 @@ impl JsonValueFilter {
                     ValueFilter::new(vf.value_mgr.get_val().clone(),
                                      vf.value_mgr.is_leaves(),
                                      is_relative,
-                                     self.path_map.clone(),
                     )
                 })
                 .and_then(|vf| {
@@ -175,7 +167,6 @@ impl JsonValueFilter {
                 self.json.clone(),
                 false,
                 is_relative,
-                self.path_map.clone(),
             );
             self.filter_stack.push(vf);
         }
@@ -187,7 +178,6 @@ impl JsonValueFilter {
                 v,
                 is_leaves,
                 false,
-                self.path_map.clone(),
             ));
             return;
         }
@@ -348,8 +338,8 @@ impl JsonValueFilter {
                 FilterToken::GreaterOrEqual => left.ge(&mut right),
                 FilterToken::Little => left.lt(&mut right),
                 FilterToken::LittleOrEqual => left.le(&mut right),
-                FilterToken::And => left.and(&mut right, self.path_map.clone()),
-                FilterToken::Or => left.or(&mut right, self.path_map.clone()),
+                FilterToken::And => left.and(&mut right),
+                FilterToken::Or => left.or(&mut right),
             };
             self.term_stack.push(tc);
         }

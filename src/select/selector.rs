@@ -7,9 +7,6 @@ use filter::value_filter::*;
 use parser::parser::*;
 use ref_value;
 use ref_value::model::*;
-use select::path_map::PathMap;
-use std::sync::Arc;
-use std::cell::RefCell;
 
 /// Utility. Functions like jsonpath::selector or jsonpath::compile are also implemented using this structure.
 ///
@@ -110,12 +107,11 @@ use std::cell::RefCell;
 pub struct Selector {
     pub(crate) node: Option<Node>,
     pub(crate) value: Option<RefValueWrapper>,
-    path_builder: Arc<RefCell<PathMap>>,
 }
 
 impl Selector {
     pub fn new() -> Self {
-        Selector { node: None, value: None, path_builder: Arc::new(RefCell::new(PathMap::new())) }
+        Selector { node: None, value: None }
     }
 
     fn set_value(&mut self, value: RefValueWrapper) {
@@ -157,8 +153,7 @@ impl Selector {
 
     fn jf(&self) -> result::Result<JsonValueFilter, String> {
         match &self.value {
-            Some(v) => Ok(JsonValueFilter::new(v.clone(),
-                                               self.path_builder.clone())),
+            Some(v) => Ok(JsonValueFilter::new(v.clone())),
             _ => return Err(SelectorErrorMessage::EmptyValue.to_string())
         }
     }
@@ -194,10 +189,6 @@ impl Selector {
         serde_json::to_string(self.select()?.deref()).map_err(|e| e.to_string())
     }
 
-    pub fn select_as_value2(&self) {
-        let _ = &self.select();
-    }
-
     pub fn select_as_value(&self) -> result::Result<Value, String> {
         Ok((&self.select()?).into())
     }
@@ -212,7 +203,7 @@ impl Selector {
         match func((&self.select()?).into()).map(|ref v| v.into()) {
             Some(value) => {
                 self.set_value(value)
-            },
+            }
             _ => {}
         }
         Ok(self)

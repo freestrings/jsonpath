@@ -1,12 +1,9 @@
-use std::cell::RefCell;
 use std::ops::Deref;
-use std::sync::Arc;
 
 use indexmap::{IndexMap, IndexSet};
 use serde_json::Value;
 
 use ref_value::model::*;
-use select::path_map::PathMap;
 
 use super::cmp::*;
 use super::term::*;
@@ -176,13 +173,12 @@ pub type ValueWrapper = ValueManager;
 #[derive(Debug)]
 pub struct ValueManager {
     val: RefValueWrapper,
-    path_map: Arc<RefCell<PathMap>>,
     is_leaves: bool,
 }
 
 impl ValueManager {
-    pub fn new(val: RefValueWrapper, is_leaves: bool, path_map: Arc<RefCell<PathMap>>) -> Self {
-        ValueManager { val, is_leaves, path_map }
+    pub fn new(val: RefValueWrapper, is_leaves: bool) -> Self {
+        ValueManager { val, is_leaves }
     }
 
     pub fn is_leaves(&self) -> bool {
@@ -226,16 +222,13 @@ impl ValueManager {
                 }
 
                 let ret = set.into_iter().collect();
-                Self::new(
-                    RefValue::Array(ret).into(),
-                    false,
-                    self.path_map.clone())
+                Self::new(RefValue::Array(ret).into(), false)
             }
             _ => {
                 if cmp_with_term(&self.val, et, &cmp, false, reverse) {
-                    Self::new(self.val.clone(), false, self.path_map.clone())
+                    Self::new(self.val.clone(), false)
                 } else {
-                    Self::new(RefValue::Null.into(), false, self.path_map.clone())
+                    Self::new(RefValue::Null.into(), false)
                 }
             }
         }
@@ -427,7 +420,7 @@ impl ValueManager {
         }
 
         let vec = ret.into_iter().map(|v| v.clone()).collect();
-        ValueManager::new(RefValue::Array(vec).into(), false, self.path_map.clone())
+        ValueManager::new(RefValue::Array(vec).into(), false)
     }
 
     pub fn intersect(&self, other: &Self) -> Self {
@@ -450,7 +443,7 @@ impl ValueManager {
         }
 
         let vec = ret.into_iter().map(|v| v.clone()).collect();
-        ValueManager::new(RefValue::Array(vec).into(), false, self.path_map.clone())
+        ValueManager::new(RefValue::Array(vec).into(), false)
     }
 
     pub fn union(&self, other: &Self) -> Self {
@@ -478,7 +471,7 @@ impl ValueManager {
         }
 
         let vec = ret.into_iter().map(|v| v.clone()).collect();
-        ValueManager::new(RefValue::Array(vec).into(), false, self.path_map.clone())
+        ValueManager::new(RefValue::Array(vec).into(), false)
     }
 
     pub fn into_term(&self, key: &Option<ValueFilterKey>) -> TermContext {
@@ -489,7 +482,7 @@ impl ValueManager {
             _ => TermContext::Json(match key {
                 Some(vk) => Some(vk.clone()),
                 _ => None
-            }, ValueManager::new(self.val.clone(), false, self.path_map.clone()))
+            }, ValueManager::new(self.val.clone(), false))
         }
     }
 
@@ -519,6 +512,6 @@ impl ValueManager {
             _ => self.val.clone()
         };
 
-        ValueManager::new(v, false, self.path_map.clone())
+        ValueManager::new(v, false)
     }
 }

@@ -1,18 +1,14 @@
 extern crate cfg_if;
 extern crate js_sys;
 extern crate jsonpath_lib as jsonpath;
-#[macro_use]
-extern crate lazy_static;
 extern crate serde;
 extern crate serde_json;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
-use std::collections::HashMap;
 use std::ops::Deref;
 use std::result;
 use std::result::Result;
-use std::sync::{Mutex, Arc};
 
 use cfg_if::cfg_if;
 use jsonpath::filter::value_filter::JsonValueFilter;
@@ -23,8 +19,6 @@ use serde_json::Value;
 use wasm_bindgen::*;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
-use std::cell::RefCell;
-use jsonpath::select::path_map::PathMap;
 
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
@@ -45,14 +39,13 @@ cfg_if! {
 }
 
 fn filter_ref_value(json: RefValueWrapper, node: Node) -> JsValue {
-//    let mut jf = JsonValueFilter::new(json, Arc::new(RefCell::new(PathMap::new())));
-//    jf.visit(node);
-//    let taken = &jf.clone_value();
-//    match JsValue::from_serde(taken.deref()) {
-//        Ok(js_value) => js_value,
-//        Err(e) => JsValue::from_str(&format!("Json deserialize error: {:?}", e))
-//    }
-    JsValue::from_str("")
+    let mut jf = JsonValueFilter::new(json);
+    jf.visit(node);
+    let taken = &jf.clone_value();
+    match JsValue::from_serde(taken.deref()) {
+        Ok(js_value) => js_value,
+        Err(e) => JsValue::from_str(&format!("Json deserialize error: {:?}", e))
+    }
 }
 
 fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
@@ -80,51 +73,7 @@ fn into_ref_value(js_value: &JsValue, node: Node) -> JsValue {
 }
 
 fn get_ref_value(js_value: JsValue, node: Node) -> JsValue {
-//    match js_value.as_f64() {
-//        Some(val) => {
-//            match CACHE_JSON.lock().unwrap().get(&(val as usize)) {
-//                Some(json) => filter_ref_value(json.clone(), node),
-//                _ => JsValue::from_str("Invalid pointer")
-//            }
-//        }
-//        _ => into_ref_value(&js_value, node)
-//    }
-    JsValue::from_str("")
-}
-
-//lazy_static! {
-//    static ref CACHE_JSON: Mutex<HashMap<usize, RefValueWrapper>> = Mutex::new(HashMap::new());
-//    static ref CACHE_JSON_IDX: Mutex<usize> = Mutex::new(0);
-//}
-
-#[wasm_bindgen(js_name = allocJson)]
-pub extern fn alloc_json(js_value: JsValue) -> usize {
-//    let result: result::Result<RefValue, String> = into_serde_json(&js_value);
-//    match result {
-//        Ok(json) => {
-//            let mut map = CACHE_JSON.lock().unwrap();
-//            if map.len() >= std::u8::MAX as usize {
-//                return 0;
-//            }
-//
-//            let mut idx = CACHE_JSON_IDX.lock().unwrap();
-//            *idx += 1;
-//            map.insert(*idx, json.into());
-//            *idx
-//        }
-//        Err(e) => {
-//            console::error_1(&e.into());
-//            0
-//        }
-//    }
-    0
-}
-
-#[wasm_bindgen(js_name = deallocJson)]
-pub extern fn dealloc_json(ptr: usize) -> bool {
-//    let mut map = CACHE_JSON.lock().unwrap();
-//    map.remove(&ptr).is_some()
-    false
+    into_ref_value(&js_value, node)
 }
 
 #[wasm_bindgen]
@@ -145,35 +94,22 @@ pub fn compile(path: &str) -> JsValue {
 
 #[wasm_bindgen]
 pub fn selector(js_value: JsValue) -> JsValue {
-//    let json = match js_value.as_f64() {
-//        Some(val) => {
-//            match CACHE_JSON.lock().unwrap().get(&(val as usize)) {
-//                Some(json) => json.clone(),
-//                _ => return JsValue::from_str("Invalid pointer")
-//            }
-//        }
-//        _ => {
-//            match into_serde_json::<RefValue>(&js_value) {
-//                Ok(json) => json.into(),
-//                Err(e) => return JsValue::from_str(e.as_str())
-//            }
-//        }
+    let json: RefValueWrapper = match into_serde_json::<RefValue>(&js_value) {
+        Ok(json) => json.into(),
+        Err(e) => return JsValue::from_str(e.as_str())
+    };
 
-//    };
+    let cb = Closure::wrap(Box::new(move |path: String| {
+        let mut parser = Parser::new(path.as_str());
+        match parser.compile() {
+            Ok(node) => filter_ref_value(json.clone(), node),
+            Err(e) => return JsValue::from_str(e.as_str())
+        }
+    }) as Box<Fn(String) -> JsValue>);
 
-//    let cb = Closure::wrap(Box::new(move |path: String| {
-//        let mut parser = Parser::new(path.as_str());
-//        match parser.compile() {
-//            Ok(node) => filter_ref_value(json.clone(), node),
-//            Err(e) => return JsValue::from_str(e.as_str())
-//        }
-//    }) as Box<Fn(String) -> JsValue>);
-//
-//    let ret = cb.as_ref().clone();
-//    cb.forget();
-//    ret
-
-    JsValue::from_str("")
+    let ret = cb.as_ref().clone();
+    cb.forget();
+    ret
 }
 
 #[wasm_bindgen]
@@ -279,14 +215,4 @@ impl Selector {
         let v = self.selector.get().map_err(|e| JsValue::from_str(&e.to_string()))?;
         JsValue::from_serde(&v).map_err(|e| JsValue::from_str(&e.to_string()))
     }
-}
-
-#[wasm_bindgen(catch)]
-pub fn testa(js_value: JsValue, path: &str, iter: usize) -> result::Result<(), JsValue> {
-    for _ in 0..iter {
-        let mut parser = Parser::new(path);
-        let node = parser.compile().unwrap();
-        into_ref_value(&js_value, node);
-    }
-    Ok(())
 }

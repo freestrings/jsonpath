@@ -8,19 +8,18 @@ use std::io::Read;
 
 use serde_json::Value;
 
-use jsonpath::filter::value_filter::{JsonValueFilter, ValueFilter};
-use jsonpath::parser::parser::Parser;
 use jsonpath::Selector;
+use jsonpath::filter::value_filter::ValueFilter;
 
 fn setup() {
     let _ = env_logger::try_init();
 }
 
-//fn new_value_filter(file: &str) -> ValueFilter {
-//    let string = read_json(file);
-//    let json: Value = serde_json::from_str(string.as_str()).unwrap();
-//    ValueFilter::new((&json).into(), false, false)
-//}
+fn new_value_filter(file: &str) -> ValueFilter {
+    let string = read_json(file);
+    let json: Value = serde_json::from_str(string.as_str()).unwrap();
+    ValueFilter::new((&json).into(), false, false)
+}
 
 fn selector(path: &str, file: &str) -> Selector {
     let string = read_json(file);
@@ -37,53 +36,53 @@ fn read_json(path: &str) -> String {
     contents
 }
 
-//#[test]
-//fn step_in() {
-//    setup();
-//
-//    let mut jf = new_value_filter("./benches/data_obj.json");
-//    {
-//        let current = jf.step_in_str("friends");
-//        assert_eq!(current.is_array(), true);
-//    }
-//
-//    let mut jf = new_value_filter("./benches/data_array.json");
-//    {
-//        let current = jf.step_in_num(&1.0);
-//        assert_eq!(current.get_val().is_object(), true);
-//    }
-//    {
-//        let current = jf.step_in_str("friends");
-//        assert_eq!(current.is_array(), true);
-//    }
-//    let mut jf = new_value_filter("./benches/data_obj.json");
-//    {
-//        jf.step_in_str("school");
-//        jf.step_in_str("friends");
-//        jf.step_in_all();
-//        let current = jf.step_in_str("name");
-//        let friends = json!([
-//                "Millicent Norman",
-//                "Vincent Cannon",
-//                "Gray Berry"
-//            ]);
-//
-//        assert_eq!(friends, current.into_value());
-//    }
-//    let mut jf = new_value_filter("./benches/data_obj.json");
-//    {
-//        let current = jf.step_leaves_str("name");
-//        let names = json!([
-//                "Leonor Herman",
-//                "Millicent Norman",
-//                "Vincent Cannon",
-//                "Gray Berry",
-//                "Vincent Cannon",
-//                "Gray Berry"
-//            ]);
-//        assert_eq!(names, current.into_value());
-//    }
-//}
+#[test]
+fn step_in() {
+    setup();
+
+    let mut jf = new_value_filter("./benches/data_obj.json");
+    {
+        let current = jf.step_in_str("friends");
+        assert_eq!(current.is_array(), true);
+    }
+
+    let mut jf = new_value_filter("./benches/data_array.json");
+    {
+        let current = jf.step_in_num(&1.0);
+        assert_eq!(current.get_val().is_object(), true);
+    }
+    {
+        let current = jf.step_in_str("friends");
+        assert_eq!(current.is_array(), true);
+    }
+    let mut jf = new_value_filter("./benches/data_obj.json");
+    {
+        jf.step_in_str("school");
+        jf.step_in_str("friends");
+        jf.step_in_all();
+        let current = jf.step_in_str("name");
+        let friends = json!([
+                "Millicent Norman",
+                "Vincent Cannon",
+                "Gray Berry"
+            ]);
+
+        assert_eq!(friends, current.into_value());
+    }
+    let mut jf = new_value_filter("./benches/data_obj.json");
+    {
+        let current = jf.step_leaves_str("name");
+        let names = json!([
+                "Leonor Herman",
+                "Millicent Norman",
+                "Vincent Cannon",
+                "Gray Berry",
+                "Vincent Cannon",
+                "Gray Berry"
+            ]);
+        assert_eq!(names, current.into_value());
+    }
+}
 
 #[test]
 fn array() {

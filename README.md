@@ -32,7 +32,6 @@ It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine writte
 - [Javascript - jsonpath.select(json: string|object, jsonpath: string)](#javascript---jsonpathselectjson-stringobject-jsonpath-string)
 - [Javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
 - [Javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
-- [Javascript - allocJson, deallocJson (Webassembly Only)](#javascript---allocjson-deallocjson-webassembly-only)
 - [Javascript - Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
 
 ---
@@ -532,60 +531,4 @@ console.log(
 );
 
 // => true, true
-```
-
-#### Javascript - allocJson, deallocJson (Webassembly Only)
-wasm-bindgen은 Javascript와 Webassembly간 값을 주고받을 때 JSON 객체는 String으로 변환되기 때문에, 반복해서 사용되는 JSON 객체는 Webassembly 영역에 생성해 두면 성능에 도움이 된다.
-
-Since wasm-bindgen converts JSON objects to String when exchanging values between Javascript and Webassembly, creating frequently used JSON objects in the WebAssembly area helps performance.
-
-```javascript
-const jsonpath = require('jsonpath-wasm');
-
-let jsonObj = {
-    "school": {
-        "friends": [
-            {"name": "친구1", "age": 20},
-            {"name": "친구2", "age": 20}
-        ]
-    },
-    "friends": [
-        {"name": "친구3", "age": 30},
-        {"name": "친구4"}
-    ]
-};
-
-// allocate jsonObj in webassembly
-let ptr = jsonpath.allocJson(jsonObj);
-
-// `0` is invalid pointer
-if(ptr == 0) {
-    console.error('invalid ptr'); 
-}
-
-let path = '$..friends[0]';
-let template = jsonpath.compile(path);
-let selector = jsonpath.selector(jsonObj);
-// create selector as pointer
-let ptrSelector = jsonpath.selector(ptr);
-
-let ret1 = selector(path)
-let ret2 = ptrSelector(path)
-let ret3 = template(jsonObj);
-// select as pointer
-let ret4 = template(ptr);
-let ret5 = jsonpath.select(jsonObj, path);
-// select as pointer
-let ret6 = jsonpath.select(ptr, path);
-
-console.log(
-    JSON.stringify(ret1) == JSON.stringify(ret2),
-    JSON.stringify(ret1) == JSON.stringify(ret3),
-    JSON.stringify(ret1) == JSON.stringify(ret4),
-    JSON.stringify(ret1) == JSON.stringify(ret5),
-    JSON.stringify(ret1) == JSON.stringify(ret6));
-
-// => true true true true true
-
-jsonpath.deallocJson(ptr);
 ```
