@@ -73,8 +73,4 @@ run('jsonpath', iterCount, function() { jp.query(json, path) })
     .then(function() {
         return run('jsonpath-wasm- select', iterCount, function() { jpw.select(json, path) });
     })
-    .finally(function() {
-        if(!jpw.deallocJson(ptr)) {
-            console.error('fail to dealloc');
-        }
-    });
+    .finally(function() {});

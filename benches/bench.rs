@@ -1,6 +1,5 @@
 #![feature(test)]
 extern crate bencher;
-extern crate indexmap;
 extern crate jsonpath_lib as jsonpath;
 extern crate serde;
 extern crate serde_json;
@@ -8,13 +7,10 @@ extern crate test;
 
 use std::io::Read;
 
-use serde::Serialize;
 use serde::Deserialize;
 use serde_json::Value;
 
 use self::test::Bencher;
-use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
-use jsonpath::ref_value::ser::RefValueSerializer;
 
 fn read_json(path: &str) -> String {
     let mut f = std::fs::File::open(path).unwrap();
@@ -103,71 +99,7 @@ fn bench_select_as(b: &mut Bencher) {
 
     b.iter(move || {
         for _ in 1..100 {
-            let _: Book = jsonpath::select_as(&json, r#"$..book[?(@.price<30 && @.category=="fiction")][0]"#).unwrap();
-        }
-    });
-}
-
-#[bench]
-fn refval_de(b: &mut Bencher) {
-    let json = get_json();
-    b.iter(move || {
-        for _ in 1..100 {
-            let _ = RefValue::deserialize(&json).unwrap();
-        }
-    });
-}
-
-#[bench]
-fn refval_se(b: &mut Bencher) {
-    let json = get_json();
-    b.iter(move || {
-        for _ in 1..100 {
-            let _ = &json.serialize(RefValueSerializer).unwrap();
-        }
-    });
-}
-
-#[bench]
-fn refval_refcopy(b: &mut Bencher) {
-    use std::ops::Deref;
-
-    let json = get_json();
-    let ref_json: RefValue = json.serialize(RefValueSerializer).unwrap();
-    let store = ref_json.get("store".to_string()).unwrap();
-    let book = store.get("book".to_string()).unwrap();
-
-    b.iter(move || {
-        for _ in 1..100 {
-            if let RefValue::Array(vec) = book.deref() {
-                let _: Vec<RefValueWrapper> = vec.iter().map(|v| v.clone()).collect();
-            }
-        }
-    });
-}
-
-#[bench]
-fn refval_copy(b: &mut Bencher) {
-
-    let json = get_json();
-    let store = json.get("store".to_string()).unwrap();
-    let book = store.get("book".to_string()).unwrap();
-
-    b.iter(move || {
-        for _ in 1..100 {
-            if let Value::Array(vec) = book {
-                let _: Vec<Value> = vec.iter().map(|v| v.clone()).collect();
-            }
-        }
-    });
-}
-
-#[bench]
-fn value_clone(b: &mut Bencher) {
-    let json = get_json();
-    b.iter(move || {
-        for _ in 1..100 {
-            let _ = json.clone();
+            let _: Vec<Book> = jsonpath::select_as(&json, r#"$..book[?(@.price<30 && @.category=="fiction")][0]"#).unwrap();
         }
     });
 }

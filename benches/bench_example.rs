@@ -1,7 +1,6 @@
 #![feature(test)]
 
 extern crate bencher;
-extern crate indexmap;
 extern crate jsonpath_lib as jsonpath;
 extern crate serde;
 extern crate serde_json;
@@ -12,7 +11,6 @@ use std::io::Read;
 use serde_json::Value;
 
 use self::test::Bencher;
-use jsonpath::ref_value::model::RefValueWrapper;
 
 fn read_json(path: &str) -> String {
     let mut f = std::fs::File::open(path).unwrap();
@@ -44,77 +42,46 @@ fn get_path(i: usize) -> &'static str {
         "$..book[-2:]", //9
         "$..book[2:]",  //10
         "$..book[?(@.isbn)]",   //11
-        "$.store.book[?(@.price < 10)]",    //12
+        "$.store.book[?(@.price == 10)]",    //12
         "$..*", //13
-        "$..book[ ?( (@.price < 13 || $.store.bicycle.price < @.price) && @.price <=10 ) ]" //14
+        "$..book[ ?( (@.price < 13 || $.store.bicycle.price < @.price) && @.price <=10 ) ]", //14
+        "$.store.book[?( (@.price < 10 || @.price > 10) && @.price > 10 )]"
     ];
     paths[i]
 }
 
-fn _as_value(b: &mut Bencher, index: usize) {
+fn _selector(b: &mut Bencher, index: usize) {
     let json = get_json();
-    b.iter(move || {
-        for _ in 1..100 {
-            let _ = jsonpath::select(&json, get_path(index));
-        }
-    });
-}
-
-fn _as_ref_value(b: &mut Bencher, index: usize) {
-    let ref json = get_json();
-    let rv: RefValueWrapper = json.into();
     b.iter(move || {
         for _ in 1..100 {
             let mut selector = jsonpath::Selector::new();
             let _ = selector.path(get_path(index));
-            let _ = selector.value_from_ref_value(rv.clone());
-            let _ = selector.select_as_value();
+            selector.value(&json);
+            let _ = selector.select();
         }
     });
 }
 
-macro_rules! example_val {
+macro_rules! selector {
     ($name:ident, $i:expr) => {
         #[bench]
-        fn $name(b: &mut Bencher) { _as_value(b, $i); }
+        fn $name(b: &mut Bencher) { _selector(b, $i); }
     };
 }
 
-macro_rules! example_val_ref {
-    ($name:ident, $i:expr) => {
-        #[bench]
-        fn $name(b: &mut Bencher) { _as_ref_value(b, $i); }
-    };
-}
-
-example_val!(example_val_0, 0);
-example_val!(example_val_1, 1);
-example_val!(example_val_2, 2);
-example_val!(example_val_3, 3);
-example_val!(example_val_4, 4);
-example_val!(example_val_5, 5);
-example_val!(example_val_6, 6);
-example_val!(example_val_7, 7);
-example_val!(example_val_8, 8);
-example_val!(example_val_9, 9);
-example_val!(example_val_10, 10);
-example_val!(example_val_11, 11);
-example_val!(example_val_12, 12);
-example_val!(example_val_13, 13);
-example_val!(example_val_14, 14);
-
-example_val_ref!(example_val_ref_0, 0);
-example_val_ref!(example_val_ref_1, 1);
-example_val_ref!(example_val_ref_2, 2);
-example_val_ref!(example_val_ref_3, 3);
-example_val_ref!(example_val_ref_4, 4);
-example_val_ref!(example_val_ref_5, 5);
-example_val_ref!(example_val_ref_6, 6);
-example_val_ref!(example_val_ref_7, 7);
-example_val_ref!(example_val_ref_8, 8);
-example_val_ref!(example_val_ref_9, 9);
-example_val_ref!(example_val_ref_10, 10);
-example_val_ref!(example_val_ref_11, 11);
-example_val_ref!(example_val_ref_12, 12);
-example_val_ref!(example_val_ref_13, 13);
-example_val_ref!(example_val_ref_14, 14);
+selector!(example0_1, 0);
+selector!(example1_1, 1);
+selector!(example2_1, 2);
+selector!(example3_1, 3);
+selector!(example4_1, 4);
+selector!(example5_1, 5);
+selector!(example6_1, 6);
+selector!(example7_1, 7);
+selector!(example8_1, 8);
+selector!(example9_1, 9);
+selector!(example_10_1, 10);
+selector!(example_11_1, 11);
+selector!(example_12_1, 12);
+selector!(example_13_1, 13);
+selector!(example_14_1, 14);
+selector!(example_15_1, 15);

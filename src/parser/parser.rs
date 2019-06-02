@@ -1,5 +1,3 @@
-use std::result::Result;
-
 use super::tokenizer::*;
 
 const DUMMY: usize = 0;
@@ -7,7 +5,6 @@ const DUMMY: usize = 0;
 type ParseResult<T> = Result<T, String>;
 
 mod utils {
-
     pub fn string_to_isize<F>(string: &String, msg_handler: F) -> Result<isize, String>
         where F: Fn() -> String {
         match string.as_str().parse::<isize>() {
@@ -52,6 +49,8 @@ pub enum ParseToken {
 
     Number(f64),
 
+    Bool(bool),
+
     Eof,
 }
 
@@ -85,12 +84,6 @@ impl<'a> Parser<'a> {
 
     pub fn compile(&mut self) -> ParseResult<Node> {
         Ok(self.json_path()?)
-    }
-
-    pub fn parse<V: NodeVisitor>(&mut self, visitor: &mut V) -> ParseResult<()> {
-        let node = self.json_path()?;
-        visitor.visit(node);
-        Ok(())
     }
 
     fn json_path(&mut self) -> ParseResult<Node> {
@@ -228,6 +221,18 @@ impl<'a> Parser<'a> {
         match self.tokenizer.next_token() {
             Ok(Token::Key(_, v)) => {
                 Ok(self.node(ParseToken::Key(v)))
+            }
+            _ => {
+                Err(self.tokenizer.err_msg())
+            }
+        }
+    }
+
+    fn boolean(&mut self) -> ParseResult<Node> {
+        debug!("#boolean");
+        match self.tokenizer.next_token() {
+            Ok(Token::Key(_, v)) => {
+                Ok(self.node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
             }
             _ => {
                 Err(self.tokenizer.err_msg())
@@ -554,8 +559,14 @@ impl<'a> Parser<'a> {
             | Ok(Token::SingleQuoted(_, _)) => {
                 self.array_quota_value()
             }
-            Ok(Token::Key(_, _)) => {
-                self.term_num()
+            Ok(Token::Key(_, k)) => {
+                match k.chars().next() {
+                    Some(ch) => match ch {
+                        '-' | '0'...'9' => self.term_num(),
+                        _ => self.boolean()
+                    }
+                    _ => Err(self.tokenizer.err_msg())
+                }
             }
             _ => {
                 Err(self.tokenizer.err_msg())
@@ -629,49 +640,81 @@ impl<'a> Parser<'a> {
 }
 
 pub trait NodeVisitor {
-    fn visit(&mut self, node: Node) {
-        match node.token {
+    fn visit(&mut self, node: &Node) {
+        match &node.token {
             ParseToken::Absolute
             | ParseToken::Relative
             | ParseToken::All
-            | ParseToken::Key(_) => {
-                self.visit_token(node.token);
+            | ParseToken::Key(_)
+            | ParseToken::Range(_, _)
+            | ParseToken::Union(_)
+            | ParseToken::Number(_)
+            | ParseToken::Bool(_) => {
+                self.visit_token(&node.token);
             }
             ParseToken::In
             | ParseToken::Leaves => {
-                node.left.map(|n| self.visit(*n));
-                self.visit_token(node.token);
-                node.right.map(|n| self.visit(*n));
-            }
-            | ParseToken::Range(_, _)
-            | ParseToken::Union(_)
-            | ParseToken::Number(_) => {
-                self.visit_token(node.token);
-            }
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
 
-            | ParseToken::Array => {
-                node.left.map(|n| self.visit(*n));
-                self.visit_token(node.token);
-                node.right.map(|n| self.visit(*n));
-                self.visit_token(ParseToken::ArrayEof);
+                self.visit_token(&node.token);
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+            }
+            ParseToken::Array => {
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
+                self.visit_token(&node.token);
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+                self.visit_token(&ParseToken::ArrayEof);
             }
             ParseToken::Filter(FilterToken::And)
             | ParseToken::Filter(FilterToken::Or) => {
-                node.left.map(|n| self.visit(*n));
-                node.right.map(|n| self.visit(*n));
-                self.visit_token(node.token);
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
+                self.visit_token(&node.token);
             }
             ParseToken::Filter(_) => {
-                node.left.map(|n| self.visit(*n));
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
                 self.end_term();
-                node.right.map(|n| self.visit(*n));
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
                 self.end_term();
-                self.visit_token(node.token);
+
+                self.visit_token(&node.token);
             }
             _ => {}
         }
     }
 
-    fn visit_token(&mut self, token: ParseToken);
+    fn visit_token(&mut self, token: &ParseToken);
     fn end_term(&mut self) {}
 }

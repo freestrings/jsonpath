@@ -1,4 +1,5 @@
 extern crate cfg_if;
+extern crate core;
 extern crate js_sys;
 extern crate jsonpath_lib as jsonpath;
 extern crate serde;
@@ -6,19 +7,12 @@ extern crate serde_json;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
-use std::ops::Deref;
-use std::result;
-use std::result::Result;
-
 use cfg_if::cfg_if;
-use jsonpath::filter::value_filter::JsonValueFilter;
-use jsonpath::parser::parser::{Node, NodeVisitor, Parser};
-use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
+use jsonpath::{JsonPathError, Parser};
 use jsonpath::Selector as _Selector;
 use serde_json::Value;
 use wasm_bindgen::*;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 
 cfg_if! {
     if #[cfg(feature = "wee_alloc")] {
@@ -38,16 +32,6 @@ cfg_if! {
     }
 }
 
-fn filter_ref_value(json: RefValueWrapper, node: Node) -> JsValue {
-    let mut jf = JsonValueFilter::new(json);
-    jf.visit(node);
-    let taken = &jf.clone_value();
-    match JsValue::from_serde(taken.deref()) {
-        Ok(js_value) => js_value,
-        Err(e) => JsValue::from_str(&format!("Json deserialize error: {:?}", e))
-    }
-}
-
 fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
     where D: for<'a> serde::de::Deserialize<'a>
 {
@@ -64,26 +48,27 @@ fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
     }
 }
 
-fn into_ref_value(js_value: &JsValue, node: Node) -> JsValue {
-    let result: result::Result<RefValue, String> = into_serde_json::<RefValue>(js_value);
-    match result {
-        Ok(json) => filter_ref_value(json.into(), node),
-        Err(e) => JsValue::from_str(&format!("Json serialize error: {}", e))
-    }
-}
-
-fn get_ref_value(js_value: JsValue, node: Node) -> JsValue {
-    into_ref_value(&js_value, node)
-}
-
 #[wasm_bindgen]
 pub fn compile(path: &str) -> JsValue {
     let mut parser = Parser::new(path);
     let node = parser.compile();
+
     let cb = Closure::wrap(Box::new(move |js_value: JsValue| {
+        let mut selector = _Selector::new();
         match &node {
-            Ok(node) => get_ref_value(js_value, node.clone()),
-            Err(e) => JsValue::from_str(&format!("Json path error: {:?}", e))
+            Ok(node) => selector.compiled_path(node.clone()),
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone())))
+        };
+        let json = match into_serde_json(&js_value) {
+            Ok(json) => json,
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
+        };
+        match selector.value(&json).select() {
+            Ok(ret) => match JsValue::from_serde(&ret) {
+                Ok(ret) => ret,
+                Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+            },
+            Err(e) => JsValue::from_str(&format!("{:?}", e))
         }
     }) as Box<Fn(JsValue) -> JsValue>);
 
@@ -94,16 +79,26 @@ pub fn compile(path: &str) -> JsValue {
 
 #[wasm_bindgen]
 pub fn selector(js_value: JsValue) -> JsValue {
-    let json: RefValueWrapper = match into_serde_json::<RefValue>(&js_value) {
-        Ok(json) => json.into(),
-        Err(e) => return JsValue::from_str(e.as_str())
+    let json: Value = match JsValue::into_serde(&js_value) {
+        Ok(json) => json,
+        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
     };
 
     let cb = Closure::wrap(Box::new(move |path: String| {
         let mut parser = Parser::new(path.as_str());
         match parser.compile() {
-            Ok(node) => filter_ref_value(json.clone(), node),
-            Err(e) => return JsValue::from_str(e.as_str())
+            Ok(node) => {
+                let mut selector = _Selector::new();
+                let _ = selector.compiled_path(node);
+                match selector.value(&json).select() {
+                    Ok(ret) => match JsValue::from_serde(&ret) {
+                        Ok(ret) => ret,
+                        Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+                    },
+                    Err(e) => JsValue::from_str(&format!("{:?}", e))
+                }
+            }
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e)))
         }
     }) as Box<Fn(String) -> JsValue>);
 
@@ -114,105 +109,76 @@ pub fn selector(js_value: JsValue) -> JsValue {
 
 #[wasm_bindgen]
 pub fn select(js_value: JsValue, path: &str) -> JsValue {
-    let mut parser = Parser::new(path);
-    match parser.compile() {
-        Ok(node) => get_ref_value(js_value, node),
-        Err(e) => return JsValue::from_str(e.as_str())
+    let mut selector = _Selector::new();
+    let _ = selector.path(path);
+
+    let json = match into_serde_json(&js_value) {
+        Ok(json) => json,
+        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
+    };
+
+    match selector.value(&json).select() {
+        Ok(ret) => match JsValue::from_serde(&ret) {
+            Ok(ret) => ret,
+            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+        },
+        Err(e) => JsValue::from_str(&format!("{:?}", e))
     }
 }
 
 ///
 /// `wasm_bindgen` 제약으로 builder-pattern을 구사 할 수 없다.
+/// lifetime 제약으로 Selector를 사용 할 수 없다.
 ///
 #[wasm_bindgen]
 pub struct Selector {
-    selector: _Selector
+    path: Option<String>,
+    value: Option<Value>,
 }
 
 #[wasm_bindgen]
 impl Selector {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Selector { selector: _Selector::new() }
+        Selector { path: None, value: None }
     }
 
     #[wasm_bindgen(catch)]
-    pub fn path(&mut self, path: &str) -> result::Result<(), JsValue> {
-        let _ = self.selector.path(path)?;
+    pub fn path(&mut self, path: &str) -> Result<(), JsValue> {
+        self.path = Some(path.to_string());
         Ok(())
     }
 
     #[wasm_bindgen(catch)]
-    pub fn value(&mut self, value: JsValue) -> result::Result<(), JsValue> {
-        let ref ref_value = into_serde_json(&value)?;
-        let _ = self.selector.value(ref_value)?;
+    pub fn value(&mut self, value: JsValue) -> Result<(), JsValue> {
+        let json = into_serde_json(&value)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e))))?;
+        self.value = Some(json);
         Ok(())
     }
 
-    #[wasm_bindgen(catch, js_name = selectToStr)]
-    pub fn select_to_str(&mut self) -> result::Result<JsValue, JsValue> {
-        self.select_as_str()
-    }
+    #[wasm_bindgen(catch, js_name = select)]
+    pub fn select(&mut self) -> Result<JsValue, JsValue> {
+        let mut selector = _Selector::new();
 
-    #[wasm_bindgen(catch, js_name = selectAsStr)]
-    pub fn select_as_str(&mut self) -> result::Result<JsValue, JsValue> {
-        let json_str = self.selector.select_as_str()?;
-        Ok(JsValue::from_str(&json_str))
-    }
-
-    #[wasm_bindgen(catch, js_name = selectTo)]
-    pub fn select_to(&mut self) -> result::Result<JsValue, JsValue> {
-        self.select_as()
-    }
-
-    #[wasm_bindgen(catch, js_name = selectAs)]
-    pub fn select_as(&mut self) -> result::Result<JsValue, JsValue> {
-        let ref_value = self.selector.select_as::<RefValue>()
-            .map_err(|e| JsValue::from_str(&e))?;
-        Ok(JsValue::from_serde(&ref_value)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?)
-    }
-
-    #[wasm_bindgen(catch)]
-    pub fn map(&mut self, func: JsValue) -> result::Result<(), JsValue> {
-        if !func.is_function() {
-            return Err(JsValue::from_str("Not a function argument"));
+        if let Some(path) = &self.path {
+            let _ = selector.path(&path).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        } else {
+            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyPath)));
         }
 
-        let cb: &js_sys::Function = JsCast::unchecked_ref(func.as_ref());
+        if let Some(value) = &self.value {
+            let _ = selector.value(value);
+        } else {
+            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyValue)));
+        }
 
-        self.selector.map(|v| {
-            let str_value = match JsValue::from_serde(&v) {
-                Ok(str_value) => str_value,
-                Err(e) => return {
-                    console::error_1(&JsValue::from_str(&e.to_string()));
-                    None
-                }
-            };
-
-            match cb.call1(&func, &str_value) {
-                Ok(ret) => {
-                    match into_serde_json::<Value>(&ret) {
-                        Ok(value) => Some(value),
-                        Err(e) => {
-                            console::error_1(&JsValue::from_str(&e.to_string()));
-                            None
-                        }
-                    }
-                }
-                Err(e) => {
-                    console::error_1(&e);
-                    None
-                }
-            }
-        }).map_err(|e| JsValue::from_str(&e))?;
-
-        Ok(())
-    }
-
-    #[wasm_bindgen(catch)]
-    pub fn get(&mut self) -> result::Result<JsValue, JsValue> {
-        let v = self.selector.get().map_err(|e| JsValue::from_str(&e.to_string()))?;
-        JsValue::from_serde(&v).map_err(|e| JsValue::from_str(&e.to_string()))
+        match selector.select() {
+            Ok(ret) => match JsValue::from_serde(&ret) {
+                Ok(ret) => Ok(ret),
+                Err(e) => Err(JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))))
+            },
+            Err(e) => Err(JsValue::from_str(&format!("{:?}", e)))
+        }
     }
 }
