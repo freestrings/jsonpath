@@ -71,13 +71,6 @@ function nativeSelect() {
     }
 }
 
-function nativeSelectorClassMap() {
-    let selector = new jpwRs.Selector();
-    for (var i = 0; i < iter; i++) {
-        let _ = selector.path(path).value(jsonStr).map((v) => v).get();
-    }
-}
-
 function wasmSelector() {
     let selector = jpw.selector(getJson());
     for (var i = 0; i < iter; i++) {
@@ -103,17 +96,7 @@ function wasmSelectorClass() {
     for (var i = 0; i < iter; i++) {
         selector.path(path);
         selector.value(jsonStr);
-        let _ = selector.selectToStr();
-    }
-}
-
-function wasmSelectorClassMap() {
-    let selector = new jpw.Selector();
-    for (var i = 0; i < iter; i++) {
-        selector.path(path);
-        selector.value(jsonStr);
-        let _1 = selector.map((v) => v);
-        let _2 = selector.get();
+        let _ = selector.select();
     }
 }
 

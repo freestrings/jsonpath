@@ -57,7 +57,10 @@ fn _selector(b: &mut Bencher, index: usize) {
             let mut selector = jsonpath::Selector::new();
             let _ = selector.path(get_path(index));
             selector.value(&json);
-            let _ = selector.select();
+            let r = selector.select();
+            if r.is_err() {
+                panic!()
+            }
         }
     });
 }
