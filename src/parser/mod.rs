@@ -17,8 +17,7 @@ mod parser_tests {
         }
 
         fn start(&mut self) -> Result<Vec<ParseToken>, String> {
-            let mut parser = Parser::new(self.input);
-            let node = parser.compile()?;
+            let node = Parser::compile(self.input)?;
             self.visit(&node);
             Ok(self.stack.split_off(0))
         }
@@ -330,7 +329,7 @@ mod parser_tests {
 
 #[cfg(test)]
 mod tokenizer_tests {
-    use parser::tokenizer::{Token, TokenError, Tokenizer, PreloadedTokenizer};
+    use parser::tokenizer::{Token, TokenError, Tokenizer, TokenReader};
 
     fn collect_token(input: &str) -> (Vec<Token>, Option<TokenError>) {
         let mut tokenizer = Tokenizer::new(input);
@@ -350,7 +349,7 @@ mod tokenizer_tests {
 
     #[test]
     fn peek() {
-        let mut tokenizer = PreloadedTokenizer::new("$.a");
+        let mut tokenizer = TokenReader::new("$.a");
         match tokenizer.next_token() {
             Ok(t) => assert_eq!(Token::Absolute(0), t),
             _ => panic!()

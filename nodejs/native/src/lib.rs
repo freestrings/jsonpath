@@ -39,8 +39,7 @@ pub struct SelectorCls {
 
 impl SelectorCls {
     fn path(&mut self, path: &str) {
-        let mut parser = Parser::new(path);
-        let node = match parser.compile() {
+        let node = match Parser::compile(path) {
             Ok(node) => node,
             Err(e) => panic!("{:?}", e)
         };
@@ -82,8 +81,7 @@ declare_types! {
     pub class JsCompileFn for SelectorCls {
         init(mut ctx) {
             let path = ctx.argument::<JsString>(0)?.value();
-            let mut parser = Parser::new(path.as_str());
-            let node = match parser.compile() {
+            let node = match Parser::compile(path.as_str()) {
                 Ok(node) => node,
                 Err(e) => panic!("{:?}", e)
             };

@@ -275,7 +275,7 @@ impl<'a> Tokenizer<'a> {
     }
 }
 
-pub struct PreloadedTokenizer<'a> {
+pub struct TokenReader<'a> {
     origin_input: &'a str,
     err: TokenError,
     err_pos: usize,
@@ -283,7 +283,7 @@ pub struct PreloadedTokenizer<'a> {
     curr_pos: Option<usize>,
 }
 
-impl<'a> PreloadedTokenizer<'a> {
+impl<'a> TokenReader<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut tokenizer = Tokenizer::new(input);
         let mut tokens = vec![];
@@ -293,7 +293,7 @@ impl<'a> PreloadedTokenizer<'a> {
                     tokens.insert(0, (tokenizer.current_pos(), t));
                 }
                 Err(e) => {
-                    return PreloadedTokenizer {
+                    return TokenReader {
                         origin_input: input.clone(),
                         err: e,
                         err_pos: tokenizer.current_pos(),

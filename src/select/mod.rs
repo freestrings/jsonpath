@@ -508,8 +508,7 @@ impl<'a> Selector<'a> {
 
     pub fn path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
         debug!("path : {}", path);
-        let mut parser = Parser::new(path);
-        self.node = Some(parser.compile().map_err(|e| JsonPathError::Path(e))?);
+        self.node = Some(Parser::compile(path).map_err(|e| JsonPathError::Path(e))?);
         Ok(self)
     }
 

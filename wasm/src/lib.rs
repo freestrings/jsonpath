@@ -50,8 +50,7 @@ fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
 
 #[wasm_bindgen]
 pub fn compile(path: &str) -> JsValue {
-    let mut parser = Parser::new(path);
-    let node = parser.compile();
+    let node = Parser::compile(path);
 
     let cb = Closure::wrap(Box::new(move |js_value: JsValue| {
         let mut selector = _Selector::new();
@@ -85,8 +84,7 @@ pub fn selector(js_value: JsValue) -> JsValue {
     };
 
     let cb = Closure::wrap(Box::new(move |path: String| {
-        let mut parser = Parser::new(path.as_str());
-        match parser.compile() {
+        match Parser::compile(path.as_str()) {
             Ok(node) => {
                 let mut selector = _Selector::new();
                 let _ = selector.compiled_path(node);

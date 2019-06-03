@@ -170,8 +170,7 @@ pub use parser::parser::{Node, Parser};
 /// ]);
 /// ```
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
-    let mut parser = Parser::new(path);
-    let node = parser.compile();
+    let node = Parser::compile(path);
     move |json| {
         let mut selector = Selector::new();
         match &node {
