@@ -50,7 +50,7 @@ extern crate serde_json;
 #### Rust - jsonpath::Selector struct
 
 ```rust
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, PartialEq, Debug)]
 struct Friend {
     name: String,
     age: Option<u8>,
@@ -72,43 +72,16 @@ let mut selector = Selector::new();
 
 let result = selector
     .path("$..[?(@.age >= 30)]").unwrap()
-//    .value_from_str(&serde_json::to_string(&json_obj).unwrap() /*&str*/).unwrap()
-//    .value_from(&json_obj /*&impl serde::ser::Serialize*/).unwrap()
-    .value(&json_obj /*serde_json::value::Value*/).unwrap()
-    .select_as_value().unwrap();
+    .value(&json_obj)
+    .select().unwrap();
 
-assert_eq!(json!([{"name": "친구3", "age": 30}]), result);
+assert_eq!(vec![&json!({"name": "친구3", "age": 30})], result);
 
 let result = selector.select_as_str().unwrap();
 assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
 
-let result = selector.select_as::<Vec<Friend>>().unwrap();
+let result = selector.select_as::<Friend>().unwrap();
 assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
-
-let _ = selector.map(|v| {
-    let r = match v {
-        Value::Array(mut vec) => {
-            for mut v in &mut vec {
-                v.as_object_mut().unwrap().remove("age");
-            }
-            Value::Array(vec)
-        }
-        _ => Value::Null
-    };
-    Some(r)
-});
-assert_eq!(json!([{ "name": "친구3" }]), selector.get().unwrap());
-
-let _ = selector.value(&json_obj).unwrap()
-    .map_as(|mut v: Vec<Friend>| {
-        let mut f = v.pop().unwrap();
-        f.name = "friend3".to_string();
-        f.age = None;
-        Some(vec![f])
-    });
-
-assert_eq!(vec![Friend { name: "friend3".to_string(), age: None }],
-           selector.get_as::<Vec<Friend>>().unwrap());
 ```
 
 #### Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)
@@ -128,11 +101,10 @@ let json_obj = json!({
 
 let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
 
-let ret = json!([
-    {"name": "친구3", "age": 30},
-    {"name": "친구1", "age": 20}
+assert_eq!(json, vec![
+    &json!({"name": "친구3", "age": 30}),
+    &json!({"name": "친구1", "age": 20})
 ]);
-assert_eq!(json, ret);
 ```
 
 #### Rust - jsonpath::select_as_str(json: &str, jsonpath: &str)
@@ -166,7 +138,7 @@ struct Person {
     phones: Vec<String>,
 }
 
-let ret: Person = jsonpath::select_as(r#"
+let ret: Vec<Person> = jsonpath::select_as(r#"
 {
     "person":
         {
@@ -186,7 +158,7 @@ let person = Person {
     phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
 };
 
-assert_eq!(person, ret);
+assert_eq!(ret[0], person);
 ```
 
 #### Rust - jsonpath::compile(jsonpath: &str)
@@ -208,12 +180,10 @@ let json_obj = json!({
 
 let json = template(&json_obj).unwrap();
 
-let ret = json!([
-    {"name": "친구3", "age": 30},
-    {"name": "친구1", "age": 20}
+assert_eq!(json, vec![
+    &json!({"name": "친구3", "age": 30}),
+    &json!({"name": "친구1", "age": 20})
 ]);
-
-assert_eq!(json, ret);
 ```
 
 #### Rust - jsonpath::selector(json: &serde_json::value::Value)
@@ -235,21 +205,17 @@ let mut selector = jsonpath::selector(&json_obj);
 
 let json = selector("$..friends[0]").unwrap();
 
-let ret = json!([
-    {"name": "친구3", "age": 30},
-    {"name": "친구1", "age": 20}
+assert_eq!(json, vec![
+    &json!({"name": "친구3", "age": 30}),
+    &json!({"name": "친구1", "age": 20})
 ]);
-
-assert_eq!(json, ret);
 
 let json = selector("$..friends[1]").unwrap();
 
-let ret = json!([
-    {"name": "친구4"},
-    {"name": "친구2", "age": 20}
+assert_eq!(json, vec![
+    &json!({"name": "친구4"}),
+    &json!({"name": "친구2", "age": 20})
 ]);
-
-assert_eq!(json, ret);
 ```
 
 #### Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)
@@ -267,13 +233,13 @@ let json_obj = json!({
         {"name": "친구4"}
 ]});
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, PartialEq, Debug)]
 struct Friend {
     name: String,
     age: Option<u8>,
 }
 
-let mut selector = jsonpath::selector_as::<Vec<Friend>>(&json_obj);
+let mut selector = jsonpath::selector_as::<Friend>(&json_obj);
 
 let json = selector("$..friends[0]").unwrap();
 
@@ -346,21 +312,10 @@ let selector = new jsonpath.Selector();
 selector.path('$..friends[0]');
 selector.value(jsonObj);
 
-let selectAsObj = selector.selectAs();
-let selectAsString = selector.selectAsStr();
+let retObj = selector.select();
 
-console.log(
-    JSON.stringify(ret) == JSON.stringify(selectAsObj),
-    JSON.stringify(ret) == selectAsString
-);
+console.log(JSON.stringify(ret) == JSON.stringify(retObj));
 
-selector.map(function(v) {
-    let f1 = v[0];
-    f1.name = 'friend3';
-    return [f1];
-});
-
-console.log(JSON.stringify(selector.get()) === JSON.stringify([{"name": "friend3", "age": 30}]));
 // => true
 ```
 
@@ -389,15 +344,11 @@ let selector = new jsonpath.Selector()
     .path('$..friends[0]')
     .value(jsonObj);
 
-let selectAsObj = selector.selectAs();
-let selectAsString = selector.selectAsStr();
+let retObj = selector.select();
 
-console.log(
-    JSON.stringify(ret) == JSON.stringify(selectAsObj),
-    JSON.stringify(ret) == selectAsString
-);
+console.log(JSON.stringify(ret) == JSON.stringify(retObj));
 
-// => true, true
+// => true
 ```
 
 #### Javascript - jsonpath.select(json: string|object, jsonpath: string)

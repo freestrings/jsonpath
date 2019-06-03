@@ -42,39 +42,12 @@ class Selector {
         if(typeof json != 'string') {
             json = JSON.stringify(json)
         }
-        this._selector.valueFromStr(json);
+        this._selector.value(json);
         return this;
     }
 
-    selectToStr() {
-        return this.selectAsStr();
-    }
-
-    selectTo() {
-        return this.selectAs();
-    }
-
-    selectAsStr() {
-        return this._selector.selectAsStr();
-    }
-
-    selectAs() {
-        return JSON.parse(this.selectAsStr());
-    }
-
-    map(func) {
-        this._selector.map((json) => {
-            var result = func.call(null, JSON.parse(json));
-            if(typeof result !== 'string') {
-                result = JSON.stringify(result);
-            }
-            return result;
-        });
-        return this;
-    }
-
-    get() {
-        return JSON.parse(this._selector.get());
+    select() {
+        return JSON.parse(this._selector.select());
     }
 }
 

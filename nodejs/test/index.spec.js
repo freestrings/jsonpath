@@ -359,7 +359,7 @@ describe('compile test', () => {
     it('basic', (done) => {
         let template = jsonpath.compile('$.a');
         let result = template({'a': 1});
-        if (result === 1) {
+        if (result[0] === 1) {
             done();
         }
     });
@@ -369,7 +369,7 @@ describe('selector test', () => {
     it('basic', (done) => {
         let selector = jsonpath.selector({'a': 1});
         let result = selector('$.a');
-        if (result === 1) {
+        if (result[0] === 1) {
             done();
         }
     });
@@ -378,7 +378,7 @@ describe('selector test', () => {
 describe('select test', () => {
     it('basic', (done) => {
         let result = jsonpath.select({'a': 1}, '$.a');
-        if (result === 1) {
+        if (result[0] === 1) {
             done();
         }
     });
@@ -401,24 +401,10 @@ describe('filter test', () => {
 });
 
 describe('Selector test', () => {
-    it('basic selectTo', (done) => {
-        let result = new jsonpath.Selector().path('$.a').value({'a': 1}).selectTo();
-        if (result === 1) {
-            done();
-        }
-    });
-
-    it('basic selectToStr', (done) => {
-        let result = new jsonpath.Selector().path('$.a').value({'a': 1}).selectToStr();
-        if (result === '1') {
-            done();
-        }
-    });
-
     it('select', (done) => {
         let selector = new jsonpath.Selector().value(jsonObj);
         for(var i in list) {
-            if(JSON.stringify(list[i]) !== selector.path(i).selectToStr()) {
+            if(JSON.stringify(list[i]) !== JSON.stringify(selector.path(i).select())) {
                 throw `fail: ${i}`;
             }
         }
@@ -444,7 +430,7 @@ describe('README test', () => {
         let selector = new jsonpath.Selector().value(jsonObj);
 
         {
-            let jsonObj = selector.path('$..[?(@.age >= 30)]').selectAs();
+            let jsonObj = selector.path('$..[?(@.age >= 30)]').select();
             let resultObj = [{"name": "친구3", "age": 30}];
             if(JSON.stringify(jsonObj) !== JSON.stringify(resultObj)) {
                 throw 'jsonpath.Selector: $..[?(@.age >= 30)]';
@@ -452,7 +438,7 @@ describe('README test', () => {
         }
 
         {
-            let jsonObj = selector.path('$..[?(@.age == 20)]').selectAs();
+            let jsonObj = selector.path('$..[?(@.age == 20)]').select();
             let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
             if(JSON.stringify(jsonObj) !== JSON.stringify(resultObj)) {
                 throw 'jsonpath.Selector: $..[?(@.age >= 20)]';
@@ -460,29 +446,10 @@ describe('README test', () => {
         }
 
         {
-            let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectAs();
+            let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).select();
             let resultObj = [{"name": "친구5", "age": 20}];
             if(JSON.stringify(jsonObj) !== JSON.stringify(resultObj)) {
                 throw 'jsonpath.Selector: change value';
-            }
-        }
-
-        {
-            let jsonObj1 = selector.value(jsonObj).map(function(v) {
-                let f1 = v[0];
-                f1.age = 30;
-                return v;
-            }).get();
-
-            let resultObj1 = [{"name": "친구1", "age": 30}, {"name": "친구2", "age": 20}];
-            if(JSON.stringify(jsonObj1) !== JSON.stringify(resultObj1)) {
-                throw 'jsonpath.Selector.map';
-            }
-
-            let jsonObj2 = selector.path('$..[?(@.age == 20)]').selectAs();
-            let resultObj2 = [{"name": "친구2", "age": 20}];
-            if(JSON.stringify(jsonObj2) !== JSON.stringify(resultObj2)) {
-                throw 'jsonpath.Selector.map and then select';
             }
         }
 

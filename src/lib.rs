@@ -140,7 +140,7 @@ mod select;
 
 pub use select::Selector;
 pub use select::JsonPathError;
-pub use parser::parser::Parser;
+pub use parser::parser::{Node, Parser};
 
 /// It is a high-order function. it compile a JsonPath and then returns a function. this return-function can be reused for different JsonObjects.
 ///
