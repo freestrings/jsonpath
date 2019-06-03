@@ -247,73 +247,62 @@ impl<'a> ExprTerm<'a> {
                 _ => ExprTerm::Bool(cmp_fn.default())
             }
             ExprTerm::Json(fk1, vec1) if other.is_string() => {
-                match &other {
-                    ExprTerm::String(s2) => {
-                        let ret: Vec<&Value> = vec1.iter().filter(|v1| {
-                            match v1 {
-                                Value::String(s1) => cmp_fn.cmp_string(s1, s2),
-                                Value::Object(map1) => {
-                                    if let Some(FilterKey::String(k)) = fk1 {
-                                        if let Some(Value::String(s1)) = map1.get(k) {
-                                            return cmp_fn.cmp_string(s1, s2);
-                                        }
-                                    }
-                                    cmp_fn.default()
-                                }
-                                _ => cmp_fn.default()
-                            }
-                        }).map(|v| *v).collect();
+                let s2 = if let ExprTerm::String(s2) = &other { s2 } else { unreachable!() };
 
-                        if ret.is_empty() { ExprTerm::Bool(cmp_fn.default()) } else { ExprTerm::Json(None, ret) }
+                let ret: Vec<&Value> = vec1.iter().filter(|v1| {
+                    match v1 {
+                        Value::String(s1) => cmp_fn.cmp_string(s1, s2),
+                        Value::Object(map1) => {
+                            if let Some(FilterKey::String(k)) = fk1 {
+                                if let Some(Value::String(s1)) = map1.get(k) {
+                                    return cmp_fn.cmp_string(s1, s2);
+                                }
+                            }
+                            cmp_fn.default()
+                        }
+                        _ => cmp_fn.default()
                     }
-                    _ => unreachable!()
-                }
+                }).map(|v| *v).collect();
+
+                if ret.is_empty() { ExprTerm::Bool(cmp_fn.default()) } else { ExprTerm::Json(None, ret) }
             }
             ExprTerm::Json(fk1, vec1) if other.is_number() => {
-                match &other {
-                    ExprTerm::Number(n2) => {
-                        let ret: Vec<&Value> = vec1.iter().filter(|v1| {
-                            match v1 {
-                                Value::Number(n1) => cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2)),
-                                Value::Object(map1) => {
-                                    if let Some(FilterKey::String(k)) = fk1 {
-                                        if let Some(Value::Number(n1)) = map1.get(k) {
-                                            return cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2));
-                                        }
-                                    }
-                                    cmp_fn.default()
+                let n2 = if let ExprTerm::Number(n2) = &other { n2 } else { unreachable!() };
+                let ret: Vec<&Value> = vec1.iter().filter(|v1| {
+                    match v1 {
+                        Value::Number(n1) => cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2)),
+                        Value::Object(map1) => {
+                            if let Some(FilterKey::String(k)) = fk1 {
+                                if let Some(Value::Number(n1)) = map1.get(k) {
+                                    return cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2));
                                 }
-                                _ => cmp_fn.default()
                             }
-                        }).map(|v| *v).collect();
-
-                        if ret.is_empty() { ExprTerm::Bool(cmp_fn.default()) } else { ExprTerm::Json(None, ret) }
+                            cmp_fn.default()
+                        }
+                        _ => cmp_fn.default()
                     }
-                    _ => unreachable!()
-                }
+                }).map(|v| *v).collect();
+
+                if ret.is_empty() { ExprTerm::Bool(cmp_fn.default()) } else { ExprTerm::Json(None, ret) }
             }
             ExprTerm::Json(fk1, vec1) if other.is_bool() => {
-                match &other {
-                    ExprTerm::Bool(b2) => {
-                        let ret: Vec<&Value> = vec1.iter().filter(|v1| {
-                            match v1 {
-                                Value::Bool(b1) => cmp_fn.cmp_bool(b1, b2),
-                                Value::Object(map1) => {
-                                    if let Some(FilterKey::String(k)) = fk1 {
-                                        if let Some(Value::Bool(b1)) = map1.get(k) {
-                                            return cmp_fn.cmp_bool(b1, b2);
-                                        }
-                                    }
-                                    cmp_fn.default()
+                let b2 = if let ExprTerm::Bool(b2) = &other { b2 } else { unreachable!() };
+                let ret: Vec<&Value> = vec1.iter().filter(|v1| {
+                    match v1 {
+                        Value::Bool(b1) => cmp_fn.cmp_bool(b1, b2),
+                        Value::Object(map1) => {
+                            if let Some(FilterKey::String(k)) = fk1 {
+                                if let Some(Value::Bool(b1)) = map1.get(k) {
+                                    return cmp_fn.cmp_bool(b1, b2);
                                 }
-                                _ => cmp_fn.default()
                             }
-                        }).map(|v| *v).collect();
-
-                        if ret.is_empty() { ExprTerm::Bool(cmp_fn.default()) } else { ExprTerm::Json(None, ret) }
+                            cmp_fn.default()
+                        }
+                        _ => cmp_fn.default()
                     }
-                    _ => unreachable!()
-                }
+                }).map(|v| *v).collect();
+
+                if ret.is_empty() { ExprTerm::Bool(cmp_fn.default()) } else { ExprTerm::Json(None, ret) }
             }
             ExprTerm::Json(_, vec1) if other.is_json() => {
                 match &other {
@@ -395,23 +384,19 @@ impl<'a> ExprTerm<'a> {
 
 fn walk_all_with_str<'a>(vec: &Vec<&'a Value>, tmp: &mut Vec<&'a Value>, key: &str, is_filter: bool) {
     if is_filter {
-        walk(vec, tmp, &|v| {
-            match v {
-                Value::Object(map) if map.contains_key(key) => {
-                    Some(vec![v])
-                }
-                _ => None
+        walk(vec, tmp, &|v| match v {
+            Value::Object(map) if map.contains_key(key) => {
+                Some(vec![v])
             }
+            _ => None
         });
     } else {
-        walk(vec, tmp, &|v| {
-            match v {
-                Value::Object(map) => match map.get(key) {
-                    Some(v) => Some(vec![v]),
-                    _ => None
-                }
+        walk(vec, tmp, &|v| match v {
+            Value::Object(map) => match map.get(key) {
+                Some(v) => Some(vec![v]),
                 _ => None
             }
+            _ => None
         });
     }
 }
@@ -584,31 +569,29 @@ impl<'a> Selector<'a> {
 
     fn in_filter<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>) -> FilterKey>(&mut self, fun: F) {
         match self.terms.pop() {
-            Some(peek) => {
-                match peek {
-                    Some(v) => {
-                        debug!("in_filter 1.: {:?}", v);
+            Some(peek) => match peek {
+                Some(v) => {
+                    debug!("in_filter 1.: {:?}", v);
 
-                        match v {
-                            ExprTerm::Json(_, vec) => {
-                                let mut tmp = Vec::new();
-                                let filter_key = fun(&vec, &mut tmp);
-                                self.terms.push(Some(ExprTerm::Json(Some(filter_key), tmp)));
-                            }
-                            _ => unreachable!()
-                        };
-                    }
-                    _ => {
-                        debug!("in_filter 2.: {:?}", &self.current);
-
-                        if let Some(current) = &self.current {
+                    match v {
+                        ExprTerm::Json(_, vec) => {
                             let mut tmp = Vec::new();
-                            let filter_key = fun(current, &mut tmp);
+                            let filter_key = fun(&vec, &mut tmp);
                             self.terms.push(Some(ExprTerm::Json(Some(filter_key), tmp)));
                         }
+                        _ => unreachable!()
+                    };
+                }
+                _ => {
+                    debug!("in_filter 2.: {:?}", &self.current);
+
+                    if let Some(current) = &self.current {
+                        let mut tmp = Vec::new();
+                        let filter_key = fun(current, &mut tmp);
+                        self.terms.push(Some(ExprTerm::Json(Some(filter_key), tmp)));
                     }
-                };
-            }
+                }
+            },
             _ => {}
         }
     }
@@ -922,8 +905,8 @@ impl<'a> NodeVisitor for Selector<'a> {
 
                 if let Some(ParseToken::Array) = self.tokens.pop() {
                     let mut tmp = Vec::new();
-                    for vec in &self.current {
-                        for v in vec {
+                    if let Some(current) = &self.current {
+                        for v in current {
                             if let Value::Array(vec) = v {
                                 let from = if let Some(from) = from {
                                     abs_index(from, vec.len())
@@ -945,7 +928,6 @@ impl<'a> NodeVisitor for Selector<'a> {
                             }
                         }
                     }
-
                     self.current = Some(tmp);
                 } else {
                     unreachable!();
@@ -958,8 +940,8 @@ impl<'a> NodeVisitor for Selector<'a> {
 
                 if let Some(ParseToken::Array) = self.tokens.pop() {
                     let mut tmp = Vec::new();
-                    for vec in &self.current {
-                        for v in vec {
+                    if let Some(current) = &self.current {
+                        for v in current {
                             if let Value::Array(vec) = v {
                                 for i in indices {
                                     if let Some(v) = vec.get(abs_index(i, vec.len())) {
@@ -982,20 +964,15 @@ impl<'a> NodeVisitor for Selector<'a> {
     }
 }
 
+pub trait Modifiable {
+    fn delete_from_selected(&mut self, value: &mut Value);
+}
 
-//pub trait Transform<'a> {
-//    fn map<F>(&mut self, mut fun: F) -> &mut Self where F: FnMut(&'a mut Value);
-//}
-//
-//impl<'a> Transform<'a> for Selector<'a> {
-//    fn map<F>(&mut self, mut fun: F) -> &mut Self where F: FnMut(&'a mut Value) {
-//        match &mut self.current {
-//            Some(current) => {
-//                current.iter_mut().for_each(|ref mut v| fun(v))
-//            }
-//            _ => {}
-//        }
-//
-//        self
-//    }
-//}
+impl<'a> Modifiable for Selector<'a> {
+    fn delete_from_selected(&mut self, value: &mut Value) {
+        match &self.current {
+            Some(current) => {}
+            _ => {}
+        }
+    }
+}
