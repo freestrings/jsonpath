@@ -151,7 +151,7 @@ fn readme_selector() {
     let mut selector = Selector::new();
 
     let result = selector
-        .path("$..[?(@.age >= 30)]").unwrap()
+        .str_path("$..[?(@.age >= 30)]").unwrap()
         .value(&json_obj)
         .select().unwrap();
 

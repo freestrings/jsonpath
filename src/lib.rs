@@ -125,22 +125,22 @@
 extern crate array_tool;
 extern crate core;
 extern crate env_logger;
-extern crate indexmap;
 #[macro_use]
 extern crate log;
 extern crate serde;
 extern crate serde_json;
+extern crate indexmap;
 
 use serde_json::Value;
+
+pub use parser::parser::{Node, Parser};
+pub use select::{Selector, SelectorMut};
+pub use select::JsonPathError;
 
 #[doc(hidden)]
 mod parser;
 #[doc(hidden)]
 mod select;
-
-pub use select::Selector;
-pub use select::JsonPathError;
-pub use parser::parser::{Node, Parser};
 
 /// It is a high-order function. it compile a JsonPath and then returns a function. this return-function can be reused for different JsonObjects.
 ///
@@ -219,7 +219,7 @@ pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value
     let mut selector = Selector::new();
     let _ = selector.value(json);
     move |path: &str| {
-        selector.path(path)?.reset_value().select()
+        selector.str_path(path)?.reset_value().select()
     }
 }
 
@@ -273,7 +273,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&
     let mut selector = Selector::new();
     let _ = selector.value(json);
     move |path: &str| {
-        selector.path(path)?.reset_value().select_as()
+        selector.str_path(path)?.reset_value().select_as()
     }
 }
 
@@ -303,7 +303,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&
 /// ]);
 /// ```
 pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, JsonPathError> {
-    Selector::new().path(path)?.value(json).select()
+    Selector::new().str_path(path)?.value(json).select()
 }
 
 /// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a json string.
@@ -331,7 +331,7 @@ pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, Json
 /// ```
 pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    let ret = Selector::new().path(path)?.value(&json).select()?;
+    let ret = Selector::new().str_path(path)?.value(&json).select()?;
     serde_json::to_string(&ret).map_err(|e| JsonPathError::Serde(e.to_string()))
 }
 
@@ -375,5 +375,5 @@ pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError
 /// ```
 pub fn select_as<T: serde::de::DeserializeOwned>(json_str: &str, path: &str) -> Result<Vec<T>, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    Selector::new().path(path)?.value(&json).select_as()
+    Selector::new().str_path(path)?.value(&json).select_as()
 }

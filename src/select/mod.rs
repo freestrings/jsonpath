@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use array_tool::vec::{Intersect, Union};
 use serde_json::{Number, Value};
 
 use parser::parser::*;
-use std::collections::HashSet;
+use indexmap::IndexSet;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
@@ -382,6 +384,21 @@ impl<'a> ExprTerm<'a> {
     }
 }
 
+impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
+    fn into(self) -> ExprTerm<'a> {
+        if self.len() == 1 {
+            match &self[0] {
+                Value::Number(v) => return ExprTerm::Number(v.clone()),
+                Value::String(v) => return ExprTerm::String(v.clone()),
+                Value::Bool(v) => return ExprTerm::Bool(*v),
+                _ => {}
+            }
+        }
+
+        ExprTerm::Json(None, self.to_vec())
+    }
+}
+
 fn walk_all_with_str<'a>(vec: &Vec<&'a Value>, tmp: &mut Vec<&'a Value>, key: &str, is_filter: bool) {
     if is_filter {
         walk(vec, tmp, &|v| match v {
@@ -491,19 +508,19 @@ impl<'a> Selector<'a> {
         }
     }
 
-    pub fn path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
+    pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
         debug!("path : {}", path);
         self.node = Some(Parser::compile(path).map_err(|e| JsonPathError::Path(e))?);
         Ok(self)
     }
 
-    pub(crate) fn reset_value(&mut self) -> &mut Self {
-        self.current = None;
+    pub fn compiled_path(&mut self, node: Node) -> &mut Self {
+        self.node = Some(node);
         self
     }
 
-    pub fn compiled_path(&mut self, node: Node) -> &mut Self {
-        self.node = Some(node);
+    pub fn reset_value(&mut self) -> &mut Self {
+        self.current = None;
         self
     }
 
@@ -733,19 +750,10 @@ impl<'a> NodeVisitor for Selector<'a> {
         if !self.selectors.is_empty() {
             match token {
                 ParseToken::Absolute | ParseToken::Relative | ParseToken::Filter(_) => {
-                    let s = self.selectors.pop().unwrap();
+                    let selector = self.selectors.pop().unwrap();
 
-                    if let Some(current) = &s.current {
-                        let term = if current.len() == 1 {
-                            match current[0] {
-                                Value::Number(v) => ExprTerm::Number(v.clone()),
-                                Value::String(v) => ExprTerm::String(v.clone()),
-                                Value::Bool(v) => ExprTerm::Bool(*v),
-                                _ => ExprTerm::Json(None, current.to_vec())
-                            }
-                        } else {
-                            ExprTerm::Json(None, current.to_vec())
-                        };
+                    if let Some(current) = &selector.current {
+                        let term = current.into();
 
                         if let Some(s) = self.selectors.last_mut() {
                             s.terms.push(Some(term));
@@ -760,19 +768,20 @@ impl<'a> NodeVisitor for Selector<'a> {
             }
         }
 
-        if let Some(s) = self.selectors.last_mut() {
-            s.visit_token(token);
+        if let Some(selector) = self.selectors.last_mut() {
+            selector.visit_token(token);
             return;
         }
 
         match token {
             ParseToken::Absolute => {
                 if self.current.is_some() {
-                    let mut s = Selector::new();
+                    let mut selector = Selector::new();
+
                     if let Some(value) = self.value {
-                        s.value = Some(value);
-                        s.current = Some(vec![value]);
-                        self.selectors.push(s);
+                        selector.value = Some(value);
+                        selector.current = Some(vec![value]);
+                        self.selectors.push(selector);
                     }
                     return;
                 }
@@ -964,15 +973,143 @@ impl<'a> NodeVisitor for Selector<'a> {
     }
 }
 
-pub trait Modifiable {
-    fn delete_from_selected(&mut self, value: &mut Value);
+pub struct SelectorMut {
+    path: Option<Node>,
+    value: Option<Value>,
 }
 
-impl<'a> Modifiable for Selector<'a> {
-    fn delete_from_selected(&mut self, value: &mut Value) {
-        match &self.current {
-            Some(current) => {}
-            _ => {}
+impl SelectorMut {
+    pub fn new() -> Self {
+        SelectorMut { path: None, value: None }
+    }
+
+    pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
+        self.path = Some(Parser::compile(path).map_err(|e| JsonPathError::Path(e))?);
+        Ok(self)
+    }
+
+    pub fn value(&mut self, value: Value) -> &mut Self {
+        self.value = Some(value);
+        self
+    }
+
+    pub fn take(&mut self) -> Option<Value> {
+        self.value.take()
+    }
+
+    fn compute_paths(&self, result: &Vec<&Value>) -> Vec<Vec<String>> {
+        fn _walk(origin: &Value, target: &Value, tokens: &mut Vec<String>, visited: &mut IndexSet<Vec<String>>) -> bool {
+            if visited.contains(tokens) {
+                return false;
+            }
+
+            if std::ptr::eq(origin, target) {
+                debug!("tokens: {:?}", tokens);
+                return true;
+            }
+
+            match origin {
+                Value::Array(vec) => for (i, v) in vec.iter().enumerate() {
+                    tokens.push(i.to_string());
+                    if _walk(v, target, tokens, visited) {
+                        return true;
+                    }
+                    tokens.pop();
+                },
+                Value::Object(map) => for (k, v) in map {
+                    tokens.push(k.clone());
+                    if _walk(v, target, tokens, visited) {
+                        return true;
+                    }
+                    tokens.pop();
+                }
+                _ => {}
+            }
+
+            return false;
+        }
+
+        let mut visited = IndexSet::new();
+
+        if let Some(origin) = &self.value {
+            for v in result {
+                let mut tokens = Vec::new();
+                if _walk(origin, v, &mut tokens, &mut visited) {
+                    visited.insert(tokens);
+                }
+            }
+        }
+
+        visited.iter().map(|v| v.to_vec()).collect()
+    }
+
+    pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {
+        self.replace_with(&mut |_| Value::Null)
+    }
+
+    pub fn replace_with<F: FnMut(&Value) -> Value>(&mut self, fun: &mut F) -> Result<&mut Self, JsonPathError> {
+        let mut selector = Selector::new();
+
+        if let Some(path) = self.path.take() {
+            selector.compiled_path(path);
+        }
+
+        if let Some(value) = &self.value {
+            selector.value(value);
+        }
+
+        let result = selector.select();
+
+        self.path = Some(selector.node.unwrap());
+
+        let paths = self.compute_paths(&result?);
+
+        if let Some(mut value) = self.value.take() {
+            for tokens in paths {
+                self.replace_value(tokens, &mut value, fun);
+            }
+            self.value = Some(value);
+        }
+
+        Ok(self)
+    }
+
+    fn replace_value<F: FnMut(&Value) -> Value>(&mut self, tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+        let mut target = value;
+
+        for (i, token) in tokens.iter().enumerate() {
+            let target_once = target;
+            let is_last = i == tokens.len() - 1;
+            let target_opt = match *target_once {
+                Value::Object(ref mut map) => {
+                    if is_last {
+                        if let Some(v) = map.remove(token) {
+                            map.insert(token.clone(), fun(&v));
+                            return;
+                        }
+                    }
+                    map.get_mut(token)
+                }
+                Value::Array(ref mut vec) => {
+                    if let Ok(x) = token.parse::<usize>() {
+                        if is_last {
+                            let v = &vec[x];
+                            vec[x] = fun(v);
+                            return;
+                        }
+                        vec.get_mut(x)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+
+            if let Some(t) = target_opt {
+                target = t;
+            } else {
+                break;
+            }
         }
     }
 }

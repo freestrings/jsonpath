@@ -31,7 +31,7 @@ pub fn read_contents(path: &str) -> String {
 #[allow(dead_code)]
 pub fn select_and_then_compare<'a>(path: &str, json: Value, target: Value) {
     let mut s = Selector::new();
-    let _ = s.path(path);
+    let _ = s.str_path(path);
     let _ = s.value(&json);
     let result = serde_json::to_value(s.select().unwrap()).unwrap();
     assert_eq!(result, target, "{}", path);

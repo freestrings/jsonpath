@@ -108,7 +108,7 @@ pub fn selector(js_value: JsValue) -> JsValue {
 #[wasm_bindgen]
 pub fn select(js_value: JsValue, path: &str) -> JsValue {
     let mut selector = _Selector::new();
-    let _ = selector.path(path);
+    let _ = selector.str_path(path);
 
     let json = match into_serde_json(&js_value) {
         Ok(json) => json,
@@ -160,7 +160,7 @@ impl Selector {
         let mut selector = _Selector::new();
 
         if let Some(path) = &self.path {
-            let _ = selector.path(&path).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            let _ = selector.str_path(&path).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         } else {
             return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyPath)));
         }
