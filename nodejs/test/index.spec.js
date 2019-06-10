@@ -400,6 +400,100 @@ describe('filter test', () => {
     }
 });
 
+describe('SelectorMut test', () => {
+    it('delete', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let result = jsonpath.deleteValue(jsonObjNew, '$.store.book');
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': null,
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+
+    it('replaceWith', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let result = jsonpath.replaceWith(jsonObjNew, '$.store.book', (v) => {
+            let ret = v[0];
+            ret.price = 9;
+            return ret;
+        });
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': {
+                    'category': 'reference',
+                    'author': 'Nigel Rees',
+                    'title': 'Sayings of the Century',
+                    'price': 9,
+                },
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+
+    it('SeletorMut delete', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let selector = new jsonpath.SelectorMut();
+        selector.path('$.store.book').value(jsonObjNew).deleteValue();
+
+        let result = selector.take();
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': null,
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+
+    it('SeletorMut replaceWith', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let selector = new jsonpath.SelectorMut();
+        selector.path('$.store.book').value(jsonObjNew).replaceWith((v) => {
+            let ret = v[0];
+            ret.price = 9;
+            return ret;
+        });
+
+        let result = selector.take();
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': {
+                    'category': 'reference',
+                    'author': 'Nigel Rees',
+                    'title': 'Sayings of the Century',
+                    'price': 9,
+                },
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+});
+
 describe('Selector test', () => {
     it('select', (done) => {
         let selector = new jsonpath.Selector().value(jsonObj);
