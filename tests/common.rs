@@ -8,6 +8,7 @@ use serde_json::Value;
 
 use self::jsonpath::Selector;
 
+#[allow(dead_code)]
 pub fn setup() {
     let _ = env_logger::try_init();
 }

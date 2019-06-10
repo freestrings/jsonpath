@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use array_tool::vec::{Intersect, Union};
+use indexmap::IndexSet;
 use serde_json::{Number, Value};
 
 use parser::parser::*;
-use indexmap::IndexSet;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
@@ -1088,10 +1088,14 @@ impl SelectorMut {
             let target_opt = match *target_once {
                 Value::Object(ref mut map) => {
                     if is_last {
-                        if let Some(v) = map.remove(token) {
-                            map.insert(token.clone(), fun(&v));
+                        let v = if let Some(v) = map.get(token) {
+                            fun(v)
+                        } else {
                             return;
-                        }
+                        };
+
+                        map.insert(token.clone(), v);
+                        return;
                     }
                     map.get_mut(token)
                 }

@@ -11,9 +11,6 @@ WASM_BROWSER_PKG="${WASM}"/browser_pkg
 WASM_NODEJS_PKG="${WASM}"/nodejs_pkg
 WASM_ALL_PKG="${WASM}"/all_pkg
 WASM_TEST="${WASM}"/tests
-BENCHES="${DIR}"/benches
-BENCHES_JS="${BENCHES}"/javascript
-NODEJS="${DIR}"/nodejs
 DOCS="${DIR}"/docs
 DOCS_BENCH="${DOCS}"/bench
 
@@ -22,20 +19,16 @@ __msg () {
 }
 
 __cargo_clean () {
-    cd "${BENCHES}"/bench_bin && cargo clean && \
-        cd "${NODEJS}"/native && cargo clean && \
-        cd "${WASM}" && cargo clean && \
-        cd "${DIR}" && cargo clean
+    cd "${WASM}" && cargo clean && \
+    cd "${DIR}" && cargo clean
 }
 
 echo
-__msg "clean"
+__msg "clean wasm"
 rm -rf \
     "${WASM_NODEJS_PKG}" \
     "${WASM_BROWSER_PKG}" \
     "${WASM_ALL_PKG}" \
-    "${BENCHES_JS}"/node_modules \
-    "${NODEJS}"/node_modules \
     "${WASM_WWW}"/node_modules \
     "${WASM_WWW_BENCH}"/node_modules \
     "${WASM_WWW}"/dist \
@@ -43,7 +36,7 @@ rm -rf \
     "${WASM_TEST}"/node_modules
 
 if [ "$1" = "all" ]; then
-    __msg "clean targets"
+    __msg "clean all wasm"
     __cargo_clean
 fi
 
@@ -51,17 +44,8 @@ __msg "npm install: wasm"
 cd "${WASM_WWW}" && npm install
 __msg "npm install: wasm_bench"
 cd "${WASM_WWW_BENCH}" && npm install
-__msg "npm install: nodejs"
-cd "${NODEJS}" && npm install
-__msg "npm install: benches_js"
-cd "${BENCHES_JS}" && npm install
 __msg "npm install: wasm test"
 cd "${WASM_TEST}" && npm install
-
-echo
-echo
-__msg "nodejs test"
-cd "${NODEJS}" && npm test
 
 echo
 echo
@@ -95,10 +79,6 @@ cd "${WASM_WWW}" && \
 cd "${WASM_WWW_BENCH}" && \
     npm link jsonpath-wasm
 
-cd "${BENCHES_JS}" && \
-    npm link jsonpath-wasm && \
-    npm link jsonpath-rs
-
 cd "${WASM_TEST}" && \
     npm link jsonpath-wasm
 
@@ -107,17 +87,18 @@ echo
 __msg "wasm test"
 cd "${WASM_TEST}" && npm test
 
+if [ "$1" = "all" ] || [ "$1" = "docs" ]; then
+    echo
+    __msg "docs"
+    cd "${WASM_WWW}" && \
+        npm run build &&
+        rm -f "${DOCS}"/*.js "${DOCS}"/*.wasm "${DOCS}"/*.html && \
+        cp "${WASM_WWW}"/dist/*.* "${DOCS}"/
 
-echo
-__msg "docs"
-cd "${WASM_WWW}" && \
-    npm run build &&
-    rm -f "${DOCS}"/*.js "${DOCS}"/*.wasm "${DOCS}"/*.html && \
-    cp "${WASM_WWW}"/dist/*.* "${DOCS}"/
+    cd "${WASM_WWW_BENCH}" && \
+        npm run build &&
+        rm -f "${DOCS_BENCH}"/*.js "${DOCS_BENCH}"/*.wasm "${DOCS_BENCH}"/*.html && \
+        cp "${WASM_WWW_BENCH}"/dist/*.* "${DOCS_BENCH}"/
+fi
 
-cd "${WASM_WWW_BENCH}" && \
-    npm run build &&
-    rm -f "${DOCS_BENCH}"/*.js "${DOCS_BENCH}"/*.wasm "${DOCS_BENCH}"/*.html && \
-    cp "${WASM_WWW_BENCH}"/dist/*.* "${DOCS_BENCH}"/
-
-__msg "done"
+__msg "wasm done"

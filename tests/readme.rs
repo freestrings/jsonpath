@@ -8,6 +8,8 @@ use serde_json::Value;
 
 use jsonpath::{Selector, SelectorMut};
 
+mod common;
+
 #[test]
 fn readme() {
     let json_obj = json!({
@@ -405,6 +407,26 @@ fn readme_delete() {
             {"name": "친구3", "age": 30},
             {"name": "친구4"}
     ]}));
+}
+
+#[test]
+fn readme_delete2() {
+    let json_obj = common::read_json("./benches/example.json");
+
+    let ret = jsonpath::delete(json_obj, "$.store.book").unwrap();
+
+    println!("{:?}", ret);
+
+    assert_eq!(ret, json!({
+       "store": {
+           "book": null,
+           "bicycle": {
+               "color": "red",
+               "price": 19.95
+           }
+       },
+       "expensive": 10
+   }));
 }
 
 #[test]
