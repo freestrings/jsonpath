@@ -125,11 +125,11 @@
 extern crate array_tool;
 extern crate core;
 extern crate env_logger;
+extern crate indexmap;
 #[macro_use]
 extern crate log;
 extern crate serde;
 extern crate serde_json;
-extern crate indexmap;
 
 use serde_json::Value;
 
@@ -142,13 +142,13 @@ mod parser;
 #[doc(hidden)]
 mod select;
 
-/// It is a high-order function. it compile a JsonPath and then returns a function. this return-function can be reused for different JsonObjects.
+/// It is a high-order function. it compile a jsonpath and then returns a closure that has JSON as argument. if you need to reuse a jsonpath, it is good for performance.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
-/// let mut template = jsonpath::compile("$..friends[0]");
+/// let mut first_firend = jsonpath::compile("$..friends[0]");
 ///
 /// let json_obj = json!({
 ///     "school": {
@@ -162,7 +162,7 @@ mod select;
 ///         {"name": "친구4"}
 /// ]});
 ///
-/// let json = template(&json_obj).unwrap();
+/// let json = first_firend(&json_obj).unwrap();
 ///
 /// assert_eq!(json, vec![
 ///     &json!({"name": "친구3", "age": 30}),
@@ -172,16 +172,20 @@ mod select;
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
     let node = Parser::compile(path);
     move |json| {
-        let mut selector = Selector::new();
         match &node {
-            Ok(node) => selector.compiled_path(node.clone()),
-            Err(e) => return Err(JsonPathError::Path(e.clone()))
-        };
-        selector.value(json).select()
+            Ok(node) => {
+                let mut selector = Selector::new();
+                //
+                // TODO remove node.clone()
+                //
+                selector.compiled_path(node.clone()).value(json).select()
+            }
+            Err(e) => Err(JsonPathError::Path(e.clone()))
+        }
     }
 }
 
-/// It is a high-order function that return a function. this return-function has a jsonpath as argument and return a serde_json::value::Value. so you can use different JsonPath for one JsonObject.
+/// It is a high-order function. it returns a closure that has a jsonpath string as argument. you can use diffenent jsonpath for one JSON object.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -223,7 +227,7 @@ pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value
     }
 }
 
-/// It is a high-order function that returns a function. this return-function has a jsonpath as argument and return a serde::Deserialize. so you can use different JsonPath for one JsonObject.
+/// It is the same to `selector` function. but it deserialize the result as given type `T`.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -277,7 +281,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&
     }
 }
 
-/// This function compile a jsonpath everytime and it convert `serde_json's Value` to `jsonpath's RefValue` everytime and then it return a `serde_json::value::Value`.
+/// It is a simple select function. but it compile the jsonpath argument every time.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -306,7 +310,7 @@ pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, Json
     Selector::new().str_path(path)?.value(json).select()
 }
 
-/// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a json string.
+/// It is the same to `select` function but it return the result as string.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -335,7 +339,7 @@ pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError
     serde_json::to_string(&ret).map_err(|e| JsonPathError::Serde(e.to_string()))
 }
 
-/// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a deserialized-instance of type `T`.
+/// It is the same to `select` function but it deserialize the the result as given type `T`.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -376,4 +380,92 @@ pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError
 pub fn select_as<T: serde::de::DeserializeOwned>(json_str: &str, path: &str) -> Result<Vec<T>, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
     Selector::new().str_path(path)?.value(&json).select_as()
+}
+
+/// Delete(= replace with null) the JSON property using the jsonpath.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// let ret = jsonpath::delete(json_obj, "$..[?(20 == @.age)]").unwrap();
+///
+/// assert_eq!(ret, json!({
+///     "school": {
+///         "friends": [
+///             null,
+///             null
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]}));
+/// ```
+pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
+    let mut selector = SelectorMut::new();
+    let ret = selector.str_path(path)?.value(value).delete()?.take().unwrap_or(Value::Null);
+    Ok(ret)
+}
+
+/// Select JSON properties using a jsonpath and transform the result and then replace it. via closure that implements `FnMut` you can transform the selected results.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde_json::Value;
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// let ret = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+///     let age = if let Value::Number(n) = v {
+///         n.as_u64().unwrap() * 2
+///     } else {
+///         0
+///     };
+///
+///     json!(age)
+/// }).unwrap();
+///
+/// assert_eq!(ret, json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 40},
+///             {"name": "친구2", "age": 40}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]}));
+/// ```
+pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
+    where F: FnMut(&Value) -> Value
+{
+    let mut selector = SelectorMut::new();
+    let ret = selector.str_path(path)?.value(value).replace_with(fun)?.take().unwrap_or(Value::Null);
+    Ok(ret)
 }

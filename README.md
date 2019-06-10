@@ -17,12 +17,15 @@ It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine writte
 
 - [jsonpath_lib crate](#jsonpath_lib-crate)
 - [Rust - jsonpath::Selector struct](#rust---jsonpathselector-struct)
+- [Rust - jsonpath::SelectorMut struct](#rust---jsonpathselectormut-struct)
 - [Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
 - [Rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
 - [Rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_ast-serdededeserializeownedjson-str-jsonpath-str)
 - [Rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
 - [Rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
 - [Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
+- [Rust - jsonpath::delete(value: &Value, path: &str)](#rust---jsonpathdeletevalue-value-path-str)
+- [Rust - jsonpath::replace_with\<F: `FnMut(&Value) -> Value`\>(value: &Value, path: &str, fun: &mut F)](#rust---jsonpathreplace_withf-fnmutvalue---valuevalue-value-path-str-fun-mut-f)
 - [Rust - Other Examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
 
 ## Javascript API
@@ -82,6 +85,50 @@ assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
 
 let result = selector.select_as::<Friend>().unwrap();
 assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
+```
+
+#### Rust - jsonpath::SelectorMut struct
+
+```rust
+let json_obj = json!({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
+
+let mut selector_mut = SelectorMut::new();
+
+let result = selector_mut
+    .str_path("$..[?(@.age == 20)].age").unwrap()
+    .value(json_obj)
+    .replace_with(&mut |v| {
+        let age = if let Value::Number(n) = v {
+            n.as_u64().unwrap() * 2
+        } else {
+            0
+        };
+
+        json!(age)
+    }).unwrap()
+    .take().unwrap();
+
+assert_eq!(result, json!({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 40},
+            {"name": "친구2", "age": 40}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]}));
 ```
 
 #### Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)
@@ -259,6 +306,73 @@ let ret = vec!(
 assert_eq!(json, ret);
 ```
 
+#### Rust - jsonpath::delete(value: &Value, path: &str)
+
+```rust
+let json_obj = json!({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
+
+let ret = jsonpath::delete(json_obj, "$..[?(20 == @.age)]").unwrap();
+
+assert_eq!(ret, json!({
+    "school": {
+        "friends": [
+            null,
+            null
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]}));
+```
+
+#### Rust - jsonpath::replace_with\<F: `FnMut(&Value) -> Value`\>(value: &Value, path: &str, fun: &mut F)
+
+```rust
+let json_obj = json!({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]});
+
+let ret = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+    let age = if let Value::Number(n) = v {
+        n.as_u64().unwrap() * 2
+    } else {
+        0
+    };
+
+    json!(age)
+}).unwrap();
+
+assert_eq!(ret, json!({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 40},
+            {"name": "친구2", "age": 40}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+]}));
+```
 ---
 
 ### Javascript API

@@ -988,6 +988,11 @@ impl SelectorMut {
         Ok(self)
     }
 
+    pub fn compiled_path(&mut self, node: Node) -> &mut Self {
+        self.path = Some(node);
+        self
+    }
+
     pub fn value(&mut self, value: Value) -> &mut Self {
         self.value = Some(value);
         self

@@ -4,8 +4,9 @@ extern crate serde;
 extern crate serde_json;
 
 use serde::Deserialize;
+use serde_json::Value;
 
-use jsonpath::Selector;
+use jsonpath::{Selector, SelectorMut};
 
 #[test]
 fn readme() {
@@ -165,6 +166,49 @@ fn readme_selector() {
 }
 
 #[test]
+fn readme_selector_mut() {
+    let json_obj = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
+
+    let mut selector_mut = SelectorMut::new();
+
+    let result = selector_mut
+        .str_path("$..[?(@.age == 20)].age").unwrap()
+        .value(json_obj)
+        .replace_with(&mut |v| {
+            let age = if let Value::Number(n) = v {
+                n.as_u64().unwrap() * 2
+            } else {
+                0
+            };
+
+            json!(age)
+        }).unwrap()
+        .take().unwrap();
+
+    assert_eq!(result, json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 40},
+                {"name": "친구2", "age": 40}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]}));
+}
+
+#[test]
 fn readme_select() {
     let json_obj = json!({
         "school": {
@@ -240,7 +284,7 @@ fn readme_select_as() {
 
 #[test]
 fn readme_compile() {
-    let mut template = jsonpath::compile("$..friends[0]");
+    let mut first_firend = jsonpath::compile("$..friends[0]");
 
     let json_obj = json!({
         "school": {
@@ -254,7 +298,7 @@ fn readme_compile() {
             {"name": "친구4"}
     ]});
 
-    let json = template(&json_obj).unwrap();
+    let json = first_firend(&json_obj).unwrap();
 
     assert_eq!(json, vec![
         &json!({"name": "친구3", "age": 30}),
@@ -331,4 +375,71 @@ fn readme_selector_as() {
     );
 
     assert_eq!(json, ret);
+}
+
+
+#[test]
+fn readme_delete() {
+    let json_obj = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
+
+    let ret = jsonpath::delete(json_obj, "$..[?(20 == @.age)]").unwrap();
+
+    assert_eq!(ret, json!({
+        "school": {
+            "friends": [
+                null,
+                null
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]}));
+}
+
+#[test]
+fn readme_replace_with() {
+    let json_obj = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
+
+    let result = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+        let age = if let Value::Number(n) = v {
+            n.as_u64().unwrap() * 2
+        } else {
+            0
+        };
+
+        json!(age)
+    }).unwrap();
+
+    assert_eq!(result, json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 40},
+                {"name": "친구2", "age": 40}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]}));
 }
