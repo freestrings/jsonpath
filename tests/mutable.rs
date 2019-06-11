@@ -38,28 +38,3 @@ fn selector_mut() {
 
     assert_eq!(vec![&json!("a"), &json!("a"), &json!("a"), &json!("a"), &json!("a")], result);
 }
-
-#[test]
-fn selector_mut_delete_array() {
-    setup();
-
-    let json = serde_json::from_str(r#"{
-            "school": {
-                "friends": [
-                    {"name": "친구1", "age": 20},
-                    {"name": "친구2", "age": 20}
-                ]
-            },
-            "friends": [
-                {"name": "친구3", "age": 30},
-                {"name": "친구4"}
-            ]
-        }"#).unwrap();
-
-    let json1 = jsonpath::delete(json, "$..friends[0]").unwrap();
-
-    println!("{:?}", json1);
-
-    let mut json2 = jsonpath::delete(json1, "$..friends[1]").unwrap();
-
-}

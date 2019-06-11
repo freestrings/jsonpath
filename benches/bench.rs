@@ -125,12 +125,13 @@ fn bench_select_to_compare_with_delete(b: &mut Bencher) {
 
     let mut selector = Selector::new();
     let _ = selector.str_path(get_path());
-    let _ = selector.value(json);
 
     b.iter(move || {
         for _ in 1..100 {
-            let _ = json.clone();
-            let _ = selector.reset_value().select();
+            let json = json.clone();
+            let mut s = Selector::new();
+            let _ = s.compiled_path(selector.node_ref().unwrap()).value(&json);
+            let _ = s.select();
         }
     });
 }

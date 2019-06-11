@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use array_tool::vec::{Intersect, Union};
-use indexmap::IndexSet;
+use indexmap::IndexMap;
 use serde_json::{Number, Value};
 
 use parser::parser::*;
@@ -487,19 +487,21 @@ pub enum JsonPathError {
 }
 
 #[derive(Debug)]
-pub struct Selector<'a> {
+pub struct Selector<'a, 'b> {
     node: Option<Node>,
+    node_ref: Option<&'b Node>,
     value: Option<&'a Value>,
     tokens: Vec<ParseToken>,
     terms: Vec<Option<ExprTerm<'a>>>,
     current: Option<Vec<&'a Value>>,
-    selectors: Vec<Selector<'a>>,
+    selectors: Vec<Selector<'a, 'b>>,
 }
 
-impl<'a> Selector<'a> {
+impl<'a, 'b> Selector<'a, 'b> {
     pub fn new() -> Self {
         Selector {
             node: None,
+            node_ref: None,
             value: None,
             tokens: Vec::new(),
             terms: Vec::new(),
@@ -510,12 +512,29 @@ impl<'a> Selector<'a> {
 
     pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
         debug!("path : {}", path);
+
+        if self.node_ref.is_some() {
+            self.node_ref.take();
+        }
+
         self.node = Some(Parser::compile(path).map_err(|e| JsonPathError::Path(e))?);
         Ok(self)
     }
 
-    pub fn compiled_path(&mut self, node: Node) -> &mut Self {
-        self.node = Some(node);
+    pub fn node_ref(&self) -> Option<&Node> {
+        if let Some(node) = &self.node {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    pub fn compiled_path(&mut self, node: &'b Node) -> &mut Self {
+        if self.node.is_some() {
+            self.node.take();
+        }
+
+        self.node_ref = Some(node);
         self
     }
 
@@ -530,14 +549,21 @@ impl<'a> Selector<'a> {
     }
 
     fn _select(&mut self) -> Result<(), JsonPathError> {
-        match self.node.take() {
-            Some(node) => {
-                self.visit(&node);
-                self.node = Some(node);
-                Ok(())
-            }
-            _ => Err(JsonPathError::EmptyPath)
+        if self.node_ref.is_some() {
+            let node_ref = self.node_ref.take().unwrap();
+            self.visit(node_ref);
+            return Ok(());
         }
+
+        if self.node.is_none() {
+            return Err(JsonPathError::EmptyPath);
+        }
+
+        let node = self.node.take().unwrap();
+        self.visit(&node);
+        self.node = Some(node);
+
+        Ok(())
     }
 
     pub fn select_as<T: serde::de::DeserializeOwned>(&mut self) -> Result<Vec<T>, JsonPathError> {
@@ -743,7 +769,7 @@ impl<'a> Selector<'a> {
     }
 }
 
-impl<'a> NodeVisitor for Selector<'a> {
+impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     fn visit_token(&mut self, token: &ParseToken) {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
@@ -1002,16 +1028,22 @@ impl SelectorMut {
         self.value.take()
     }
 
-    fn compute_paths(&self, result: &Vec<&Value>) -> Vec<Vec<String>> {
-        fn _walk(origin: &Value, target: &Value, tokens: &mut Vec<String>, visited: &mut IndexSet<Vec<String>>) -> bool {
-            if visited.contains(tokens) {
-                return false;
-            }
+    fn compute_paths(&self, mut result: Vec<&Value>) -> Vec<Vec<String>> {
+        fn _walk(origin: &Value, target: &mut Vec<&Value>, tokens: &mut Vec<String>, visited: &mut IndexMap<*const Value, Vec<String>>) -> bool {
+            trace!("{:?}, {:?}", target, tokens);
 
-            if std::ptr::eq(origin, target) {
-                debug!("tokens: {:?}", tokens);
+            if target.is_empty() {
                 return true;
             }
+
+            target.retain(|t| {
+                if std::ptr::eq(origin, *t) {
+                    visited.insert(*t, tokens.to_vec());
+                    false
+                } else {
+                    true
+                }
+            });
 
             match origin {
                 Value::Array(vec) => for (i, v) in vec.iter().enumerate() {
@@ -1034,18 +1066,14 @@ impl SelectorMut {
             return false;
         }
 
-        let mut visited = IndexSet::new();
+        let mut visited = IndexMap::new();
 
         if let Some(origin) = &self.value {
-            for v in result {
-                let mut tokens = Vec::new();
-                if _walk(origin, v, &mut tokens, &mut visited) {
-                    visited.insert(tokens);
-                }
-            }
+            let mut tokens = Vec::new();
+            _walk(origin, &mut result, &mut tokens, &mut visited);
         }
 
-        visited.iter().map(|v| v.to_vec()).collect()
+        visited.iter().map(|(_, v)| v.to_vec()).collect()
     }
 
     pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {
@@ -1053,11 +1081,14 @@ impl SelectorMut {
     }
 
     pub fn replace_with<F: FnMut(&Value) -> Value>(&mut self, fun: &mut F) -> Result<&mut Self, JsonPathError> {
-        let mut selector = Selector::new();
-
-        if let Some(path) = self.path.take() {
-            selector.compiled_path(path);
+        if self.path.is_none() {
+            return Err(JsonPathError::EmptyPath);
         }
+
+        let node = self.path.take().unwrap();
+
+        let mut selector = Selector::new();
+        selector.compiled_path(&node);
 
         if let Some(value) = &self.value {
             selector.value(value);
@@ -1065,9 +1096,9 @@ impl SelectorMut {
 
         let result = selector.select();
 
-        self.path = Some(selector.node.unwrap());
+        self.path = Some(node);
 
-        let paths = self.compute_paths(&result?);
+        let paths = self.compute_paths(result?);
 
         if let Some(mut value) = self.value.take() {
             for tokens in paths {

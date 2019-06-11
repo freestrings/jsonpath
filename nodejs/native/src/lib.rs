@@ -110,7 +110,7 @@ impl SelectorCls {
 
     fn select(&self) -> String {
         let node = match &self.node {
-            Some(node) => node.clone(),
+            Some(node) => node,
             None => panic!("{:?}", JsonPathError::EmptyPath)
         };
 
@@ -120,7 +120,7 @@ impl SelectorCls {
         };
 
         let mut selector = Selector::new();
-        selector.compiled_path(node.clone());
+        selector.compiled_path(node);
         selector.value(&value);
         match selector.select_as_str() {
             Ok(ret) => ret,

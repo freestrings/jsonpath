@@ -175,12 +175,9 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
         match &node {
             Ok(node) => {
                 let mut selector = Selector::new();
-                //
-                // TODO remove node.clone()
-                //
-                selector.compiled_path(node.clone()).value(json).select()
+                selector.compiled_path(node).value(json).select()
             }
-            Err(e) => Err(JsonPathError::Path(e.clone()))
+            Err(e) => Err(JsonPathError::Path(e.to_string()))
         }
     }
 }
