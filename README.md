@@ -15,42 +15,17 @@ It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine writte
 
 ## Rust API
 
-- [jsonpath_lib crate](#jsonpath_lib-crate)
-- [Rust - jsonpath::Selector struct](#rust---jsonpathselector-struct)
-- [Rust - jsonpath::SelectorMut struct](#rust---jsonpathselectormut-struct)
-- [Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)](#rust---jsonpathselectjson-serde_jsonvaluevalue-jsonpath-str)
-- [Rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_as_strjson-str-jsonpath-str)
-- [Rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json_str: &str, jsonpath: &str)](#rust---jsonpathselect_ast-serdededeserializeownedjson-str-jsonpath-str)
-- [Rust - jsonpath::compile(jsonpath: &str)](#rust---jsonpathcompilejsonpath-str)
-- [Rust - jsonpath::selector(json: &serde_json::value::Value)](#rust---jsonpathselectorjson-serde_jsonvaluevalue)
-- [Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)](#rust---jsonpathselector_ast-serdededeserializeownedjson-serde_jsonvaluevalue)
-- [Rust - jsonpath::delete(value: &Value, path: &str)](#rust---jsonpathdeletevalue-value-path-str)
-- [Rust - jsonpath::replace_with\<F: `FnMut(&Value) -> Value`\>(value: &Value, path: &str, fun: &mut F)](#rust---jsonpathreplace_withf-fnmutvalue---valuevalue-value-path-str-fun-mut-f)
-- [Rust - Other Examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
+<details><summary><b>jsonpath_lib crate</b></summary>
 
-## Javascript API
-
-- [npm package](#npm-package)
-- [Javascript - jsonpath.Selector class](#javascript---selector-class)
-- [Javascript - jsonpath.select(json: string|object, jsonpath: string)](#javascript---jsonpathselectjson-stringobject-jsonpath-string)
-- [Javascript - jsonpath.compile(jsonpath: string)](#javascript---jsonpathcompilejsonpath-string)
-- [Javascript - jsonpath.selector(json: string|object)](#javascript---jsonpathselectorjson-stringobject)
-- [Javascript - Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
-
----
-
-### Rust API
-
-#### jsonpath_lib crate
-[Go to creates.io](https://crates.io/crates/jsonpath_lib)
+Go to [`jsonpath_lib` creates.io](https://crates.io/crates/jsonpath_lib)
 
 ```rust
 extern crate jsonpath_lib as jsonpath;
-#[macro_use]
-extern crate serde_json;
 ```
 
-#### Rust - jsonpath::Selector struct
+</details>
+
+<details><summary><b>Rust - jsonpath::Selector struct</b></summary>
 
 ```rust
 #[derive(Deserialize, PartialEq, Debug)]
@@ -87,7 +62,9 @@ let result = selector.select_as::<Friend>().unwrap();
 assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
 ```
 
-#### Rust - jsonpath::SelectorMut struct
+</details>
+
+<details><summary><b>Rust - jsonpath::SelectorMut struct</b></summary>
 
 ```rust
 let json_obj = json!({
@@ -131,7 +108,9 @@ assert_eq!(result, json!({
 ]}));
 ```
 
-#### Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)
+</details>
+
+<details><summary><b>Rust - jsonpath::select(json: &serde_json::value::Value, jsonpath: &str)</b></summary>
 
 ```rust
 let json_obj = json!({
@@ -154,7 +133,10 @@ assert_eq!(json, vec![
 ]);
 ```
 
-#### Rust - jsonpath::select_as_str(json: &str, jsonpath: &str)
+</details>
+
+
+<details><summary><b>Rust - jsonpath::select_as_str(json_str: &str, jsonpath: &str)</b></summary>
 
 ```rust
 let ret = jsonpath::select_as_str(r#"
@@ -175,7 +157,9 @@ let ret = jsonpath::select_as_str(r#"
 assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 ```
 
-#### Rust - jsonpath::select_as\<T: `serde::de::DeserializeOwned`\>(json: &str, jsonpath: &str)
+</details>
+
+<details><summary><b>Rust - jsonpath::select_as&lt;T: `serde::de::DeserializeOwned`&gt;(json_str: &str, jsonpath: &str)</b></summary>
 
 ```rust
 #[derive(Deserialize, PartialEq, Debug)]
@@ -208,7 +192,9 @@ let person = Person {
 assert_eq!(ret[0], person);
 ```
 
-#### Rust - jsonpath::compile(jsonpath: &str)
+</details>
+
+<details><summary><b>Rust - jsonpath::compile(jsonpath: &str)</b></summary>
 
 ```rust
 let mut template = jsonpath::compile("$..friends[0]");
@@ -233,7 +219,9 @@ assert_eq!(json, vec![
 ]);
 ```
 
-#### Rust - jsonpath::selector(json: &serde_json::value::Value)
+</details>
+
+<details><summary><b>Rust - jsonpath::selector(json: &serde_json::value::Value)</b></summary>
 
 ```rust
 let json_obj = json!({
@@ -265,7 +253,9 @@ assert_eq!(json, vec![
 ]);
 ```
 
-#### Rust - jsonpath::selector_as\<T: `serde::de::DeserializeOwned`\>(json: &serde_json::value::Value)
+</details>
+
+<details><summary><b>Rust - jsonpath::selector_as&lt;T: serde::de::DeserializeOwned&gt;(json: &serde_json::value::Value)</b></summary>
 
 ```rust
 let json_obj = json!({
@@ -306,7 +296,9 @@ let ret = vec!(
 assert_eq!(json, ret);
 ```
 
-#### Rust - jsonpath::delete(value: &Value, path: &str)
+</details>
+
+<details><summary><b>Rust - jsonpath::delete(value: &Value, path: &str)</b></summary>
 
 ```rust
 let json_obj = json!({
@@ -336,7 +328,9 @@ assert_eq!(ret, json!({
 ]}));
 ```
 
-#### Rust - jsonpath::replace_with\<F: `FnMut(&Value) -> Value`\>(value: &Value, path: &str, fun: &mut F)
+</details>
+
+<details><summary><b>Rust - jsonpath::replace_with&lt;F: FnMut(&Value) -> Value&gt;(value: &Value, path: &str, fun: &mut F)</b></summary>
 
 ```rust
 let json_obj = json!({
@@ -373,13 +367,18 @@ assert_eq!(ret, json!({
         {"name": "친구4"}
 ]}));
 ```
----
 
-### Javascript API
+</details>
 
-#### npm package
+[Rust - Other Examples](https://github.com/freestrings/jsonpath/wiki/rust-examples)
+
+## Javascript API
+
+<details><summary><b>npm package</b></summary>
 
 ##### jsonpath-wasm
+
+Goto [`jsonpath-wasm` npmjs.org](https://www.npmjs.com/package/jsonpath-wasm)
 
 ```javascript
 // browser
@@ -390,13 +389,15 @@ const jsonpath = require('jsonpath-wasm');
 
 ##### jsonpath-rs (NodeJS only)
 
-[Goto npmjs.org](https://www.npmjs.com/package/jsonpath-rs)
+Goto [`jsonpath-rs` npmjs.org](https://www.npmjs.com/package/jsonpath-rs)
 
 ```javascript
 const jsonpath = require('jsonpath-rs');
 ```
 
-#### javascript - Selector class
+</details>
+
+<details><summary><b>Javascript - jsonpath.Selector class</b></summary>
 
 ##### jsonpath-wasm
 `wasm-bindgen` 리턴 타입 제약 때문에 빌더 패턴은 지원하지 않는다.
@@ -465,7 +466,75 @@ console.log(JSON.stringify(ret) == JSON.stringify(retObj));
 // => true
 ```
 
-#### Javascript - jsonpath.select(json: string|object, jsonpath: string)
+</details>
+
+<details><summary><b>Javascript - jsonpath.SelectorMut class</b></summary>
+
+`since 0.2.0`
+
+빌더 패턴 제약은 `Selector class`와 동일하다.
+
+```javascript
+let jsonObj = {
+    'school': {
+        'friends': [
+            {'name': '친구1', 'age': 20},
+            {'name': '친구2', 'age': 20},
+        ],
+    },
+    'friends': [
+        {'name': '친구3', 'age': 30},
+        {'name': '친구4'},
+    ],
+};
+
+let selector = new jsonpath.SelectorMut();
+selector.path('$..[?(@.age == 20)]');
+
+{
+    selector.value(jsonObj);
+    selector.deleteValue();
+
+    let resultObj = {
+        'school': {'friends': [null, null]},
+        'friends': [
+            {'name': '친구3', 'age': 30},
+            {'name': '친구4'},
+        ],
+    };
+    console.log(JSON.stringify(selector.take()) !== JSON.stringify(resultObj));
+    
+    // => true
+}
+
+{
+    selector.value(jsonObj);
+    selector.replaceWith((v) => {
+        v.age = v.age * 2;
+        return v;
+    });
+
+    let resultObj = {
+        'school': {
+            'friends': [
+                {'name': '친구1', 'age': 40},
+                {'name': '친구2', 'age': 40},
+            ],
+        },
+        'friends': [
+            {'name': '친구3', 'age': 30},
+            {'name': '친구4'},
+        ],
+    };
+    console.log(JSON.stringify(selector.take()) !== JSON.stringify(resultObj));
+    
+    // => true
+}
+```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.select(json: string|object, jsonpath: string)</b></summary>
 
 ```javascript
 let jsonObj = {
@@ -498,7 +567,9 @@ console.log(
 // => true, true
 ```
 
-#### Javascript - jsonpath.compile(jsonpath: string)
+</details>
+
+<details><summary><b>Javascript - jsonpath.compile(jsonpath: string)</b></summary>
 
 ```javascript
 let template = jsonpath.compile('$..friends[0]');
@@ -557,8 +628,10 @@ console.log(
 // => true, true
 ```
     
-#### Javascript - jsonpath.selector(json: string|object)
-    
+</details>
+
+<details><summary><b>Javascript - jsonpath.selector(json: string|object)</b></summary>
+
 ```javascript
 let jsonObj = {
     "school": {
@@ -597,3 +670,81 @@ console.log(
 
 // => true, true
 ```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.deleteValue(json: string|object, path: string)</b></summary>
+
+`since 0.2.0`
+
+```javascript
+let jsonObj = {
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
+};
+
+let _1 = jsonpath.deleteValue(jsonObj, '$..friends[0]');
+let result = jsonpath.deleteValue(_1, '$..friends[1]');
+
+console.log(JSON.stringify(result) !== JSON.stringify({
+    "school": { "friends": [null, null]},
+    "friends": [null, null]
+}));
+
+// => true
+
+```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.replaceWith(json: string|object, path: string, fun: function(json: object) => json: object</b></summary>
+
+`since 0.2.0`
+
+```javascript
+let jsonObj = {
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
+};
+
+let result = jsonpath.replaceWith(jsonObj, '$..friends[0]', (v) => {
+    v.age = v.age * 2;
+    return v;
+});
+
+console.log(JSON.stringify(result) === JSON.stringify({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 40},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 60},
+        {"name": "친구4"}
+    ]
+}));
+
+// => true
+
+```
+
+</details>
+
+[Javascript - Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)

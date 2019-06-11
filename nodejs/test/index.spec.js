@@ -550,6 +550,64 @@ describe('README test', () => {
         done();
     });
 
+    it('jsonpath.SelectorMut', (done) => {
+        let jsonObj = {
+            'school': {
+                'friends': [
+                    {'name': '친구1', 'age': 20},
+                    {'name': '친구2', 'age': 20},
+                ],
+            },
+            'friends': [
+                {'name': '친구3', 'age': 30},
+                {'name': '친구4'},
+            ],
+        };
+
+        let selector = new jsonpath.SelectorMut();
+        selector.path('$..[?(@.age == 20)]');
+
+        {
+            selector.value(jsonObj).deleteValue();
+
+            let resultObj = {
+                'school': {'friends': [null, null]},
+                'friends': [
+                    {'name': '친구3', 'age': 30},
+                    {'name': '친구4'},
+                ],
+            };
+            if (JSON.stringify(selector.take()) !== JSON.stringify(resultObj)) {
+                throw 'jsonpath.SelectorMut.deleteValue';
+            }
+        }
+
+        {
+            selector.value(jsonObj).replaceWith((v) => {
+                v.age = v.age * 2;
+                return v;
+            });
+
+            let resultObj = {
+                'school': {
+                    'friends': [
+                        {'name': '친구1', 'age': 40},
+                        {'name': '친구2', 'age': 40},
+                    ],
+                },
+                'friends': [
+                    {'name': '친구3', 'age': 30},
+                    {'name': '친구4'},
+                ],
+            };
+            if (JSON.stringify(selector.take()) !== JSON.stringify(resultObj)) {
+                throw 'jsonpath.SelectorMut.replaceWith';
+            }
+        }
+
+        done();
+    });
+
     it('jsonpath.select(json: string|object, jsonpath: string)', (done) => {
         let jsonObj = {
             "school": {
@@ -678,5 +736,65 @@ describe('README test', () => {
         }
 
         done();
+    });
+
+    it('jsonpath.deleteValue(json: string|object, path: string)', (done) => {
+        let jsonObj = {
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 20},
+                    {"name": "친구2", "age": 20}
+                ]
+            },
+            "friends": [
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+            ]
+        };
+
+        let _1 = jsonpath.deleteValue(jsonObj, '$..friends[0]');
+        let result = jsonpath.deleteValue(_1, '$..friends[1]');
+
+        if(JSON.stringify(result) === JSON.stringify({
+            "school": { "friends": [null, null]},
+            "friends": [null, null]
+        })) {
+            done();
+        }
+    });
+
+    it('jsonpath.replaceWith(json: string|object, path: string, fun: function(json: object) => json: object', (done) => {
+        let jsonObj = {
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 20},
+                    {"name": "친구2", "age": 20}
+                ]
+            },
+            "friends": [
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+            ]
+        };
+
+        let result = jsonpath.replaceWith(jsonObj, '$..friends[0]', (v) => {
+            v.age = v.age * 2;
+            return v;
+        });
+
+        if(JSON.stringify(result) === JSON.stringify({
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 40},
+                    {"name": "친구2", "age": 20}
+                ]
+            },
+            "friends": [
+                {"name": "친구3", "age": 60},
+                {"name": "친구4"}
+            ]
+        })) {
+            done();
+        }
     });
 });

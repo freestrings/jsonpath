@@ -89,7 +89,7 @@ class SelectorMut {
     }
 
     path(path) {
-        this.path = path;
+        this._path = path;
         return this;
     }
 
@@ -97,43 +97,43 @@ class SelectorMut {
         if(typeof json != 'string') {
             json = JSON.stringify(json)
         }
-        this.json = json;
+        this._json = json;
         return this;
     }
 
     deleteValue() {
         let selector = new _SelectorMut();
-        if(!this.path) {
+        if(!this._path) {
             selector.emptyPathError();
             return;
         }
 
-        if(!this.json) {
+        if(!this._json) {
             selector.emptyValueError();
             return;
         }
 
-        this.json = deleteValue(this.json, this.path);
+        this._json = deleteValue(this._json, this._path);
         return this;
     }
 
     replaceWith(fun) {
         let selector = new _SelectorMut();
-        if(!this.path) {
+        if(!this._path) {
             selector.emptyPathError();
             return;
         }
-        if(!this.json) {
+        if(!this._json) {
             selector.emptyValueError();
             return;
         }
-        this.json = replaceWith(this.json, this.path, fun);
+        this._json = replaceWith(this._json, this._path, fun);
         return this;
     }
 
     take() {
-        let json = this.json;
-        delete this.json;
+        let json = this._json;
+        delete this._json;
         return json;
     }
 }
