@@ -16,13 +16,15 @@ Build from source instead of using pre-built binary, and if Rust is not installe
 
 ## APIs
 
-* [jsonpath.Selector](#jsonpathselector)
-* [jsonpath.select(json: string|object, jsonpath: string)](#jsonpathselectjson-stringobject-jsonpath-string)
-* [jsonpath.compile(jsonpath: string)](#jsonpathcompilejsonpath-string)
-* [jsonpath.selector(json: string|object)](#jsonpathselectorjson-stringobject)
-* [Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)
+<details><summary><b>npm package</b></summary>
 
-### jsonpath.Selector
+```javascript
+const jsonpath = require('jsonpath-rs');
+```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.Selector class</b></summary>
 
 ```javascript
 let jsonObj = {
@@ -38,44 +40,89 @@ let jsonObj = {
     ]
 };
 
-let selector = new jsonpath.Selector().value(jsonObj);
+let ret = [
+    {"name": "친구3", "age": 30},
+    {"name": "친구1", "age": 20}
+];
+
+let selector = new jsonpath.Selector()
+    .path('$..friends[0]')
+    .value(jsonObj);
+
+let retObj = selector.select();
+
+console.log(JSON.stringify(ret) == JSON.stringify(retObj));
+
+// => true
+```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.SelectorMut class</b></summary>
+
+빌더 패턴 제약은 `Selector class`와 동일하다.
+
+```javascript
+let jsonObj = {
+    'school': {
+        'friends': [
+            {'name': '친구1', 'age': 20},
+            {'name': '친구2', 'age': 20},
+        ],
+    },
+    'friends': [
+        {'name': '친구3', 'age': 30},
+        {'name': '친구4'},
+    ],
+};
+
+let selector = new jsonpath.SelectorMut();
+selector.path('$..[?(@.age == 20)]');
 
 {
-    let jsonObj = selector.path('$..[?(@.age >= 30)]').selectAs();
-    let resultObj = [{"name": "친구3", "age": 30}];
-    console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
+    selector.value(jsonObj);
+    selector.deleteValue();
+
+    let resultObj = {
+        'school': {'friends': [null, null]},
+        'friends': [
+            {'name': '친구3', 'age': 30},
+            {'name': '친구4'},
+        ],
+    };
+    console.log(JSON.stringify(selector.take()) !== JSON.stringify(resultObj));
+    
+    // => true
 }
 
 {
-    let jsonObj = selector.path('$..[?(@.age == 20)]').selectAs();
-    let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
-    console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
-}
-
-{
-    let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectAs();
-    let resultObj = [{"name": "친구5", "age": 20}];
-    console.log(JSON.stringify(jsonObj) === JSON.stringify(resultObj));
-}
-
-{
-    let jsonObj1 = selector.value(jsonObj).map(function(v) {
-        let f1 = v[0];
-        f1.age = 30;
+    selector.value(jsonObj);
+    selector.replaceWith((v) => {
+        v.age = v.age * 2;
         return v;
-    }).get();
+    });
 
-    let resultObj1 = [{"name": "친구1", "age": 30}, {"name": "친구2", "age": 20}];
-    console.log(JSON.stringify(jsonObj1) === JSON.stringify(resultObj1));
-
-    selector.path('$..[?(@.age == 20)]');
-    let jsonObj2 = selector.selectAs();
-    let resultObj2 = [{"name": "친구2", "age": 20}];
-    console.log(JSON.stringify(jsonObj2) === JSON.stringify(resultObj2));
+    let resultObj = {
+        'school': {
+            'friends': [
+                {'name': '친구1', 'age': 40},
+                {'name': '친구2', 'age': 40},
+            ],
+        },
+        'friends': [
+            {'name': '친구3', 'age': 30},
+            {'name': '친구4'},
+        ],
+    };
+    console.log(JSON.stringify(selector.take()) !== JSON.stringify(resultObj));
+    
+    // => true
 }
 ```
 
-### jsonpath.select(json: string|object, jsonpath: string)
+</details>
+
+<details><summary><b>Javascript - jsonpath.select(json: string|object, jsonpath: string)</b></summary>
 
 ```javascript
 let jsonObj = {
@@ -108,7 +155,9 @@ console.log(
 // => true, true
 ```
 
-### jsonpath.compile(jsonpath: string)
+</details>
+
+<details><summary><b>Javascript - jsonpath.compile(jsonpath: string)</b></summary>
 
 ```javascript
 let template = jsonpath.compile('$..friends[0]');
@@ -166,8 +215,10 @@ console.log(
 
 // => true, true
 ```
+    
+</details>
 
-### jsonpath.selector(json: string|object)
+<details><summary><b>Javascript - jsonpath.selector(json: string|object)</b></summary>
 
 ```javascript
 let jsonObj = {
@@ -207,3 +258,77 @@ console.log(
 
 // => true, true
 ```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.deleteValue(json: string|object, path: string)</b></summary>
+
+```javascript
+let jsonObj = {
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
+};
+
+let _1 = jsonpath.deleteValue(jsonObj, '$..friends[0]');
+let result = jsonpath.deleteValue(_1, '$..friends[1]');
+
+console.log(JSON.stringify(result) !== JSON.stringify({
+    "school": { "friends": [null, null]},
+    "friends": [null, null]
+}));
+
+// => true
+
+```
+
+</details>
+
+<details><summary><b>Javascript - jsonpath.replaceWith(json: string|object, path: string, fun: function(json: object) => json: object</b></summary>
+
+```javascript
+let jsonObj = {
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 20},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 30},
+        {"name": "친구4"}
+    ]
+};
+
+let result = jsonpath.replaceWith(jsonObj, '$..friends[0]', (v) => {
+    v.age = v.age * 2;
+    return v;
+});
+
+console.log(JSON.stringify(result) === JSON.stringify({
+    "school": {
+        "friends": [
+            {"name": "친구1", "age": 40},
+            {"name": "친구2", "age": 20}
+        ]
+    },
+    "friends": [
+        {"name": "친구3", "age": 60},
+        {"name": "친구4"}
+    ]
+}));
+
+// => true
+
+```
+
+</details>
+
+[Javascript - Other Examples](https://github.com/freestrings/jsonpath/wiki/Javascript-examples)

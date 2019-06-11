@@ -470,8 +470,6 @@ console.log(JSON.stringify(ret) == JSON.stringify(retObj));
 
 <details><summary><b>Javascript - jsonpath.SelectorMut class</b></summary>
 
-`since 0.2.0`
-
 빌더 패턴 제약은 `Selector class`와 동일하다.
 
 ```javascript
@@ -675,8 +673,6 @@ console.log(
 
 <details><summary><b>Javascript - jsonpath.deleteValue(json: string|object, path: string)</b></summary>
 
-`since 0.2.0`
-
 ```javascript
 let jsonObj = {
     "school": {
@@ -706,8 +702,6 @@ console.log(JSON.stringify(result) !== JSON.stringify({
 </details>
 
 <details><summary><b>Javascript - jsonpath.replaceWith(json: string|object, path: string, fun: function(json: object) => json: object</b></summary>
-
-`since 0.2.0`
 
 ```javascript
 let jsonObj = {

@@ -36,41 +36,41 @@ matrix:
       script:
         - cargo build --verbose --all
         - cargo test --verbose --all
-#    - language: node_js
-#      os: linux
-#      node_js:
-#        - '11'
-#        - '10'
-#        - '9'
-#        - '8'
-#      before_install:
-#        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
-#        - sh /tmp/rustup.sh -y
-#        - export PATH="$HOME/.cargo/bin:$PATH"
-#        - source "$HOME/.cargo/env"
-#        - npm install -g neon-cli
-#        - cd nodejs
-#        - node -v
-#        - npm -v
-#        - npm install
-#      script:
-#        - npm test
-#    - language: node_js
-#      os: osx
-#      node_js:
-#        - '11'
-#        - '10'
-#        - '9'
-#        - '8'
-#      before_install:
-#        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
-#        - sh /tmp/rustup.sh -y
-#        - export PATH="$HOME/.cargo/bin:$PATH"
-#        - source "$HOME/.cargo/env"
-#        - npm install -g neon-cli
-#        - cd nodejs
-#        - node -v
-#        - npm -v
-#        - npm install
-#      script:
-#        - npm test
+    - language: node_js
+      os: linux
+      node_js:
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - npm install -g neon-cli
+        - cd nodejs
+        - node -v
+        - npm -v
+        - npm install
+      script:
+        - npm test
+    - language: node_js
+      os: osx
+      node_js:
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - npm install -g neon-cli
+        - cd nodejs
+        - node -v
+        - npm -v
+        - npm install
+      script:
+        - npm test
