@@ -1,18 +1,18 @@
 #![feature(test)]
+extern crate bencher;
 extern crate jsonpath_lib as jsonpath;
 extern crate serde;
 extern crate serde_json;
 extern crate test;
-extern crate bencher;
 
 use std::io::Read;
 
 use serde::Deserialize;
 use serde_json::Value;
 
+use jsonpath::{SelectorMut, Selector};
+
 use self::test::Bencher;
-use jsonpath::ref_value::model::RefValue;
-use serde::ser::Serialize;
 
 fn read_json(path: &str) -> String {
     let mut f = std::fs::File::open(path).unwrap();
@@ -101,28 +101,37 @@ fn bench_select_as(b: &mut Bencher) {
 
     b.iter(move || {
         for _ in 1..100 {
-            let _: Book = jsonpath::select_as(&json, r#"$..book[?(@.price<30 && @.category=="fiction")][0]"#).unwrap();
+            let _: Vec<Book> = jsonpath::select_as(&json, r#"$..book[?(@.price<30 && @.category=="fiction")][0]"#).unwrap();
         }
     });
 }
 
 #[bench]
-fn bench_serde_ser(b: &mut Bencher) {
+fn bench_delete(b: &mut Bencher) {
     let json = get_json();
+    let mut selector = SelectorMut::new();
+    let _ = selector.str_path(get_path());
 
     b.iter(move || {
         for _ in 1..100 {
-            let _: RefValue = json.serialize(jsonpath::ref_value::ser::Serializer).unwrap().into();
+            let _ = selector.value(json.clone()).delete();
         }
     });
 }
 
 #[bench]
-fn bench_serde_de(b: &mut Bencher) {
-    let json_string = get_string();
-    let json_str = json_string.as_str();
+fn bench_select_to_compare_with_delete(b: &mut Bencher) {
+    let json = &get_json();
 
-    b.iter(move || for _ in 1..100 {
-        let _: RefValue = serde_json::from_str(json_str).unwrap();
+    let mut selector = Selector::new();
+    let _ = selector.str_path(get_path());
+
+    b.iter(move || {
+        for _ in 1..100 {
+            let json = json.clone();
+            let mut s = Selector::new();
+            let _ = s.compiled_path(selector.node_ref().unwrap()).value(&json);
+            let _ = s.select();
+        }
     });
 }

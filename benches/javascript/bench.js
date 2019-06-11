@@ -71,13 +71,6 @@ function nativeSelect() {
     }
 }
 
-function nativeSelectorClassMap() {
-    let selector = new jpwRs.Selector();
-    for (var i = 0; i < iter; i++) {
-        let _ = selector.path(path).value(jsonStr).map((v) => v).get();
-    }
-}
-
 function wasmSelector() {
     let selector = jpw.selector(getJson());
     for (var i = 0; i < iter; i++) {
@@ -92,42 +85,9 @@ function wasmCompile() {
     }
 }
 
-function wasmCompileAlloc() {
-    let ptr = jpw.allocJson(getJson());
-    if (ptr == 0) {
-        console.error('Invalid pointer');
-        return;
-    }
-
-    try {
-        let template = jpw.compile(path);
-        for (var i = 0; i < iter; i++) {
-            let _ = template(ptr);
-        }
-    } finally {
-        jpw.deallocJson(ptr);
-    }
-}
-
 function wasmSelect() {
     for (var i = 0; i < iter; i++) {
         let _ = jpw.select(getJson(), path);
-    }
-}
-
-function wasmSelectAlloc() {
-    let ptr = jpw.allocJson(getJson());
-    if (ptr == 0) {
-        console.error('Invalid pointer');
-        return;
-    }
-
-    try {
-        for (var i = 0; i < iter; i++) {
-            let _ = jpw.select(ptr, path);
-        }
-    } finally {
-        jpw.deallocJson(ptr);
     }
 }
 
@@ -136,17 +96,7 @@ function wasmSelectorClass() {
     for (var i = 0; i < iter; i++) {
         selector.path(path);
         selector.value(jsonStr);
-        let _ = selector.selectToStr();
-    }
-}
-
-function wasmSelectorClassMap() {
-    let selector = new jpw.Selector();
-    for (var i = 0; i < iter; i++) {
-        selector.path(path);
-        selector.value(jsonStr);
-        let _1 = selector.map((v) => v);
-        let _2 = selector.get();
+        let _ = selector.select();
     }
 }
 

@@ -1,4 +1,12 @@
-const { CompileFn, SelectorFn, selectStr, Selector: _Selector } = require('../native');
+const {
+    CompileFn,
+    SelectorFn,
+    selectStr,
+    deleteValue: _deleteValue,
+    replaceWith: _replaceWith,
+    Selector: _Selector,
+    SelectorMut: _SelectorMut
+} = require('../native');
 
 function compile(path) {
     let compile = new CompileFn(path);
@@ -27,6 +35,30 @@ function select(json, path) {
     return JSON.parse(selectStr(json, path));
 }
 
+function deleteValue(json, path) {
+    if(typeof json != 'string') {
+        json = JSON.stringify(json)
+    }
+    return JSON.parse(_deleteValue(json, path));
+}
+
+function replaceWith(json, path, fun) {
+    if(typeof json != 'string') {
+        json = JSON.stringify(json)
+    }
+    let result = _replaceWith(json, path, (v) => {
+        let result = fun(JSON.parse(v));
+        if(typeof result != 'string') {
+            result = JSON.stringify(result)
+        }
+        return result;
+    });
+    if(typeof result == 'string') {
+        result = JSON.parse(result);
+    }
+    return result;
+}
+
 class Selector {
     constructor() {
         this._selector = new _Selector();
@@ -42,39 +74,67 @@ class Selector {
         if(typeof json != 'string') {
             json = JSON.stringify(json)
         }
-        this._selector.valueFromStr(json);
+        this._selector.value(json);
         return this;
     }
 
-    selectToStr() {
-        return this.selectAsStr();
+    select() {
+        return JSON.parse(this._selector.select());
     }
+}
 
-    selectTo() {
-        return this.selectAs();
-    }
-
-    selectAsStr() {
-        return this._selector.selectAsStr();
-    }
-
-    selectAs() {
-        return JSON.parse(this.selectAsStr());
-    }
-
-    map(func) {
-        this._selector.map((json) => {
-            var result = func.call(null, JSON.parse(json));
-            if(typeof result !== 'string') {
-                result = JSON.stringify(result);
-            }
-            return result;
-        });
+class SelectorMut {
+    constructor() {
         return this;
     }
 
-    get() {
-        return JSON.parse(this._selector.get());
+    path(path) {
+        this._path = path;
+        return this;
+    }
+
+    value(json) {
+        if(typeof json != 'string') {
+            json = JSON.stringify(json)
+        }
+        this._json = json;
+        return this;
+    }
+
+    deleteValue() {
+        let selector = new _SelectorMut();
+        if(!this._path) {
+            selector.emptyPathError();
+            return;
+        }
+
+        if(!this._json) {
+            selector.emptyValueError();
+            return;
+        }
+
+        this._json = deleteValue(this._json, this._path);
+        return this;
+    }
+
+    replaceWith(fun) {
+        let selector = new _SelectorMut();
+        if(!this._path) {
+            selector.emptyPathError();
+            return;
+        }
+        if(!this._json) {
+            selector.emptyValueError();
+            return;
+        }
+        this._json = replaceWith(this._json, this._path, fun);
+        return this;
+    }
+
+    take() {
+        let json = this._json;
+        delete this._json;
+        return json;
     }
 }
 
@@ -82,5 +142,8 @@ module.exports = {
     compile,
     selector,
     select,
-    Selector
+    deleteValue,
+    replaceWith,
+    Selector,
+    SelectorMut
 };

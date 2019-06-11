@@ -4,13 +4,9 @@ extern crate neon;
 extern crate neon_serde;
 extern crate serde_json;
 
-use jsonpath::filter::value_filter::JsonValueFilter;
-use jsonpath::parser::parser::{Node, NodeVisitor, Parser};
-use jsonpath::ref_value::model::{RefValue, RefValueWrapper};
-use jsonpath::Selector;
+use jsonpath::{JsonPathError, Node, Parser, Selector};
 use neon::prelude::*;
 use serde_json::Value;
-use std::ops::Deref;
 
 ///
 /// `neon_serde::from_value` has very poor performance.
@@ -35,96 +31,176 @@ fn select_str(mut ctx: FunctionContext) -> JsResult<JsValue> {
     }
 }
 
-pub struct CompileFn {
-    node: Node
+fn delete(mut ctx: FunctionContext) -> JsResult<JsValue> {
+    let json_val = ctx.argument::<JsString>(0)?.value();
+    let json: Value = match serde_json::from_str(&json_val) {
+        Ok(value) => value,
+        Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+    };
+    let path = ctx.argument::<JsString>(1)?.value();
+    match jsonpath::delete(json, &path) {
+        Ok(value) => Ok(JsString::new(&mut ctx, match serde_json::to_string(&value) {
+            Ok(value) => value,
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        }).upcast()),
+        Err(e) => panic!("{:?}", e)
+    }
 }
 
-pub struct SelectorFn {
-    json: RefValueWrapper
+fn replace_with(mut ctx: FunctionContext) -> JsResult<JsValue> {
+    let json_val = ctx.argument::<JsString>(0)?.value();
+    let json: Value = match serde_json::from_str(&json_val) {
+        Ok(value) => value,
+        Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+    };
+    let path = ctx.argument::<JsString>(1)?.value();
+    let fun = ctx.argument::<JsFunction>(2)?;
+    match jsonpath::replace_with(json, &path, &mut |v| {
+        let json_str = JsString::new(&mut ctx, match serde_json::to_string(v) {
+            Ok(value) => value,
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        });
+
+        let null = ctx.null();
+        let args = vec![ctx.string(json_str.value())];
+        let result = match fun.call(&mut ctx, null, args) {
+            Ok(result) => result,
+            Err(e) => panic!("{:?}", e)
+        };
+        let json_str = match result.downcast::<JsString>() {
+            Ok(v) => v.value(),
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        };
+        match serde_json::from_str(&json_str) {
+            Ok(v) => v,
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        }
+    }) {
+        Ok(value) => Ok(JsString::new(&mut ctx, match serde_json::to_string(&value) {
+            Ok(value) => value,
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        }).upcast()),
+        Err(e) => panic!("{:?}", e)
+    }
 }
 
 pub struct SelectorCls {
-    selector: Selector
+    node: Option<Node>,
+    value: Option<Value>,
 }
 
+impl SelectorCls {
+    fn path(&mut self, path: &str) {
+        let node = match Parser::compile(path) {
+            Ok(node) => node,
+            Err(e) => panic!("{:?}", e)
+        };
+
+        self.node = Some(node);
+    }
+
+    fn value(&mut self, json_str: &str) {
+        let value: Value = match serde_json::from_str(&json_str) {
+            Ok(value) => value,
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        };
+
+        self.value = Some(value);
+    }
+
+    fn select(&self) -> String {
+        let node = match &self.node {
+            Some(node) => node,
+            None => panic!("{:?}", JsonPathError::EmptyPath)
+        };
+
+        let value = match &self.value {
+            Some(value) => value,
+            None => panic!("{:?}", JsonPathError::EmptyValue)
+        };
+
+        let mut selector = Selector::new();
+        selector.compiled_path(node);
+        selector.value(&value);
+        match selector.select_as_str() {
+            Ok(ret) => ret,
+            Err(e) => panic!("{:?}", e)
+        }
+    }
+}
+
+pub struct SelectorMutCls {}
+
 declare_types! {
-    pub class JsCompileFn for CompileFn {
+    pub class JsCompileFn for SelectorCls {
         init(mut ctx) {
             let path = ctx.argument::<JsString>(0)?.value();
-            let mut parser = Parser::new(path.as_str());
-
-            let node = match parser.compile() {
+            let node = match Parser::compile(path.as_str()) {
                 Ok(node) => node,
                 Err(e) => panic!("{:?}", e)
             };
 
-            Ok(CompileFn { node })
+            Ok(SelectorCls { node: Some(node), value: None })
         }
 
         method template(mut ctx) {
-            let this = ctx.this();
-
-            let node = {
-                let guard = ctx.lock();
-                let this = this.borrow(&guard);
-                this.node.clone()
-            };
+            let mut this = ctx.this();
 
             let json_str = ctx.argument::<JsString>(0)?.value();
-            let ref_value: RefValue = match serde_json::from_str(&json_str) {
-                Ok(ref_value) => ref_value,
-                Err(e) => panic!("{:?}", e)
+            {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                let value: Value = match serde_json::from_str(&json_str) {
+                    Ok(value) => value,
+                    Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+                };
+                this.value = Some(value);
             };
 
-            let mut jf = JsonValueFilter::new_from_value(ref_value.into());
-            jf.visit(node);
-            match serde_json::to_string(&jf.take_value().deref()) {
-                Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
-                Err(e) => panic!("{:?}", e)
-            }
+            let result_str = {
+                let guard = ctx.lock();
+                let this = this.borrow(&guard);
+                this.select()
+            };
+
+            Ok(JsString::new(&mut ctx, &result_str).upcast())
         }
     }
 
-    pub class JsSelectorFn for SelectorFn {
+    pub class JsSelectorFn for SelectorCls {
         init(mut ctx) {
             let json_str = ctx.argument::<JsString>(0)?.value();
-            let ref_value: RefValue = match serde_json::from_str(&json_str) {
-                Ok(ref_value) => ref_value,
-                Err(e) => panic!("{:?}", e)
+            let value: Value = match serde_json::from_str(&json_str) {
+                Ok(value) => value,
+                Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
             };
 
-            Ok(SelectorFn { json: ref_value.into() })
+            Ok(SelectorCls { node: None, value: Some(value) })
         }
 
         method select(mut ctx) {
-            let this = ctx.this();
-
-            let json = {
-                let guard = ctx.lock();
-                let this = this.borrow(&guard);
-                this.json.clone()
-            };
+            let mut this = ctx.this();
 
             let path = ctx.argument::<JsString>(0)?.value();
-            let mut parser = Parser::new(path.as_str());
+            {
+                let guard = ctx.lock();
+                let mut this = this.borrow_mut(&guard);
+                this.path(&path);
+            }
 
-            let node = match parser.compile() {
-                Ok(node) => node,
-                Err(e) => panic!("{:?}", e)
+            let result_str = {
+                let guard = ctx.lock();
+                let this = this.borrow(&guard);
+                this.select()
             };
 
-            let mut jf = JsonValueFilter::new_from_value(json);
-            jf.visit(node);
-            match serde_json::to_string(&jf.take_value().deref()) {
-                Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
-                Err(e) => panic!("{:?}", e)
-            }
+            Ok(JsString::new(&mut ctx, &result_str).upcast())
         }
     }
 
     pub class JsSelector for SelectorCls {
         init(mut _ctx) {
-            Ok(SelectorCls { selector: Selector::new() })
+            Ok(SelectorCls { node: None, value: None })
         }
 
         method path(mut ctx) {
@@ -134,80 +210,49 @@ declare_types! {
             {
                 let guard = ctx.lock();
                 let mut this = this.borrow_mut(&guard);
-                let _ = this.selector.path(&path);
+                let _ = this.path(&path);
             }
+
             Ok(JsUndefined::new().upcast())
         }
 
-        method valueFromStr(mut ctx) {
+        method value(mut ctx) {
             let mut this = ctx.this();
 
             let json_str = ctx.argument::<JsString>(0)?.value();
             {
                 let guard = ctx.lock();
                 let mut this = this.borrow_mut(&guard);
-                let _ = this.selector.value_from_str(&json_str);
+                let _ = this.value(&json_str);
             }
+
             Ok(JsUndefined::new().upcast())
         }
 
-        method selectAsStr(mut ctx) {
-             let mut this = ctx.this();
+        method select(mut ctx) {
+             let this = ctx.this();
 
-             let result = {
+             let result_str = {
                 let guard = ctx.lock();
-                let this = this.borrow_mut(&guard);
-                this.selector.select_as_str()
+                let this = this.borrow(&guard);
+                this.select()
              };
 
-             match result {
-                Ok(json_str) => Ok(JsString::new(&mut ctx, &json_str).upcast()),
-                Err(e) => panic!("{:?}", e)
-             }
+             Ok(JsString::new(&mut ctx, &result_str).upcast())
+        }
+    }
+
+    pub class JsSelectorMut for SelectorMutCls {
+        init(mut _ctx) {
+            Ok(SelectorMutCls {})
         }
 
-        method map(mut ctx) {
-            let null = ctx.null();
-            let mut this = ctx.this();
-
-            let func = ctx.argument::<JsFunction>(0)?;
-
-            let value = {
-                let guard = ctx.lock();
-                let this = this.borrow_mut(&guard);
-                match this.selector.select_as_str() {
-                    Ok(v) => v,
-                    Err(e) => panic!("{:?}", e)
-                }
-            };
-
-            let js_value = JsString::new(&mut ctx, &value);
-            let json_str = func.call(&mut ctx, null, vec![js_value])?
-                .downcast::<JsString>()
-                .or_throw(&mut ctx)?
-                .value();
-            {
-                let guard = ctx.lock();
-                let mut this = this.borrow_mut(&guard);
-                let _ = this.selector.value_from_str(&json_str);
-            }
-
-            Ok(JsUndefined::new().upcast())
+        method emptyPathError(mut _ctx) {
+            panic!("{:?}", JsonPathError::EmptyPath);
         }
 
-        method get(mut ctx) {
-            let mut this = ctx.this();
-
-            let result = {
-                let guard = ctx.lock();
-                let this = this.borrow_mut(&guard);
-                match this.selector.get() {
-                    Ok(v) => v,
-                    Err(e) => panic!("{:?}", e)
-                }
-            };
-
-            Ok(JsString::new(&mut ctx, &result.to_string()).upcast())
+        method emptyValueError(mut _ctx) {
+            panic!("{:?}", JsonPathError::EmptyValue);
         }
     }
 }
@@ -215,7 +260,10 @@ register_module!(mut m, {
     m.export_class::<JsCompileFn>("CompileFn").expect("CompileFn class error");
     m.export_class::<JsSelectorFn>("SelectorFn").expect("SelectorFn class error");
     m.export_class::<JsSelector>("Selector").expect("Selector class error");
+    m.export_class::<JsSelectorMut>("SelectorMut").expect("SelectorMut class error");
     m.export_function("select", select)?;
+    m.export_function("deleteValue", delete)?;
+    m.export_function("replaceWith", replace_with)?;
     m.export_function("selectStr", select_str)?;
     Ok(())
 });

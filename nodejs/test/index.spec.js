@@ -359,7 +359,7 @@ describe('compile test', () => {
     it('basic', (done) => {
         let template = jsonpath.compile('$.a');
         let result = template({'a': 1});
-        if (result === 1) {
+        if (result[0] === 1) {
             done();
         }
     });
@@ -369,7 +369,7 @@ describe('selector test', () => {
     it('basic', (done) => {
         let selector = jsonpath.selector({'a': 1});
         let result = selector('$.a');
-        if (result === 1) {
+        if (result[0] === 1) {
             done();
         }
     });
@@ -378,7 +378,7 @@ describe('selector test', () => {
 describe('select test', () => {
     it('basic', (done) => {
         let result = jsonpath.select({'a': 1}, '$.a');
-        if (result === 1) {
+        if (result[0] === 1) {
             done();
         }
     });
@@ -400,25 +400,105 @@ describe('filter test', () => {
     }
 });
 
+describe('SelectorMut test', () => {
+    it('delete', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let result = jsonpath.deleteValue(jsonObjNew, '$.store.book');
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': null,
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+
+    it('replaceWith', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let result = jsonpath.replaceWith(jsonObjNew, '$.store.book', (v) => {
+            let ret = v[0];
+            ret.price = 9;
+            return ret;
+        });
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': {
+                    'category': 'reference',
+                    'author': 'Nigel Rees',
+                    'title': 'Sayings of the Century',
+                    'price': 9,
+                },
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+
+    it('SeletorMut delete', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let selector = new jsonpath.SelectorMut();
+        selector.path('$.store.book').value(jsonObjNew).deleteValue();
+
+        let result = selector.take();
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': null,
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+
+    it('SeletorMut replaceWith', (done) => {
+        let jsonObjNew = JSON.parse(JSON.stringify(jsonObj));
+        let selector = new jsonpath.SelectorMut();
+        selector.path('$.store.book').value(jsonObjNew).replaceWith((v) => {
+            let ret = v[0];
+            ret.price = 9;
+            return ret;
+        });
+
+        let result = selector.take();
+        if (JSON.stringify(result) === JSON.stringify({
+            'store': {
+                'book': {
+                    'category': 'reference',
+                    'author': 'Nigel Rees',
+                    'title': 'Sayings of the Century',
+                    'price': 9,
+                },
+                'bicycle': {
+                    'color': 'red',
+                    'price': 19.95,
+                },
+            },
+            'expensive': 10,
+        })) {
+            done();
+        }
+    });
+});
+
 describe('Selector test', () => {
-    it('basic selectTo', (done) => {
-        let result = new jsonpath.Selector().path('$.a').value({'a': 1}).selectTo();
-        if (result === 1) {
-            done();
-        }
-    });
-
-    it('basic selectToStr', (done) => {
-        let result = new jsonpath.Selector().path('$.a').value({'a': 1}).selectToStr();
-        if (result === '1') {
-            done();
-        }
-    });
-
     it('select', (done) => {
         let selector = new jsonpath.Selector().value(jsonObj);
         for(var i in list) {
-            if(JSON.stringify(list[i]) !== selector.path(i).selectToStr()) {
+            if(JSON.stringify(list[i]) !== JSON.stringify(selector.path(i).select())) {
                 throw `fail: ${i}`;
             }
         }
@@ -444,7 +524,7 @@ describe('README test', () => {
         let selector = new jsonpath.Selector().value(jsonObj);
 
         {
-            let jsonObj = selector.path('$..[?(@.age >= 30)]').selectAs();
+            let jsonObj = selector.path('$..[?(@.age >= 30)]').select();
             let resultObj = [{"name": "친구3", "age": 30}];
             if(JSON.stringify(jsonObj) !== JSON.stringify(resultObj)) {
                 throw 'jsonpath.Selector: $..[?(@.age >= 30)]';
@@ -452,7 +532,7 @@ describe('README test', () => {
         }
 
         {
-            let jsonObj = selector.path('$..[?(@.age == 20)]').selectAs();
+            let jsonObj = selector.path('$..[?(@.age == 20)]').select();
             let resultObj = [{"name": "친구1", "age": 20}, {"name": "친구2", "age": 20}];
             if(JSON.stringify(jsonObj) !== JSON.stringify(resultObj)) {
                 throw 'jsonpath.Selector: $..[?(@.age >= 20)]';
@@ -460,29 +540,68 @@ describe('README test', () => {
         }
 
         {
-            let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).selectAs();
+            let jsonObj = selector.value({"friends": [ {"name": "친구5", "age": 20} ]}).select();
             let resultObj = [{"name": "친구5", "age": 20}];
             if(JSON.stringify(jsonObj) !== JSON.stringify(resultObj)) {
                 throw 'jsonpath.Selector: change value';
             }
         }
 
+        done();
+    });
+
+    it('jsonpath.SelectorMut', (done) => {
+        let jsonObj = {
+            'school': {
+                'friends': [
+                    {'name': '친구1', 'age': 20},
+                    {'name': '친구2', 'age': 20},
+                ],
+            },
+            'friends': [
+                {'name': '친구3', 'age': 30},
+                {'name': '친구4'},
+            ],
+        };
+
+        let selector = new jsonpath.SelectorMut();
+        selector.path('$..[?(@.age == 20)]');
+
         {
-            let jsonObj1 = selector.value(jsonObj).map(function(v) {
-                let f1 = v[0];
-                f1.age = 30;
-                return v;
-            }).get();
+            selector.value(jsonObj).deleteValue();
 
-            let resultObj1 = [{"name": "친구1", "age": 30}, {"name": "친구2", "age": 20}];
-            if(JSON.stringify(jsonObj1) !== JSON.stringify(resultObj1)) {
-                throw 'jsonpath.Selector.map';
+            let resultObj = {
+                'school': {'friends': [null, null]},
+                'friends': [
+                    {'name': '친구3', 'age': 30},
+                    {'name': '친구4'},
+                ],
+            };
+            if (JSON.stringify(selector.take()) !== JSON.stringify(resultObj)) {
+                throw 'jsonpath.SelectorMut.deleteValue';
             }
+        }
 
-            let jsonObj2 = selector.path('$..[?(@.age == 20)]').selectAs();
-            let resultObj2 = [{"name": "친구2", "age": 20}];
-            if(JSON.stringify(jsonObj2) !== JSON.stringify(resultObj2)) {
-                throw 'jsonpath.Selector.map and then select';
+        {
+            selector.value(jsonObj).replaceWith((v) => {
+                v.age = v.age * 2;
+                return v;
+            });
+
+            let resultObj = {
+                'school': {
+                    'friends': [
+                        {'name': '친구1', 'age': 40},
+                        {'name': '친구2', 'age': 40},
+                    ],
+                },
+                'friends': [
+                    {'name': '친구3', 'age': 30},
+                    {'name': '친구4'},
+                ],
+            };
+            if (JSON.stringify(selector.take()) !== JSON.stringify(resultObj)) {
+                throw 'jsonpath.SelectorMut.replaceWith';
             }
         }
 
@@ -617,5 +736,65 @@ describe('README test', () => {
         }
 
         done();
+    });
+
+    it('jsonpath.deleteValue(json: string|object, path: string)', (done) => {
+        let jsonObj = {
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 20},
+                    {"name": "친구2", "age": 20}
+                ]
+            },
+            "friends": [
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+            ]
+        };
+
+        let _1 = jsonpath.deleteValue(jsonObj, '$..friends[0]');
+        let result = jsonpath.deleteValue(_1, '$..friends[1]');
+
+        if(JSON.stringify(result) === JSON.stringify({
+            "school": { "friends": [null, null]},
+            "friends": [null, null]
+        })) {
+            done();
+        }
+    });
+
+    it('jsonpath.replaceWith(json: string|object, path: string, fun: function(json: object) => json: object', (done) => {
+        let jsonObj = {
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 20},
+                    {"name": "친구2", "age": 20}
+                ]
+            },
+            "friends": [
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+            ]
+        };
+
+        let result = jsonpath.replaceWith(jsonObj, '$..friends[0]', (v) => {
+            v.age = v.age * 2;
+            return v;
+        });
+
+        if(JSON.stringify(result) === JSON.stringify({
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 40},
+                    {"name": "친구2", "age": 20}
+                ]
+            },
+            "friends": [
+                {"name": "친구3", "age": 60},
+                {"name": "친구4"}
+            ]
+        })) {
+            done();
+        }
     });
 });

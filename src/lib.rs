@@ -1,271 +1,230 @@
-//! JsonPath implementation for Rust
+//! JsonPath implementation written in Rust.
 //!
 //! # Example
 //! ```
-//!    extern crate jsonpath_lib as jsonpath;
-//!    #[macro_use] extern crate serde_json;
+//! extern crate jsonpath_lib as jsonpath;
+//! #[macro_use] extern crate serde_json;
+//! let json_obj = json!({
+//!     "store": {
+//!         "book": [
+//!             {
+//!                 "category": "reference",
+//!                 "author": "Nigel Rees",
+//!                 "title": "Sayings of the Century",
+//!                 "price": 8.95
+//!             },
+//!             {
+//!                 "category": "fiction",
+//!                 "author": "Evelyn Waugh",
+//!                 "title": "Sword of Honour",
+//!                 "price": 12.99
+//!             },
+//!             {
+//!                 "category": "fiction",
+//!                 "author": "Herman Melville",
+//!                 "title": "Moby Dick",
+//!                 "isbn": "0-553-21311-3",
+//!                 "price": 8.99
+//!             },
+//!             {
+//!                 "category": "fiction",
+//!                 "author": "J. R. R. Tolkien",
+//!                 "title": "The Lord of the Rings",
+//!                 "isbn": "0-395-19395-8",
+//!                 "price": 22.99
+//!             }
+//!         ],
+//!         "bicycle": {
+//!             "color": "red",
+//!             "price": 19.95
+//!         }
+//!     },
+//!     "expensive": 10
+//! });
 //!
-//!    let json_obj = json!({
-//!    "store": {
-//!        "book": [
-//!            {
-//!                "category": "reference",
-//!                "author": "Nigel Rees",
-//!                "title": "Sayings of the Century",
-//!                "price": 8.95
-//!            },
-//!            {
-//!                "category": "fiction",
-//!                "author": "Evelyn Waugh",
-//!                "title": "Sword of Honour",
-//!                "price": 12.99
-//!            },
-//!            {
-//!                "category": "fiction",
-//!                "author": "Herman Melville",
-//!                "title": "Moby Dick",
-//!                "isbn": "0-553-21311-3",
-//!                "price": 8.99
-//!            },
-//!            {
-//!                "category": "fiction",
-//!                "author": "J. R. R. Tolkien",
-//!                "title": "The Lord of the Rings",
-//!                "isbn": "0-395-19395-8",
-//!                "price": 22.99
-//!            }
-//!        ],
-//!        "bicycle": {
-//!            "color": "red",
-//!            "price": 19.95
-//!        }
-//!    },
-//!    "expensive": 10
-//!    });
+//! let mut selector = jsonpath::selector(&json_obj);
 //!
-//!    let mut selector = jsonpath::selector(&json_obj);
+//! assert_eq!(selector("$.store.book[*].author").unwrap(),
+//!             vec![
+//!                 "Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"
+//!             ]);
 //!
-//!    //
-//!    // $.store.book[*].author
-//!    //
-//!    let json = selector("$.store.book[*].author").unwrap();
-//!    let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
-//!    assert_eq!(json, ret);
+//! assert_eq!(selector("$..author").unwrap(),
+//!             vec![
+//!                 "Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"
+//!             ]);
 //!
-//!    //
-//!    // $..author
-//!    //
-//!    let json = selector("$..author").unwrap();
-//!    let ret = json!(["Nigel Rees","Evelyn Waugh","Herman Melville","J. R. R. Tolkien"]);
-//!    assert_eq!(json, ret);
+//! assert_eq!(selector("$.store.*").unwrap(),
+//!             vec![
+//!                 &json!([
+//!                     { "category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95 },
+//!                     { "category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99 },
+//!                     { "category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99 },
+//!                     { "category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99 }
+//!                 ]),
+//!                 &json!({ "color": "red", "price": 19.95 })
+//!             ]);
 //!
-//!    //
-//!    // $.store.*
-//!    //
-//!    let json = selector("$.store.*").unwrap();
-//!    let ret = json!([
-//!        [
-//!         {"category" : "reference", "author" : "Nigel Rees","title" : "Sayings of the Century", "price" : 8.95},
-//!         {"category" : "fiction", "author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99},
-//!         {"category" : "fiction", "author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
-//!         {"category" : "fiction", "author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
-//!        ],
-//!        {"color" : "red","price" : 19.95},
-//!    ]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$.store..price").unwrap(),
+//!             vec![
+//!                 8.95, 12.99, 8.99, 22.99, 19.95
+//!             ]);
 //!
-//!    //
-//!    // $.store..price
-//!    //
-//!    let json = selector("$.store..price").unwrap();
-//!    let ret = json!([8.95, 12.99, 8.99, 22.99, 19.95]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$..book[2]").unwrap(),
+//!             vec![
+//!                 &json!({
+//!                     "category" : "fiction",
+//!                     "author" : "Herman Melville",
+//!                     "title" : "Moby Dick",
+//!                     "isbn" : "0-553-21311-3",
+//!                     "price" : 8.99
+//!                 })
+//!             ]);
 //!
-//!    //
-//!    // $..book[2]
-//!    //
-//!    let json = selector("$..book[2]").unwrap();
-//!    let ret = json!([{
-//!        "category" : "fiction",
-//!        "author" : "Herman Melville",
-//!        "title" : "Moby Dick",
-//!        "isbn" : "0-553-21311-3",
-//!        "price" : 8.99
-//!    }]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$..book[-2]").unwrap(),
+//!             vec![
+//!                 &json!({
+//!                     "category" : "fiction",
+//!                     "author" : "Herman Melville",
+//!                     "title" : "Moby Dick",
+//!                     "isbn" : "0-553-21311-3",
+//!                     "price" : 8.99
+//!                 })
+//!             ]);
 //!
-//!    //
-//!    // $..book[-2]
-//!    //
-//!    let json = selector("$..book[-2]").unwrap();
-//!    let ret = json!([{
-//!        "category" : "fiction",
-//!        "author" : "Herman Melville",
-//!        "title" : "Moby Dick",
-//!        "isbn" : "0-553-21311-3",
-//!        "price" : 8.99
-//!     }]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$..book[0,1]").unwrap(),
+//!             vec![
+//!                 &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+//!                 &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+//!             ]);
 //!
-//!    //
-//!    // $..book[0,1]
-//!    //
-//!    let json = selector("$..book[0,1]").unwrap();
-//!    let ret = json!([
-//!        {"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95},
-//!        {"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99}
-//!    ]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$..book[:2]").unwrap(),
+//!             vec![
+//!                 &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+//!                 &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+//!             ]);
 //!
-//!    //
-//!    // $..book[:2]
-//!    //
-//!    let json = selector("$..book[:2]").unwrap();
-//!    let ret = json!([
-//!        {"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95},
-//!        {"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99}
-//!    ]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$..book[:2]").unwrap(),
+//!             vec![
+//!                 &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+//!                 &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+//!             ]);
 //!
-//!    //
-//!    // $..book[2:]
-//!    //
-//!    let json = selector("$..book[2:]").unwrap();
-//!    let ret = json!([
-//!        {"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
-//!        {"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
-//!    ]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$..book[?(@.isbn)]").unwrap(),
+//!             vec![
+//!                 &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99}),
+//!                 &json!({"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99})
+//!             ]);
 //!
-//!    //
-//!    // $..book[?(@.isbn)]
-//!    //
-//!    let json = selector("$..book[?(@.isbn)]").unwrap();
-//!    let ret = json!([
-//!        {"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
-//!        {"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
-//!    ]);
-//!    assert_eq!(ret, json);
-//!
-//!    //
-//!    // $.store.book[?(@.price < 10)]
-//!    //
-//!    let json = selector("$.store.book[?(@.price < 10)]").unwrap();
-//!    let ret = json!([
-//!        {"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95},
-//!        {"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99}
-//!    ]);
-//!    assert_eq!(ret, json);
+//! assert_eq!(selector("$.store.book[?(@.price < 10)]").unwrap(),
+//!             vec![
+//!                 &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+//!                 &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99})
+//!             ]);
 //! ```
-
+extern crate array_tool;
 extern crate core;
 extern crate env_logger;
 extern crate indexmap;
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate serde;
 extern crate serde_json;
 
-use core::borrow::BorrowMut;
-use std::result;
-
 use serde_json::Value;
 
-#[doc(hidden)]
-pub mod parser;
-#[doc(hidden)]
-pub mod filter;
-#[doc(hidden)]
-pub mod ref_value;
-#[doc(hidden)]
-pub mod select;
+pub use parser::parser::{Node, Parser};
+pub use select::{Selector, SelectorMut};
+pub use select::JsonPathError;
 
-pub use select::Selector;
+#[doc(hidden)]
+mod parser;
+#[doc(hidden)]
+mod select;
 
-/// It is a high-order function. it compile a JsonPath and then returns a function. this return-function can be reused for different JsonObjects.
+/// It is a high-order function. it compile a jsonpath and then returns a closure that has JSON as argument. if you need to reuse a jsonpath, it is good for performance.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
-/// let mut template = jsonpath::compile("$..friends[0]");
+/// let mut first_firend = jsonpath::compile("$..friends[0]");
 ///
 /// let json_obj = json!({
-/// "school": {
-///    "friends": [
-///         {"name": "친구1", "age": 20},
-///         {"name": "친구2", "age": 20}
-///     ]
-/// },
-/// "friends": [
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구4"}
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
 /// ]});
 ///
-/// let json = template(&json_obj).unwrap();
-/// let ret = json!([
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구1", "age": 20}
+/// let json = first_firend(&json_obj).unwrap();
+///
+/// assert_eq!(json, vec![
+///     &json!({"name": "친구3", "age": 30}),
+///     &json!({"name": "친구1", "age": 20})
 /// ]);
-/// assert_eq!(json, ret);
 /// ```
-pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> result::Result<Value, String> + 'a {
-    let mut selector = Selector::new();
-    let _ = selector.path(path);
-    let mut selector = Box::new(selector);
+pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
+    let node = Parser::compile(path);
     move |json| {
-        let s: &mut Selector = selector.borrow_mut();
-        let _ = s.value(&json);
-        s.select_as_value()
+        match &node {
+            Ok(node) => {
+                let mut selector = Selector::new();
+                selector.compiled_path(node).value(json).select()
+            }
+            Err(e) => Err(JsonPathError::Path(e.to_string()))
+        }
     }
 }
 
-/// It is a high-order function that return a function. this return-function has a jsonpath as argument and return a serde_json::value::Value. so you can use different JsonPath for one JsonObject.
+/// It is a high-order function. it returns a closure that has a jsonpath string as argument. you can use diffenent jsonpath for one JSON object.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
 /// let json_obj = json!({
-/// "school": {
-///    "friends": [
-///         {"name": "친구1", "age": 20},
-///         {"name": "친구2", "age": 20}
-///     ]
-/// },
-/// "friends": [
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구4"}
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
 /// ]});
 ///
 /// let mut selector = jsonpath::selector(&json_obj);
 ///
 /// let json = selector("$..friends[0]").unwrap();
-/// let ret = json!([
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구1", "age": 20}
+///
+/// assert_eq!(json, vec![
+///     &json!({"name": "친구3", "age": 30}),
+///     &json!({"name": "친구1", "age": 20})
 /// ]);
-/// assert_eq!(json, ret);
 ///
 /// let json = selector("$..friends[1]").unwrap();
-/// let ret = json!([
-///     {"name": "친구4"},
-///     {"name": "친구2", "age": 20}
+///
+/// assert_eq!(json, vec![
+///     &json!({"name": "친구4"}),
+///     &json!({"name": "친구2", "age": 20})
 /// ]);
-/// assert_eq!(json, ret);
 /// ```
-pub fn selector<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, String> {
+pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError> {
     let mut selector = Selector::new();
-    let _ = selector.value(json.into());
-    let mut selector = Box::new(selector);
-    move |path: &'a str| {
-        let s: &mut Selector = selector.borrow_mut();
-        s.path(path)?.select_as_value()
+    let _ = selector.value(json);
+    move |path: &str| {
+        selector.str_path(path)?.reset_value().select()
     }
 }
 
-/// It is a high-order function that returns a function. this return-function has a jsonpath as argument and return a serde::Deserialize. so you can use different JsonPath for one JsonObject.
+/// It is the same to `selector` function. but it deserialize the result as given type `T`.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -275,26 +234,27 @@ pub fn selector<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value
 /// use serde::{Deserialize, Serialize};
 ///
 /// let json_obj = json!({
-/// "school": {
-///    "friends": [
-///         {"name": "친구1", "age": 20},
-///         {"name": "친구2", "age": 20}
-///     ]
-/// },
-/// "friends": [
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구4"}
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
 /// ]});
 ///
-/// #[derive(Serialize, Deserialize, PartialEq, Debug)]
+/// #[derive(Deserialize, PartialEq, Debug)]
 /// struct Friend {
 ///     name: String,
 ///     age: Option<u8>,
 /// }
 ///
-/// let mut selector = jsonpath::selector_as::<Vec<Friend>>(&json_obj);
+/// let mut selector = jsonpath::selector_as::<Friend>(&json_obj);
 ///
 /// let json = selector("$..friends[0]").unwrap();
+///
 /// let ret = vec!(
 ///     Friend { name: "친구3".to_string(), age: Some(30) },
 ///     Friend { name: "친구1".to_string(), age: Some(20) }
@@ -302,67 +262,52 @@ pub fn selector<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value
 /// assert_eq!(json, ret);
 ///
 /// let json = selector("$..friends[1]").unwrap();
+///
 /// let ret = vec!(
 ///     Friend { name: "친구4".to_string(), age: None },
 ///     Friend { name: "친구2".to_string(), age: Some(20) }
 /// );
+///
 /// assert_eq!(json, ret);
 /// ```
-pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&str) -> result::Result<T, String> {
+pub fn selector_as<T: serde::de::DeserializeOwned>(json: &Value) -> impl FnMut(&str) -> Result<Vec<T>, JsonPathError> + '_ {
     let mut selector = Selector::new();
-    let _ = selector.value(json.into());
+    let _ = selector.value(json);
     move |path: &str| {
-        selector.path(path)?.select_as()
+        selector.str_path(path)?.reset_value().select_as()
     }
 }
 
-#[deprecated(since = "0.1.4", note = "Please use the selector function instead")]
-pub fn reader<'a>(json: &Value) -> impl FnMut(&'a str) -> result::Result<Value, String> {
-    selector(json)
-}
-
-/// This function compile a jsonpath everytime and it convert `serde_json's Value` to `jsonpath's RefValue` everytime and then it return a `serde_json::value::Value`.
+/// It is a simple select function. but it compile the jsonpath argument every time.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
 /// #[macro_use] extern crate serde_json;
 ///
 /// let json_obj = json!({
-/// "school": {
-///    "friends": [
-///         {"name": "친구1", "age": 20},
-///         {"name": "친구2", "age": 20}
-///     ]
-/// },
-/// "friends": [
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구4"}
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
 /// ]});
 ///
 /// let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
 ///
-/// let ret = json!([
-///     {"name": "친구3", "age": 30},
-///     {"name": "친구1", "age": 20}
+/// assert_eq!(json, vec![
+///     &json!({"name": "친구3", "age": 30}),
+///     &json!({"name": "친구1", "age": 20})
 /// ]);
-/// assert_eq!(json, ret);
 /// ```
-pub fn select(json: &Value, path: &str) -> result::Result<Value, String> {
-    let mut selector = Selector::new();
-    selector.path(path)?.value(json.into())?.select_as_value()
+pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, JsonPathError> {
+    Selector::new().str_path(path)?.value(json).select()
 }
 
-#[deprecated(since = "0.1.4", note = "Please use the select function instead")]
-pub fn read(json: &Value, path: &str) -> result::Result<Value, String> {
-    select(json, path)
-}
-
-#[deprecated(since = "0.1.7", note = "Please use the select_as_str function instead")]
-pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
-    select_as_str(json, path)
-}
-
-/// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a json string.
+/// It is the same to `select` function but it return the result as string.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -385,14 +330,13 @@ pub fn select_str(json: &str, path: &str) -> result::Result<String, String> {
 ///
 /// assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 /// ```
-pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
-    Selector::new()
-        .path(path)?
-        .value_from_str(json)?
-        .select_as_str()
+pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError> {
+    let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
+    let ret = Selector::new().str_path(path)?.value(&json).select()?;
+    serde_json::to_string(&ret).map_err(|e| JsonPathError::Serde(e.to_string()))
 }
 
-/// This function compile a jsonpath everytime and it convert `&str` to `jsonpath's RefValue` everytime and then it return a deserialized-instance of type `T`.
+/// It is the same to `select` function but it deserialize the the result as given type `T`.
 ///
 /// ```rust
 /// extern crate jsonpath_lib as jsonpath;
@@ -408,7 +352,7 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
 ///     phones: Vec<String>,
 /// }
 ///
-/// let ret: Person = jsonpath::select_as(r#"
+/// let ret: Vec<Person> = jsonpath::select_as(r#"
 /// {
 ///     "person":
 ///         {
@@ -428,11 +372,97 @@ pub fn select_as_str(json: &str, path: &str) -> result::Result<String, String> {
 ///     phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
 /// };
 ///
-/// assert_eq!(person, ret);
+/// assert_eq!(ret[0], person);
 /// ```
-pub fn select_as<T: serde::de::DeserializeOwned>(json: &str, path: &str) -> result::Result<T, String> {
-    Selector::new()
-        .path(path)?
-        .value_from_str(json)?
-        .select_as()
+pub fn select_as<T: serde::de::DeserializeOwned>(json_str: &str, path: &str) -> Result<Vec<T>, JsonPathError> {
+    let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
+    Selector::new().str_path(path)?.value(&json).select_as()
+}
+
+/// Delete(= replace with null) the JSON property using the jsonpath.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// let ret = jsonpath::delete(json_obj, "$..[?(20 == @.age)]").unwrap();
+///
+/// assert_eq!(ret, json!({
+///     "school": {
+///         "friends": [
+///             null,
+///             null
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]}));
+/// ```
+pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
+    let mut selector = SelectorMut::new();
+    let ret = selector.str_path(path)?.value(value).delete()?.take().unwrap_or(Value::Null);
+    Ok(ret)
+}
+
+/// Select JSON properties using a jsonpath and transform the result and then replace it. via closure that implements `FnMut` you can transform the selected results.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde_json::Value;
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// let ret = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+///     let age = if let Value::Number(n) = v {
+///         n.as_u64().unwrap() * 2
+///     } else {
+///         0
+///     };
+///
+///     json!(age)
+/// }).unwrap();
+///
+/// assert_eq!(ret, json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 40},
+///             {"name": "친구2", "age": 40}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]}));
+/// ```
+pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
+    where F: FnMut(&Value) -> Value
+{
+    let mut selector = SelectorMut::new();
+    let ret = selector.str_path(path)?.value(value).replace_with(fun)?.take().unwrap_or(Value::Null);
+    Ok(ret)
 }

@@ -96,20 +96,6 @@ fn selector() {
 }
 
 #[wasm_bindgen_test]
-fn alloc_dealloc_json() {
-    let ptr = jsonpath::alloc_json(JsValue::from_str(json_str()));
-    assert_eq!(ptr > 0, true);
-
-    let json: Value = jsonpath::select(JsValue::from_f64(ptr as f64), "$..book[2]").into_serde().unwrap();
-    assert_eq!(json, target_json());
-
-    assert_eq!(jsonpath::dealloc_json(ptr), true);
-
-    let err = jsonpath::select(JsValue::from_f64(ptr as f64), "$..book[2]").as_string().unwrap();
-    assert_eq!(err, "Invalid pointer".to_string());
-}
-
-#[wasm_bindgen_test]
 fn selector_struct() {
     let mut selector = jsonpath::Selector::new();
     selector.path("$..book[2]").unwrap();

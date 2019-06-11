@@ -61,9 +61,6 @@ let path = '$..book[?(@.price<30 && @.category=="fiction")]';
 let template = jpw.compile(path);
 let selector = jpw.selector(json);
 
-let ptr = jpw.allocJson(json);
-if(ptr == 0) console.error('invalid ptr');
-
 let iterCount = 2000;
 
 run('jsonpath', iterCount, function() { jp.query(json, path) })
@@ -74,16 +71,6 @@ run('jsonpath', iterCount, function() { jp.query(json, path) })
         return run('jsonpath-wasm- compile', iterCount, function() { template(json) });
     })
     .then(function() {
-        return run('jsonpath-wasm- compile-alloc', iterCount, function() { template(ptr) });
-    })
-    .then(function() {
         return run('jsonpath-wasm- select', iterCount, function() { jpw.select(json, path) });
     })
-    .then(function() {
-        return run('jsonpath-wasm- select-alloc', iterCount, function() { jpw.select(ptr, path) });
-    })
-    .finally(function() {
-        if(!jpw.deallocJson(ptr)) {
-            console.error('fail to dealloc');
-        }
-    });
+    .finally(function() {});

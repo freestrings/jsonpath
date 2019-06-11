@@ -3,14 +3,137 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 
-use jsonpath::Selector;
+use jsonpath::{Selector, SelectorMut};
+
+mod common;
+
+#[test]
+fn readme() {
+    let json_obj = json!({
+        "store": {
+            "book": [
+                {
+                    "category": "reference",
+                    "author": "Nigel Rees",
+                    "title": "Sayings of the Century",
+                    "price": 8.95
+                },
+                {
+                    "category": "fiction",
+                    "author": "Evelyn Waugh",
+                    "title": "Sword of Honour",
+                    "price": 12.99
+                },
+                {
+                    "category": "fiction",
+                    "author": "Herman Melville",
+                    "title": "Moby Dick",
+                    "isbn": "0-553-21311-3",
+                    "price": 8.99
+                },
+                {
+                    "category": "fiction",
+                    "author": "J. R. R. Tolkien",
+                    "title": "The Lord of the Rings",
+                    "isbn": "0-395-19395-8",
+                    "price": 22.99
+                }
+            ],
+            "bicycle": {
+                "color": "red",
+                "price": 19.95
+            }
+        },
+        "expensive": 10
+    });
+
+    let mut selector = jsonpath::selector(&json_obj);
+
+    assert_eq!(selector("$.store.book[*].author").unwrap(),
+               vec![
+                   "Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"
+               ]);
+
+    assert_eq!(selector("$..author").unwrap(),
+               vec![
+                   "Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"
+               ]);
+
+    assert_eq!(selector("$.store.*").unwrap(),
+               vec![
+                   &json!([
+                       { "category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95 },
+                       { "category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99 },
+                       { "category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99 },
+                       { "category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99 }
+                   ]),
+                   &json!({ "color": "red", "price": 19.95 })
+               ]);
+
+    assert_eq!(selector("$.store..price").unwrap(),
+               vec![
+                   8.95, 12.99, 8.99, 22.99, 19.95
+               ]);
+
+    assert_eq!(selector("$..book[2]").unwrap(),
+               vec![
+                   &json!({
+                        "category" : "fiction",
+                        "author" : "Herman Melville",
+                        "title" : "Moby Dick",
+                        "isbn" : "0-553-21311-3",
+                        "price" : 8.99
+                    })
+               ]);
+
+    assert_eq!(selector("$..book[-2]").unwrap(),
+               vec![
+                   &json!({
+                        "category" : "fiction",
+                        "author" : "Herman Melville",
+                        "title" : "Moby Dick",
+                        "isbn" : "0-553-21311-3",
+                        "price" : 8.99
+                    })
+               ]);
+
+    assert_eq!(selector("$..book[0,1]").unwrap(),
+               vec![
+                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+                   &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+               ]);
+
+    assert_eq!(selector("$..book[:2]").unwrap(),
+               vec![
+                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+                   &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+               ]);
+
+    assert_eq!(selector("$..book[:2]").unwrap(),
+               vec![
+                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+                   &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+               ]);
+
+    assert_eq!(selector("$..book[?(@.isbn)]").unwrap(),
+               vec![
+                   &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99}),
+                   &json!({"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99})
+               ]);
+
+    assert_eq!(selector("$.store.book[?(@.price < 10)]").unwrap(),
+               vec![
+                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+                   &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99})
+               ]);
+}
 
 #[test]
 fn readme_selector() {
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(Deserialize, PartialEq, Debug)]
     struct Friend {
         name: String,
         age: Option<u8>,
@@ -31,43 +154,60 @@ fn readme_selector() {
     let mut selector = Selector::new();
 
     let result = selector
-        .path("$..[?(@.age >= 30)]").unwrap()
-//    .value_from_str(&serde_json::to_string(&json_obj).unwrap() /*&str*/).unwrap()
-//    .value_from(&json_obj /*&impl serde::ser::Serialize*/).unwrap()
-        .value(&json_obj /*serde_json::value::Value*/).unwrap()
-        .select_as_value().unwrap();
+        .str_path("$..[?(@.age >= 30)]").unwrap()
+        .value(&json_obj)
+        .select().unwrap();
 
-    assert_eq!(json!([{"name": "친구3", "age": 30}]), result);
+    assert_eq!(vec![&json!({"name": "친구3", "age": 30})], result);
 
     let result = selector.select_as_str().unwrap();
     assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
 
-    let result = selector.select_as::<Vec<Friend>>().unwrap();
+    let result = selector.select_as::<Friend>().unwrap();
     assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
+}
 
-    let _ = selector.map(|v| {
-        let r = match v {
-            Value::Array(mut vec) => {
-                for v in &mut vec {
-                    v.as_object_mut().unwrap().remove("age");
-                }
-                Value::Array(vec)
-            }
-            _ => Value::Null
-        };
-        Some(r)
-    });
-    assert_eq!(json!([{ "name": "친구3"}]), selector.get().unwrap());
+#[test]
+fn readme_selector_mut() {
+    let json_obj = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
 
-    let _ = selector.value(&json_obj).unwrap()
-        .map_as(|mut v: Vec<Friend>| {
-            let mut f = v.pop().unwrap();
-            f.name = "friend3".to_string();
-            f.age = None;
-            Some(vec![f])
-        });
-    assert_eq!(vec![Friend { name: "friend3".to_string(), age: None }],
-               selector.get_as::<Vec<Friend>>().unwrap());
+    let mut selector_mut = SelectorMut::new();
+
+    let result = selector_mut
+        .str_path("$..[?(@.age == 20)].age").unwrap()
+        .value(json_obj)
+        .replace_with(&mut |v| {
+            let age = if let Value::Number(n) = v {
+                n.as_u64().unwrap() * 2
+            } else {
+                0
+            };
+
+            json!(age)
+        }).unwrap()
+        .take().unwrap();
+
+    assert_eq!(result, json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 40},
+                {"name": "친구2", "age": 40}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]}));
 }
 
 #[test]
@@ -86,11 +226,10 @@ fn readme_select() {
 
     let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
 
-    let ret = json!([
-        {"name": "친구3", "age": 30},
-        {"name": "친구1", "age": 20}
+    assert_eq!(json, vec![
+        &json!({"name": "친구3", "age": 30}),
+        &json!({"name": "친구1", "age": 20})
     ]);
-    assert_eq!(json, ret);
 }
 
 #[test]
@@ -122,7 +261,7 @@ fn readme_select_as() {
         phones: Vec<String>,
     }
 
-    let ret: Person = jsonpath::select_as(r#"
+    let ret: Vec<Person> = jsonpath::select_as(r#"
     {
         "person":
             {
@@ -142,12 +281,12 @@ fn readme_select_as() {
         phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
     };
 
-    assert_eq!(person, ret);
+    assert_eq!(ret[0], person);
 }
 
 #[test]
 fn readme_compile() {
-    let mut template = jsonpath::compile("$..friends[0]");
+    let mut first_firend = jsonpath::compile("$..friends[0]");
 
     let json_obj = json!({
         "school": {
@@ -161,14 +300,12 @@ fn readme_compile() {
             {"name": "친구4"}
     ]});
 
-    let json = template(&json_obj).unwrap();
+    let json = first_firend(&json_obj).unwrap();
 
-    let ret = json!([
-        {"name": "친구3", "age": 30},
-        {"name": "친구1", "age": 20}
+    assert_eq!(json, vec![
+        &json!({"name": "친구3", "age": 30}),
+        &json!({"name": "친구1", "age": 20})
     ]);
-
-    assert_eq!(json, ret);
 }
 
 #[test]
@@ -189,21 +326,17 @@ fn readme_selector_fn() {
 
     let json = selector("$..friends[0]").unwrap();
 
-    let ret = json!([
-        {"name": "친구3", "age": 30},
-        {"name": "친구1", "age": 20}
+    assert_eq!(json, vec![
+        &json!({"name": "친구3", "age": 30}),
+        &json!({"name": "친구1", "age": 20})
     ]);
-
-    assert_eq!(json, ret);
 
     let json = selector("$..friends[1]").unwrap();
 
-    let ret = json!([
-        {"name": "친구4"},
-        {"name": "친구2", "age": 20}
+    assert_eq!(json, vec![
+        &json!({"name": "친구4"}),
+        &json!({"name": "친구2", "age": 20})
     ]);
-
-    assert_eq!(json, ret);
 }
 
 #[test]
@@ -220,13 +353,13 @@ fn readme_selector_as() {
             {"name": "친구4"}
     ]});
 
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(Deserialize, PartialEq, Debug)]
     struct Friend {
         name: String,
         age: Option<u8>,
     }
 
-    let mut selector = jsonpath::selector_as::<Vec<Friend>>(&json_obj);
+    let mut selector = jsonpath::selector_as::<Friend>(&json_obj);
 
     let json = selector("$..friends[0]").unwrap();
 
@@ -244,4 +377,91 @@ fn readme_selector_as() {
     );
 
     assert_eq!(json, ret);
+}
+
+
+#[test]
+fn readme_delete() {
+    let json_obj = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
+
+    let ret = jsonpath::delete(json_obj, "$..[?(20 == @.age)]").unwrap();
+
+    assert_eq!(ret, json!({
+        "school": {
+            "friends": [
+                null,
+                null
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]}));
+}
+
+#[test]
+fn readme_delete2() {
+    let json_obj = common::read_json("./benches/example.json");
+
+    let ret = jsonpath::delete(json_obj, "$.store.book").unwrap();
+
+    println!("{:?}", ret);
+
+    assert_eq!(ret, json!({
+       "store": {
+           "book": null,
+           "bicycle": {
+               "color": "red",
+               "price": 19.95
+           }
+       },
+       "expensive": 10
+   }));
+}
+
+#[test]
+fn readme_replace_with() {
+    let json_obj = json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 20},
+                {"name": "친구2", "age": 20}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]});
+
+    let result = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+        let age = if let Value::Number(n) = v {
+            n.as_u64().unwrap() * 2
+        } else {
+            0
+        };
+
+        json!(age)
+    }).unwrap();
+
+    assert_eq!(result, json!({
+        "school": {
+            "friends": [
+                {"name": "친구1", "age": 40},
+                {"name": "친구2", "age": 40}
+            ]
+        },
+        "friends": [
+            {"name": "친구3", "age": 30},
+            {"name": "친구4"}
+    ]}));
 }

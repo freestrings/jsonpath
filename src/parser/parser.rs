@@ -1,5 +1,3 @@
-use std::result::Result;
-
 use super::tokenizer::*;
 
 const DUMMY: usize = 0;
@@ -7,7 +5,6 @@ const DUMMY: usize = 0;
 type ParseResult<T> = Result<T, String>;
 
 mod utils {
-
     pub fn string_to_isize<F>(string: &String, msg_handler: F) -> Result<isize, String>
         where F: Fn() -> String {
         match string.as_str().parse::<isize>() {
@@ -52,6 +49,8 @@ pub enum ParseToken {
 
     Number(f64),
 
+    Bool(bool),
+
     Eof,
 }
 
@@ -74,50 +73,39 @@ pub struct Node {
     token: ParseToken,
 }
 
-pub struct Parser<'a> {
-    tokenizer: PreloadedTokenizer<'a>
-}
+pub struct Parser;
 
-impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Self {
-        Parser { tokenizer: PreloadedTokenizer::new(input) }
+impl Parser {
+    pub fn compile(input: &str) -> ParseResult<Node> {
+        let mut tokenizer = TokenReader::new(input);
+        Ok(Self::json_path(&mut tokenizer)?)
     }
 
-    pub fn compile(&mut self) -> ParseResult<Node> {
-        Ok(self.json_path()?)
-    }
-
-    pub fn parse<V: NodeVisitor>(&mut self, visitor: &mut V) -> ParseResult<()> {
-        let node = self.json_path()?;
-        visitor.visit(node);
-        Ok(())
-    }
-
-    fn json_path(&mut self) -> ParseResult<Node> {
+    fn json_path(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#json_path");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::Absolute(_)) => {
-                let node = self.node(ParseToken::Absolute);
-                self.paths(node)
+                let node = Self::node(ParseToken::Absolute);
+                Self::paths(node, tokenizer)
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn paths(&mut self, prev: Node) -> ParseResult<Node> {
+    fn paths(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#paths");
-        match self.tokenizer.peek_token() {
+        match tokenizer.peek_token() {
             Ok(Token::Dot(_)) => {
-                self.eat_token();
-                self.paths_dot(prev)
+                Self::eat_token(tokenizer);
+                Self::paths_dot(prev, tokenizer)
             }
             Ok(Token::OpenArray(_)) => {
-                self.eat_token();
-                self.eat_whitespace();
-                let node = self.array(prev)?;
-                self.paths(node)
+                Self::eat_token(tokenizer);
+                Self::eat_whitespace(tokenizer);
+                let node = Self::array(prev, tokenizer)?;
+                Self::paths(node, tokenizer)
             }
             _ => {
                 Ok(prev)
@@ -125,10 +113,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn paths_dot(&mut self, prev: Node) -> ParseResult<Node> {
+    fn paths_dot(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#paths_dot");
-        let node = self.path(prev)?;
-        match self.tokenizer.peek_token() {
+        let node = Self::path(prev, tokenizer)?;
+        match tokenizer.peek_token() {
             Ok(Token::Equal(_))
             | Ok(Token::NotEqual(_))
             | Ok(Token::Little(_))
@@ -140,319 +128,331 @@ impl<'a> Parser<'a> {
                 Ok(node)
             }
             _ => {
-                self.paths(node)
+                Self::paths(node, tokenizer)
             }
         }
     }
 
-    fn path(&mut self, prev: Node) -> ParseResult<Node> {
+    fn path(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path");
-        match self.tokenizer.peek_token() {
+        match tokenizer.peek_token() {
             Ok(Token::Dot(_)) => {
-                self.path_leaves(prev)
+                Self::path_leaves(prev, tokenizer)
             }
             Ok(Token::Asterisk(_)) => {
-                self.path_in_all(prev)
+                Self::path_in_all(prev, tokenizer)
             }
             Ok(Token::Key(_, _)) => {
-                self.path_in_key(prev)
+                Self::path_in_key(prev, tokenizer)
             }
             Ok(Token::OpenArray(_)) => {
-                self.eat_token();
-                self.array(prev)
+                Self::eat_token(tokenizer);
+                Self::array(prev, tokenizer)
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn path_leaves(&mut self, prev: Node) -> ParseResult<Node> {
+    fn path_leaves(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_leaves");
-        self.eat_token();
-        match self.tokenizer.peek_token() {
+        Self::eat_token(tokenizer);
+        match tokenizer.peek_token() {
             Ok(Token::Asterisk(_)) => {
-                self.path_leaves_all(prev)
+                Self::path_leaves_all(prev, tokenizer)
             }
             Ok(Token::OpenArray(_)) => {
-                let mut leaves_node = self.node(ParseToken::Leaves);
+                let mut leaves_node = Self::node(ParseToken::Leaves);
                 leaves_node.left = Some(Box::new(prev));
-                Ok(self.paths(leaves_node)?)
+                Ok(Self::paths(leaves_node, tokenizer)?)
             }
             _ => {
-                self.path_leaves_key(prev)
+                Self::path_leaves_key(prev, tokenizer)
             }
         }
     }
 
-    fn path_leaves_key(&mut self, prev: Node) -> ParseResult<Node> {
+    fn path_leaves_key(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_leaves_key");
         Ok(Node {
             token: ParseToken::Leaves,
             left: Some(Box::new(prev)),
-            right: Some(Box::new(self.key()?)),
+            right: Some(Box::new(Self::key(tokenizer)?)),
         })
     }
 
-    fn path_leaves_all(&mut self, prev: Node) -> ParseResult<Node> {
+    fn path_leaves_all(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_leaves_all");
-        self.eat_token();
+        Self::eat_token(tokenizer);
         Ok(Node {
             token: ParseToken::Leaves,
             left: Some(Box::new(prev)),
-            right: Some(Box::new(self.node(ParseToken::All))),
+            right: Some(Box::new(Self::node(ParseToken::All))),
         })
     }
 
-    fn path_in_all(&mut self, prev: Node) -> ParseResult<Node> {
+    fn path_in_all(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_in_all");
-        self.eat_token();
+        Self::eat_token(tokenizer);
         Ok(Node {
             token: ParseToken::In,
             left: Some(Box::new(prev)),
-            right: Some(Box::new(self.node(ParseToken::All))),
+            right: Some(Box::new(Self::node(ParseToken::All))),
         })
     }
 
-    fn path_in_key(&mut self, prev: Node) -> ParseResult<Node> {
+    fn path_in_key(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_in_key");
         Ok(Node {
             token: ParseToken::In,
             left: Some(Box::new(prev)),
-            right: Some(Box::new(self.key()?)),
+            right: Some(Box::new(Self::key(tokenizer)?)),
         })
     }
 
-    fn key(&mut self) -> ParseResult<Node> {
+    fn key(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#key");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::Key(_, v)) => {
-                Ok(self.node(ParseToken::Key(v)))
+                Ok(Self::node(ParseToken::Key(v)))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn array_quota_value(&mut self) -> ParseResult<Node> {
+    fn boolean(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+        debug!("#boolean");
+        match tokenizer.next_token() {
+            Ok(Token::Key(_, v)) => {
+                Ok(Self::node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
+            }
+            _ => {
+                Err(tokenizer.err_msg())
+            }
+        }
+    }
+
+    fn array_quota_value(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#array_quota_value");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::SingleQuoted(_, val))
             | Ok(Token::DoubleQuoted(_, val)) => {
-                Ok(self.node(ParseToken::Key(val)))
+                Ok(Self::node(ParseToken::Key(val)))
             }
             Err(TokenError::Eof) => {
-                Ok(self.node(ParseToken::Eof))
+                Ok(Self::node(ParseToken::Eof))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn array_start(&mut self, prev: Node) -> ParseResult<Node> {
+    fn array_start(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#array_start");
-        match self.tokenizer.peek_token() {
+        match tokenizer.peek_token() {
             Ok(Token::Question(_)) => {
-                self.eat_token();
+                Self::eat_token(tokenizer);
                 Ok(Node {
                     token: ParseToken::Array,
                     left: Some(Box::new(prev)),
-                    right: Some(Box::new(self.filter()?)),
+                    right: Some(Box::new(Self::filter(tokenizer)?)),
                 })
             }
             Ok(Token::Asterisk(_)) => {
-                self.eat_token();
+                Self::eat_token(tokenizer);
                 Ok(Node {
                     token: ParseToken::Array,
                     left: Some(Box::new(prev)),
-                    right: Some(Box::new(self.node(ParseToken::All))),
+                    right: Some(Box::new(Self::node(ParseToken::All))),
                 })
             }
             _ => {
                 Ok(Node {
                     token: ParseToken::Array,
                     left: Some(Box::new(prev)),
-                    right: Some(Box::new(self.array_value()?)),
+                    right: Some(Box::new(Self::array_value(tokenizer)?)),
                 })
             }
         }
     }
 
-    fn array(&mut self, prev: Node) -> ParseResult<Node> {
+    fn array(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#array");
-        let ret = self.array_start(prev)?;
-        self.eat_whitespace();
-        self.close_token(ret, Token::CloseArray(DUMMY))
+        let ret = Self::array_start(prev, tokenizer)?;
+        Self::eat_whitespace(tokenizer);
+        Self::close_token(ret, Token::CloseArray(DUMMY), tokenizer)
     }
 
-    fn array_value_key(&mut self) -> ParseResult<Node> {
+    fn array_value_key(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#array_value_key");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
-                let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
-                self.eat_whitespace();
+                let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
+                Self::eat_whitespace(tokenizer);
 
-                match self.tokenizer.peek_token() {
+                match tokenizer.peek_token() {
                     Ok(Token::Comma(_)) => {
-                        self.union(digit)
+                        Self::union(digit, tokenizer)
                     }
                     Ok(Token::Split(_)) => {
-                        self.range_from(digit)
+                        Self::range_from(digit, tokenizer)
                     }
                     _ => {
-                        Ok(self.node(ParseToken::Number(digit as f64)))
+                        Ok(Self::node(ParseToken::Number(digit as f64)))
                     }
                 }
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
 
-    fn array_value(&mut self) -> ParseResult<Node> {
+    fn array_value(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#array_value");
-        match self.tokenizer.peek_token() {
+        match tokenizer.peek_token() {
             Ok(Token::Key(_, _)) => {
-                self.array_value_key()
+                Self::array_value_key(tokenizer)
             }
             Ok(Token::Split(_)) => {
-                self.eat_token();
-                self.range_to()
+                Self::eat_token(tokenizer);
+                Self::range_to(tokenizer)
             }
             Ok(Token::DoubleQuoted(_, _))
             | Ok(Token::SingleQuoted(_, _)) => {
-                self.array_quota_value()
+                Self::array_quota_value(tokenizer)
             }
             Err(TokenError::Eof) => {
-                Ok(self.node(ParseToken::Eof))
+                Ok(Self::node(ParseToken::Eof))
             }
             _ => {
-                self.eat_token();
-                Err(self.tokenizer.err_msg())
+                Self::eat_token(tokenizer);
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn union(&mut self, num: isize) -> ParseResult<Node> {
+    fn union(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#union");
         let mut values = vec![num];
-        while match self.tokenizer.peek_token() {
+        while match tokenizer.peek_token() {
             Ok(Token::Comma(_)) => true,
             _ => false
         } {
-            self.eat_token();
-            self.eat_whitespace();
-            match self.tokenizer.next_token() {
+            Self::eat_token(tokenizer);
+            Self::eat_whitespace(tokenizer);
+            match tokenizer.next_token() {
                 Ok(Token::Key(pos, ref val)) => {
-                    let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
+                    let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
                     values.push(digit);
                 }
                 _ => {
-                    return Err(self.tokenizer.err_msg());
+                    return Err(tokenizer.err_msg());
                 }
             }
         }
-        Ok(self.node(ParseToken::Union(values)))
+        Ok(Self::node(ParseToken::Union(values)))
     }
 
-    fn range_from(&mut self, num: isize) -> ParseResult<Node> {
+    fn range_from(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range_from");
-        self.eat_token();
-        self.eat_whitespace();
-        match self.tokenizer.peek_token() {
+        Self::eat_token(tokenizer);
+        Self::eat_whitespace(tokenizer);
+        match tokenizer.peek_token() {
             Ok(Token::Key(_, _)) => {
-                self.range(num)
+                Self::range(num, tokenizer)
             }
             _ => {
-                Ok(self.node(ParseToken::Range(Some(num), None)))
+                Ok(Self::node(ParseToken::Range(Some(num), None)))
             }
         }
     }
 
-    fn range_to(&mut self) -> ParseResult<Node> {
+    fn range_to(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range_to");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
-                let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
-                Ok(self.node(ParseToken::Range(None, Some(digit))))
+                let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
+                Ok(Self::node(ParseToken::Range(None, Some(digit))))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn range(&mut self, num: isize) -> ParseResult<Node> {
+    fn range(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
-                let digit = utils::string_to_isize(val, || self.tokenizer.err_msg_with_pos(pos))?;
-                Ok(self.node(ParseToken::Range(Some(num), Some(digit))))
+                let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
+                Ok(Self::node(ParseToken::Range(Some(num), Some(digit))))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn filter(&mut self) -> ParseResult<Node> {
+    fn filter(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#filter");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::OpenParenthesis(_)) => {
-                let ret = self.exprs()?;
-                self.eat_whitespace();
-                self.close_token(ret, Token::CloseParenthesis(DUMMY))
+                let ret = Self::exprs(tokenizer)?;
+                Self::eat_whitespace(tokenizer);
+                Self::close_token(ret, Token::CloseParenthesis(DUMMY), tokenizer)
             }
             Err(TokenError::Eof) => {
-                Ok(self.node(ParseToken::Eof))
+                Ok(Self::node(ParseToken::Eof))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn exprs(&mut self) -> ParseResult<Node> {
-        self.eat_whitespace();
+    fn exprs(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+        Self::eat_whitespace(tokenizer);
         debug!("#exprs");
-        let node = match self.tokenizer.peek_token() {
+        let node = match tokenizer.peek_token() {
             Ok(Token::OpenParenthesis(_)) => {
-                self.eat_token();
+                Self::eat_token(tokenizer);
                 trace!("\t-exprs - open_parenthesis");
-                let ret = self.exprs()?;
-                self.eat_whitespace();
-                self.close_token(ret, Token::CloseParenthesis(DUMMY))?
+                let ret = Self::exprs(tokenizer)?;
+                Self::eat_whitespace(tokenizer);
+                Self::close_token(ret, Token::CloseParenthesis(DUMMY), tokenizer)?
             }
             _ => {
                 trace!("\t-exprs - else");
-                self.expr()?
+                Self::expr(tokenizer)?
             }
         };
-        self.eat_whitespace();
-        self.condition_expr(node)
+        Self::eat_whitespace(tokenizer);
+        Self::condition_expr(node, tokenizer)
     }
 
-    fn condition_expr(&mut self, prev: Node) -> ParseResult<Node> {
+    fn condition_expr(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#condition_expr");
-        match self.tokenizer.peek_token() {
+        match tokenizer.peek_token() {
             Ok(Token::And(_)) => {
-                self.eat_token();
+                Self::eat_token(tokenizer);
                 Ok(Node {
                     token: ParseToken::Filter(FilterToken::And),
                     left: Some(Box::new(prev)),
-                    right: Some(Box::new(self.exprs()?)),
+                    right: Some(Box::new(Self::exprs(tokenizer)?)),
                 })
             }
             Ok(Token::Or(_)) => {
-                self.eat_token();
+                Self::eat_token(tokenizer);
                 Ok(Node {
                     token: ParseToken::Filter(FilterToken::Or),
                     left: Some(Box::new(prev)),
-                    right: Some(Box::new(self.exprs()?)),
+                    right: Some(Box::new(Self::exprs(tokenizer)?)),
                 })
             }
             _ => {
@@ -461,18 +461,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expr(&mut self) -> ParseResult<Node> {
+    fn expr(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#expr");
 
-        let has_prop_candidate = match self.tokenizer.peek_token() {
+        let has_prop_candidate = match tokenizer.peek_token() {
             Ok(Token::At(_)) => true,
             _ => false
         };
 
-        let node = self.term()?;
-        self.eat_whitespace();
+        let node = Self::term(tokenizer)?;
+        Self::eat_whitespace(tokenizer);
 
-        if match self.tokenizer.peek_token() {
+        if match tokenizer.peek_token() {
             Ok(Token::Equal(_))
             | Ok(Token::NotEqual(_))
             | Ok(Token::Little(_))
@@ -481,91 +481,108 @@ impl<'a> Parser<'a> {
             | Ok(Token::GreaterOrEqual(_)) => true,
             _ => false
         } {
-            self.op(node)
+            Self::op(node, tokenizer)
         } else if has_prop_candidate {
             Ok(node)
         } else {
-            return Err(self.tokenizer.err_msg());
+            return Err(tokenizer.err_msg());
         }
     }
 
-    fn term_num(&mut self) -> ParseResult<Node> {
+    fn term_num(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term_num");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(Token::Key(pos, val)) => {
-                match self.tokenizer.peek_token() {
+                match tokenizer.peek_token() {
                     Ok(Token::Dot(_)) => {
-                        self.term_num_float(val.as_str())
+                        Self::term_num_float(val.as_str(), tokenizer)
                     }
                     _ => {
-                        let number = utils::string_to_f64(&val, || self.tokenizer.err_msg_with_pos(pos))?;
-                        Ok(self.node(ParseToken::Number(number)))
+                        let number = utils::string_to_f64(&val, || tokenizer.err_msg_with_pos(pos))?;
+                        Ok(Self::node(ParseToken::Number(number)))
                     }
                 }
             }
             Err(TokenError::Eof) => {
-                Ok(self.node(ParseToken::Eof))
+                Ok(Self::node(ParseToken::Eof))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn term_num_float(&mut self, mut num: &str) -> ParseResult<Node> {
+    fn term_num_float(mut num: &str, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term_num_float");
-        self.eat_token();
-        match self.tokenizer.next_token() {
+        Self::eat_token(tokenizer);
+        match tokenizer.next_token() {
             Ok(Token::Key(pos, frac)) => {
                 let mut f = String::new();
                 f.push_str(&mut num);
                 f.push('.');
                 f.push_str(frac.as_str());
-                let number = utils::string_to_f64(&f, || self.tokenizer.err_msg_with_pos(pos))?;
-                Ok(self.node(ParseToken::Number(number)))
+                let number = utils::string_to_f64(&f, || tokenizer.err_msg_with_pos(pos))?;
+                Ok(Self::node(ParseToken::Number(number)))
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 
-    fn term(&mut self) -> ParseResult<Node> {
+    fn peek_key(tokenizer: &mut TokenReader) -> Option<String> {
+        if let Ok(Token::Key(_, k)) = tokenizer.peek_token() {
+            Some(k.clone())
+        } else {
+            None
+        }
+    }
+
+    fn term(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term");
-        match self.tokenizer.peek_token() {
-            Ok(Token::At(_)) => {
-                self.eat_token();
-                let node = self.node(ParseToken::Relative);
 
-                match self.tokenizer.peek_token() {
-                    Ok(Token::Whitespace(_, _)) => {
-                        self.eat_whitespace();
-                        Ok(node)
-                    }
-                    _ => {
-                        self.paths(node)
-                    }
+        if tokenizer.peek_is(AT) {
+            Self::eat_token(tokenizer);
+            let node = Self::node(ParseToken::Relative);
+
+            return match tokenizer.peek_token() {
+                Ok(Token::Whitespace(_, _)) => {
+                    Self::eat_whitespace(tokenizer);
+                    Ok(node)
                 }
-            }
-            Ok(Token::Absolute(_)) => {
-                self.json_path()
-            }
-            Ok(Token::DoubleQuoted(_, _))
-            | Ok(Token::SingleQuoted(_, _)) => {
-                self.array_quota_value()
-            }
-            Ok(Token::Key(_, _)) => {
-                self.term_num()
-            }
-            _ => {
-                Err(self.tokenizer.err_msg())
-            }
+                _ => {
+                    Self::paths(node, tokenizer)
+                }
+            };
         }
+
+        if tokenizer.peek_is(ABSOLUTE) {
+            return Self::json_path(tokenizer);
+        }
+
+        if tokenizer.peek_is(DOUBLE_QUOTA) || tokenizer.peek_is(SINGLE_QUOTA) {
+            return Self::array_quota_value(tokenizer);
+        }
+
+        if tokenizer.peek_is(KEY) {
+            return match Self::peek_key(tokenizer) {
+                Some(key) => match key.chars().next() {
+                    Some(ch) => match ch {
+                        '-' | '0'...'9' => Self::term_num(tokenizer),
+                        _ => Self::boolean(tokenizer)
+                    }
+                    _ => Err(tokenizer.err_msg())
+                },
+                _ => Err(tokenizer.err_msg())
+            };
+        }
+
+        return Err(tokenizer.err_msg());
     }
 
-    fn op(&mut self, prev: Node) -> ParseResult<Node> {
+    fn op(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#op");
-        let token = match self.tokenizer.next_token() {
+        let token = match tokenizer.next_token() {
             Ok(Token::Equal(_)) => {
                 ParseToken::Filter(FilterToken::Equal)
             }
@@ -588,90 +605,122 @@ impl<'a> Parser<'a> {
                 ParseToken::Eof
             }
             _ => {
-                return Err(self.tokenizer.err_msg());
+                return Err(tokenizer.err_msg());
             }
         };
 
-        self.eat_whitespace();
+        Self::eat_whitespace(tokenizer);
 
         Ok(Node {
             token,
             left: Some(Box::new(prev)),
-            right: Some(Box::new(self.term()?)),
+            right: Some(Box::new(Self::term(tokenizer)?)),
         })
     }
 
-    fn eat_whitespace(&mut self) {
-        while let Ok(Token::Whitespace(_, _)) = self.tokenizer.peek_token() {
-            let _ = self.tokenizer.next_token();
+    fn eat_whitespace(tokenizer: &mut TokenReader) {
+        while let Ok(Token::Whitespace(_, _)) = tokenizer.peek_token() {
+            let _ = tokenizer.next_token();
         }
     }
 
-    fn eat_token(&mut self) {
-        let _ = self.tokenizer.next_token();
+    fn eat_token(tokenizer: &mut TokenReader) {
+        let _ = tokenizer.next_token();
     }
 
-    fn node(&mut self, token: ParseToken) -> Node {
-        Node { left: None, right: None, token: token }
+    fn node(token: ParseToken) -> Node {
+        Node { left: None, right: None, token }
     }
 
-    fn close_token(&mut self, ret: Node, token: Token) -> ParseResult<Node> {
+    fn close_token(ret: Node, token: Token, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#close_token");
-        match self.tokenizer.next_token() {
+        match tokenizer.next_token() {
             Ok(ref t) if t.partial_eq(token) => {
                 Ok(ret)
             }
             _ => {
-                Err(self.tokenizer.err_msg())
+                Err(tokenizer.err_msg())
             }
         }
     }
 }
 
 pub trait NodeVisitor {
-    fn visit(&mut self, node: Node) {
-        match node.token {
+    fn visit(&mut self, node: &Node) {
+        match &node.token {
             ParseToken::Absolute
             | ParseToken::Relative
             | ParseToken::All
-            | ParseToken::Key(_) => {
-                self.visit_token(node.token);
+            | ParseToken::Key(_)
+            | ParseToken::Range(_, _)
+            | ParseToken::Union(_)
+            | ParseToken::Number(_)
+            | ParseToken::Bool(_) => {
+                self.visit_token(&node.token);
             }
             ParseToken::In
             | ParseToken::Leaves => {
-                node.left.map(|n| self.visit(*n));
-                self.visit_token(node.token);
-                node.right.map(|n| self.visit(*n));
-            }
-            | ParseToken::Range(_, _)
-            | ParseToken::Union(_)
-            | ParseToken::Number(_) => {
-                self.visit_token(node.token);
-            }
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
 
-            | ParseToken::Array => {
-                node.left.map(|n| self.visit(*n));
-                self.visit_token(node.token);
-                node.right.map(|n| self.visit(*n));
-                self.visit_token(ParseToken::ArrayEof);
+                self.visit_token(&node.token);
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+            }
+            ParseToken::Array => {
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
+                self.visit_token(&node.token);
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+                self.visit_token(&ParseToken::ArrayEof);
             }
             ParseToken::Filter(FilterToken::And)
             | ParseToken::Filter(FilterToken::Or) => {
-                node.left.map(|n| self.visit(*n));
-                node.right.map(|n| self.visit(*n));
-                self.visit_token(node.token);
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
+                self.visit_token(&node.token);
             }
             ParseToken::Filter(_) => {
-                node.left.map(|n| self.visit(*n));
+                match &node.left {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
                 self.end_term();
-                node.right.map(|n| self.visit(*n));
+
+                match &node.right {
+                    Some(n) => self.visit(&*n),
+                    _ => {}
+                }
+
                 self.end_term();
-                self.visit_token(node.token);
+
+                self.visit_token(&node.token);
             }
             _ => {}
         }
     }
 
-    fn visit_token(&mut self, token: ParseToken);
+    fn visit_token(&mut self, token: &ParseToken);
     fn end_term(&mut self) {}
 }
