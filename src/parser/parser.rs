@@ -76,7 +76,6 @@ pub struct Node {
 pub struct Parser;
 
 impl Parser {
-
     pub fn compile(input: &str) -> ParseResult<Node> {
         let mut tokenizer = TokenReader::new(input);
         Ok(Self::json_path(&mut tokenizer)?)
@@ -531,43 +530,54 @@ impl Parser {
         }
     }
 
+    fn peek_key(tokenizer: &mut TokenReader) -> Option<String> {
+        if let Ok(Token::Key(_, k)) = tokenizer.peek_token() {
+            Some(k.clone())
+        } else {
+            None
+        }
+    }
+
     fn term(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term");
-        match tokenizer.peek_token() {
-            Ok(Token::At(_)) => {
-                Self::eat_token(tokenizer);
-                let node = Self::node(ParseToken::Relative);
 
-                match tokenizer.peek_token() {
-                    Ok(Token::Whitespace(_, _)) => {
-                        Self::eat_whitespace(tokenizer);
-                        Ok(node)
-                    }
-                    _ => {
-                        Self::paths(node, tokenizer)
-                    }
+        if tokenizer.peek_is(AT) {
+            Self::eat_token(tokenizer);
+            let node = Self::node(ParseToken::Relative);
+
+            return match tokenizer.peek_token() {
+                Ok(Token::Whitespace(_, _)) => {
+                    Self::eat_whitespace(tokenizer);
+                    Ok(node)
                 }
-            }
-            Ok(Token::Absolute(_)) => {
-                Self::json_path(tokenizer)
-            }
-            Ok(Token::DoubleQuoted(_, _))
-            | Ok(Token::SingleQuoted(_, _)) => {
-                Self::array_quota_value(tokenizer)
-            }
-            Ok(Token::Key(_, k)) => {
-                match k.chars().next() {
+                _ => {
+                    Self::paths(node, tokenizer)
+                }
+            };
+        }
+
+        if tokenizer.peek_is(ABSOLUTE) {
+            return Self::json_path(tokenizer);
+        }
+
+        if tokenizer.peek_is(DOUBLE_QUOTA) || tokenizer.peek_is(SINGLE_QUOTA) {
+            return Self::array_quota_value(tokenizer);
+        }
+
+        if tokenizer.peek_is(KEY) {
+            return match Self::peek_key(tokenizer) {
+                Some(key) => match key.chars().next() {
                     Some(ch) => match ch {
                         '-' | '0'...'9' => Self::term_num(tokenizer),
                         _ => Self::boolean(tokenizer)
                     }
                     _ => Err(tokenizer.err_msg())
-                }
-            }
-            _ => {
-                Err(tokenizer.err_msg())
-            }
+                },
+                _ => Err(tokenizer.err_msg())
+            };
         }
+
+        return Err(tokenizer.err_msg());
     }
 
     fn op(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {

@@ -3,29 +3,29 @@ use std::result::Result;
 
 use super::path_reader::{PathReader, ReaderError};
 
-const ABSOLUTE: &'static str = "$";
-const DOT: &'static str = ".";
-const AT: &'static str = "@";
-const OPEN_ARRAY: &'static str = "[";
-const CLOSE_ARRAY: &'static str = "]";
-const ASTERISK: &'static str = "*";
-const QUESTION: &'static str = "?";
-const COMMA: &'static str = ",";
-const SPLIT: &'static str = ":";
-const OPEN_PARENTHESIS: &'static str = "(";
-const CLOSE_PARENTHESIS: &'static str = ")";
-const KEY: &'static str = "Key";
-const DOUBLE_QUOTA: &'static str = "\"";
-const SINGLE_QUOTA: &'static str = "'";
-const EQUAL: &'static str = "==";
-const GREATER_OR_EQUAL: &'static str = ">=";
-const GREATER: &'static str = ">";
-const LITTLE: &'static str = "<";
-const LITTLE_OR_EQUAL: &'static str = "<=";
-const NOT_EQUAL: &'static str = "!=";
-const AND: &'static str = "&&";
-const OR: &'static str = "||";
-const WHITESPACE: &'static str = " ";
+pub const ABSOLUTE: &'static str = "$";
+pub const DOT: &'static str = ".";
+pub const AT: &'static str = "@";
+pub const OPEN_ARRAY: &'static str = "[";
+pub const CLOSE_ARRAY: &'static str = "]";
+pub const ASTERISK: &'static str = "*";
+pub const QUESTION: &'static str = "?";
+pub const COMMA: &'static str = ",";
+pub const SPLIT: &'static str = ":";
+pub const OPEN_PARENTHESIS: &'static str = "(";
+pub const CLOSE_PARENTHESIS: &'static str = ")";
+pub const KEY: &'static str = "Key";
+pub const DOUBLE_QUOTA: &'static str = "\"";
+pub const SINGLE_QUOTA: &'static str = "'";
+pub const EQUAL: &'static str = "==";
+pub const GREATER_OR_EQUAL: &'static str = ">=";
+pub const GREATER: &'static str = ">";
+pub const LITTLE: &'static str = "<";
+pub const LITTLE_OR_EQUAL: &'static str = "<=";
+pub const NOT_EQUAL: &'static str = "!=";
+pub const AND: &'static str = "&&";
+pub const OR: &'static str = "||";
+pub const WHITESPACE: &'static str = " ";
 
 const CH_DOLLA: char = '$';
 const CH_DOT: char = '.';
@@ -89,6 +89,10 @@ pub enum Token {
 impl Token {
     pub fn partial_eq(&self, other: Token) -> bool {
         self.to_simple() == other.to_simple()
+    }
+
+    pub fn simple_eq(&self, str_token: &str) -> bool {
+        self.to_simple() == str_token
     }
 
     fn to_simple(&self) -> &'static str {
@@ -302,6 +306,13 @@ impl<'a> TokenReader<'a> {
                     };
                 }
             }
+        }
+    }
+
+    pub fn peek_is(&self, simple_token: &str) -> bool {
+        match self.peek_token() {
+            Ok(t) => t.simple_eq(simple_token),
+            _ => false
         }
     }
 

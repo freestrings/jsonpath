@@ -86,15 +86,18 @@ pub fn compile(path: &str) -> JsValue {
     let node = Parser::compile(path);
 
     let cb = Closure::wrap(Box::new(move |js_value: JsValue| {
-        let mut selector = _Selector::new();
-        match &node {
-            Ok(node) => selector.compiled_path(node),
-            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone())))
-        };
         let json = match into_serde_json(&js_value) {
             Ok(json) => json,
             Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
         };
+
+        let mut selector = _Selector::new();
+
+        match &node {
+            Ok(node) => selector.compiled_path(node),
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone())))
+        };
+
         match selector.value(&json).select() {
             Ok(ret) => match JsValue::from_serde(&ret) {
                 Ok(ret) => ret,

@@ -1004,6 +1004,49 @@ pub struct SelectorMut {
     value: Option<Value>,
 }
 
+fn replace_value<F: FnMut(&Value) -> Value>(tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+    let mut target = value;
+
+    for (i, token) in tokens.iter().enumerate() {
+        let target_once = target;
+        let is_last = i == tokens.len() - 1;
+        let target_opt = match *target_once {
+            Value::Object(ref mut map) => {
+                if is_last {
+                    let v = if let Some(v) = map.get(token) {
+                        fun(v)
+                    } else {
+                        return;
+                    };
+
+                    map.insert(token.clone(), v);
+                    return;
+                }
+                map.get_mut(token)
+            }
+            Value::Array(ref mut vec) => {
+                if let Ok(x) = token.parse::<usize>() {
+                    if is_last {
+                        let v = { fun(&vec[x]) };
+                        vec[x] = v;
+                        return;
+                    }
+                    vec.get_mut(x)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(t) = target_opt {
+            target = t;
+        } else {
+            break;
+        }
+    }
+}
+
 impl SelectorMut {
     pub fn new() -> Self {
         SelectorMut { path: None, value: None }
@@ -1012,11 +1055,6 @@ impl SelectorMut {
     pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
         self.path = Some(Parser::compile(path).map_err(|e| JsonPathError::Path(e))?);
         Ok(self)
-    }
-
-    pub fn compiled_path(&mut self, node: Node) -> &mut Self {
-        self.path = Some(node);
-        self
     }
 
     pub fn value(&mut self, value: Value) -> &mut Self {
@@ -1080,76 +1118,33 @@ impl SelectorMut {
         self.replace_with(&mut |_| Value::Null)
     }
 
-    pub fn replace_with<F: FnMut(&Value) -> Value>(&mut self, fun: &mut F) -> Result<&mut Self, JsonPathError> {
-        if self.path.is_none() {
-            return Err(JsonPathError::EmptyPath);
-        }
+    fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
+        if let Some(node) = &self.path {
+            let mut selector = Selector::new();
+            selector.compiled_path(&node);
 
-        let node = self.path.take().unwrap();
-
-        let mut selector = Selector::new();
-        selector.compiled_path(&node);
-
-        if let Some(value) = &self.value {
-            selector.value(value);
-        }
-
-        let result = selector.select();
-
-        self.path = Some(node);
-
-        let paths = self.compute_paths(result?);
-
-        if let Some(mut value) = self.value.take() {
-            for tokens in paths {
-                self.replace_value(tokens, &mut value, fun);
+            if let Some(value) = &self.value {
+                selector.value(value);
             }
-            self.value = Some(value);
+
+            Ok(selector.select()?)
+        } else {
+            Err(JsonPathError::EmptyPath)
+        }
+    }
+
+    pub fn replace_with<F: FnMut(&Value) -> Value>(&mut self, fun: &mut F) -> Result<&mut Self, JsonPathError> {
+        let paths = {
+            let result = self.select()?;
+            self.compute_paths(result)
+        };
+
+        if let Some(ref mut value) = &mut self.value {
+            for tokens in paths {
+                replace_value(tokens, value, fun);
+            }
         }
 
         Ok(self)
-    }
-
-    fn replace_value<F: FnMut(&Value) -> Value>(&mut self, tokens: Vec<String>, value: &mut Value, fun: &mut F) {
-        let mut target = value;
-
-        for (i, token) in tokens.iter().enumerate() {
-            let target_once = target;
-            let is_last = i == tokens.len() - 1;
-            let target_opt = match *target_once {
-                Value::Object(ref mut map) => {
-                    if is_last {
-                        let v = if let Some(v) = map.get(token) {
-                            fun(v)
-                        } else {
-                            return;
-                        };
-
-                        map.insert(token.clone(), v);
-                        return;
-                    }
-                    map.get_mut(token)
-                }
-                Value::Array(ref mut vec) => {
-                    if let Ok(x) = token.parse::<usize>() {
-                        if is_last {
-                            let v = &vec[x];
-                            vec[x] = fun(v);
-                            return;
-                        }
-                        vec.get_mut(x)
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            };
-
-            if let Some(t) = target_opt {
-                target = t;
-            } else {
-                break;
-            }
-        }
     }
 }

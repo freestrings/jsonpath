@@ -1,5 +1,4 @@
 #![feature(test)]
-
 extern crate bencher;
 extern crate jsonpath_lib as jsonpath;
 extern crate serde;
