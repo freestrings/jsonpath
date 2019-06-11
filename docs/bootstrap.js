@@ -55,14 +55,17 @@
 /******/ 		"../all_pkg/jsonpath_wasm_bg.wasm": function() {
 /******/ 			return {
 /******/ 				"./jsonpath_wasm": {
-/******/ 					"__wbindgen_string_new": function(p0i32,p1i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_string_new"](p0i32,p1i32);
+/******/ 					"__wbindgen_cb_forget": function(p0i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_cb_forget"](p0i32);
+/******/ 					},
+/******/ 					"__wbg_error_af8a3e3880eae1c8": function(p0i32,p1i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbg_error_af8a3e3880eae1c8"](p0i32,p1i32);
 /******/ 					},
 /******/ 					"__wbindgen_object_drop_ref": function(p0i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_object_drop_ref"](p0i32);
 /******/ 					},
-/******/ 					"__wbindgen_cb_forget": function(p0i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_cb_forget"](p0i32);
+/******/ 					"__wbindgen_string_new": function(p0i32,p1i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_string_new"](p0i32,p1i32);
 /******/ 					},
 /******/ 					"__wbindgen_json_parse": function(p0i32,p1i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_json_parse"](p0i32,p1i32);
@@ -70,11 +73,8 @@
 /******/ 					"__wbindgen_json_serialize": function(p0i32,p1i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_json_serialize"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__widl_f_log_1_": function(p0i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__widl_f_log_1_"](p0i32);
-/******/ 					},
-/******/ 					"__wbindgen_number_get": function(p0i32,p1i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_number_get"](p0i32,p1i32);
+/******/ 					"__wbg_call_88d2a6153573084e": function(p0i32,p1i32,p2i32,p3i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbg_call_88d2a6153573084e"](p0i32,p1i32,p2i32,p3i32);
 /******/ 					},
 /******/ 					"__wbindgen_is_string": function(p0i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_is_string"](p0i32);
@@ -85,17 +85,20 @@
 /******/ 					"__wbindgen_object_clone_ref": function(p0i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_object_clone_ref"](p0i32);
 /******/ 					},
+/******/ 					"__wbindgen_debug_string": function(p0i32,p1i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_debug_string"](p0i32,p1i32);
+/******/ 					},
 /******/ 					"__wbindgen_throw": function(p0i32,p1i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_throw"](p0i32,p1i32);
 /******/ 					},
 /******/ 					"__wbindgen_rethrow": function(p0i32) {
 /******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_rethrow"](p0i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper111": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper111"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper22": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper22"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper113": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper113"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper24": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["../all_pkg/jsonpath_wasm.js"].exports["__wbindgen_closure_wrapper24"](p0i32,p1i32,p2i32);
 /******/ 					}
 /******/ 				}
 /******/ 			};
@@ -195,7 +198,7 @@
 /******/ 				promises.push(installedWasmModuleData);
 /******/ 			else {
 /******/ 				var importObject = wasmImportObjects[wasmModuleId]();
-/******/ 				var req = fetch(__webpack_require__.p + "" + {"../all_pkg/jsonpath_wasm_bg.wasm":"89ad85706c624c3a6274"}[wasmModuleId] + ".module.wasm");
+/******/ 				var req = fetch(__webpack_require__.p + "" + {"../all_pkg/jsonpath_wasm_bg.wasm":"7a2fe8020c3403dd4ce6"}[wasmModuleId] + ".module.wasm");
 /******/ 				var promise;
 /******/ 				if(importObject instanceof Promise && typeof WebAssembly.compileStreaming === 'function') {
 /******/ 					promise = Promise.all([WebAssembly.compileStreaming(req), importObject]).then(function(items) {
