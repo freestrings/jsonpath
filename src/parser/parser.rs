@@ -377,7 +377,7 @@ impl Parser {
         debug!("#range_to");
         match tokenizer.peek_token() {
             Ok(Token::CloseArray(_)) => {
-                return Ok(Self::node(ParseToken::Range(None, None)))
+                return Ok(Self::node(ParseToken::Range(None, None)));
             }
             _ => {}
         }

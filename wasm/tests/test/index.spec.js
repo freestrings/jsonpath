@@ -822,3 +822,12 @@ describe('README test', () => {
         }
     });
 });
+
+describe('ISSUE test', () => {
+    it('Results do not match other implementations #6', (done) => {
+        let result = jsonpath.select(["first", "second"], "$[:]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "second"])) {
+            done();
+        }
+    });
+});
