@@ -4,7 +4,7 @@ pub mod parser;
 
 #[cfg(test)]
 mod parser_tests {
-    use parser::parser::{ParseToken, Parser, NodeVisitor, FilterToken};
+    use parser::parser::{FilterToken, NodeVisitor, Parser, ParseToken};
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,
@@ -270,6 +270,20 @@ mod parser_tests {
             ParseToken::ArrayEof
         ]));
 
+        assert_eq!(run(r#"$['single\'quote']"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Key("single'quote".to_string()),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$["single\"quote"]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Key(r#"single"quote"#.to_string()),
+            ParseToken::ArrayEof
+        ]));
+
         match run("$[") {
             Ok(_) => panic!(),
             _ => {}
@@ -338,6 +352,10 @@ mod parser_tests {
 mod tokenizer_tests {
     use parser::tokenizer::{Token, TokenError, Tokenizer, TokenReader};
 
+    fn setup() {
+        let _ = env_logger::try_init();
+    }
+
     fn collect_token(input: &str) -> (Vec<Token>, Option<TokenError>) {
         let mut tokenizer = Tokenizer::new(input);
         let mut vec = vec![];
@@ -380,6 +398,8 @@ mod tokenizer_tests {
 
     #[test]
     fn token() {
+        setup();
+
         run("$.01.a",
             (
                 vec![
@@ -533,6 +553,20 @@ mod tokenizer_tests {
             Token::OpenArray(1),
             Token::Split(2),
             Token::CloseArray(3)
+        ], Some(TokenError::Eof)));
+
+        run(r#"$['single\'quote']"#, (vec![
+            Token::Absolute(0),
+            Token::OpenArray(1),
+            Token::SingleQuoted(2, "single\'quote".to_string()),
+            Token::CloseArray(17)
+        ], Some(TokenError::Eof)));
+
+        run(r#"$["double\"quote"]"#, (vec![
+            Token::Absolute(0),
+            Token::OpenArray(1),
+            Token::DoubleQuoted(2, "double\"quote".to_string()),
+            Token::CloseArray(17)
         ], Some(TokenError::Eof)));
     }
 }

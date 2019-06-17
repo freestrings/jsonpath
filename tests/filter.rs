@@ -357,3 +357,11 @@ fn empty_range() {
 
     select_and_then_compare("$[:]", json!(["first", "second"]), json!(["first", "second"]));
 }
+
+#[test]
+fn quote() {
+    setup();
+
+    select_and_then_compare(r#"$['single\'quote']"#, json!({"single'quote":"value"}), json!(["value"]));
+    select_and_then_compare(r#"$["double\"quote"]"#, json!({"double\"quote":"value"}), json!(["value"]));
+}
