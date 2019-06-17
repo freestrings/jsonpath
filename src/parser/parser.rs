@@ -375,6 +375,13 @@ impl Parser {
 
     fn range_to(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range_to");
+        match tokenizer.peek_token() {
+            Ok(Token::CloseArray(_)) => {
+                return Ok(Self::node(ParseToken::Range(None, None)))
+            }
+            _ => {}
+        }
+
         match tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
                 let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;

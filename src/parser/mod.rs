@@ -263,6 +263,13 @@ mod parser_tests {
             ParseToken::ArrayEof
         ]));
 
+        assert_eq!(run("$[:]"), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None),
+            ParseToken::ArrayEof
+        ]));
+
         match run("$[") {
             Ok(_) => panic!(),
             _ => {}
@@ -520,5 +527,12 @@ mod tokenizer_tests {
             ]
             , Some(TokenError::Eof)
         ));
+
+        run("$[:]", (vec![
+            Token::Absolute(0),
+            Token::OpenArray(1),
+            Token::Split(2),
+            Token::CloseArray(3)
+        ], Some(TokenError::Eof)));
     }
 }

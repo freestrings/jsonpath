@@ -350,3 +350,10 @@ fn filer_same_obj() {
         {"a": 1}
     ]));
 }
+
+#[test]
+fn empty_range() {
+    setup();
+
+    select_and_then_compare("$[:]", json!(["first", "second"]), json!(["first", "second"]));
+}
