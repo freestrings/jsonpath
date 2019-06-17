@@ -352,10 +352,17 @@ fn filer_same_obj() {
 }
 
 #[test]
-fn empty_range() {
+fn range() {
     setup();
 
     select_and_then_compare("$[:]", json!(["first", "second"]), json!(["first", "second"]));
+    select_and_then_compare("$[::]", json!(["first", "second", "third", "forth", "fifth"]), json!(["first", "second", "third", "forth", "fifth"]));
+    select_and_then_compare("$[::2]", json!(["first", "second", "third", "forth", "fifth"]), json!(["first", "third", "fifth"]));
+    select_and_then_compare("$[1: :]", json!(["first", "second", "third", "forth", "fifth"]), json!(["second", "third", "forth", "fifth"]));
+    select_and_then_compare("$[1:2:]", json!(["first", "second", "third", "forth", "fifth"]), json!(["second"]));
+    select_and_then_compare("$[1::2]", json!(["first", "second", "third", "forth", "fifth"]), json!(["second", "forth"]));
+    select_and_then_compare("$[0:3:1]", json!(["first", "second", "third", "forth", "fifth"]), json!(["first", "second", "third"]));
+    select_and_then_compare("$[0:3:2]", json!(["first", "second", "third", "forth", "fifth"]), json!(["first", "third"]));
 }
 
 #[test]

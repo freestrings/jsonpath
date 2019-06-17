@@ -162,21 +162,56 @@ mod parser_tests {
         assert_eq!(run("$.a[10:]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,
-            ParseToken::Range(Some(10), None),
+            ParseToken::Range(Some(10), None, None),
             ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[:11]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,
-            ParseToken::Range(None, Some(11)),
+            ParseToken::Range(None, Some(11), None),
             ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[-12:13]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,
-            ParseToken::Range(Some(-12), Some(13)),
+            ParseToken::Range(Some(-12), Some(13), None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[0:3:2]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(Some(0), Some(3), Some(2)),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[:3:2]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, Some(3), Some(2)),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[:]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[::]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[::2]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, Some(2)),
             ParseToken::ArrayEof
         ]));
 
@@ -266,7 +301,7 @@ mod parser_tests {
         assert_eq!(run("$[:]"), Ok(vec![
             ParseToken::Absolute,
             ParseToken::Array,
-            ParseToken::Range(None, None),
+            ParseToken::Range(None, None, None),
             ParseToken::ArrayEof
         ]));
 

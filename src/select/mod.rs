@@ -933,7 +933,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                     unreachable!()
                 }
             }
-            ParseToken::Range(from, to) => {
+            ParseToken::Range(from, to, step) => {
                 if !self.terms.is_empty() {
                     unimplemented!("range syntax in filter");
                 }
@@ -955,7 +955,10 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                                     vec.len()
                                 };
 
-                                for i in from..to {
+                                for i in (from..to).step_by(match step {
+                                    Some(step) => *step,
+                                    _ => 1
+                                }) {
                                     if let Some(v) = vec.get(i) {
                                         tmp.push(v);
                                     }

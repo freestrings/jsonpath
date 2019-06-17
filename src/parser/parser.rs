@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::tokenizer::*;
 
 const DUMMY: usize = 0;
@@ -5,17 +7,12 @@ const DUMMY: usize = 0;
 type ParseResult<T> = Result<T, String>;
 
 mod utils {
-    pub fn string_to_isize<F>(string: &String, msg_handler: F) -> Result<isize, String>
-        where F: Fn() -> String {
-        match string.as_str().parse::<isize>() {
-            Ok(n) => Ok(n),
-            _ => Err(msg_handler())
-        }
-    }
+    use std::str::FromStr;
 
-    pub fn string_to_f64<F>(string: &String, msg_handler: F) -> Result<f64, String>
-        where F: Fn() -> String {
-        match string.as_str().parse::<f64>() {
+    pub fn string_to_num<F, S: FromStr>(string: &String, msg_handler: F) -> Result<S, String>
+        where F: Fn() -> String
+    {
+        match string.as_str().parse() {
             Ok(n) => Ok(n),
             _ => Err(msg_handler())
         }
@@ -43,7 +40,7 @@ pub enum ParseToken {
     // ?( filter )
     Filter(FilterToken),
     // 1 : 2
-    Range(Option<isize>, Option<isize>),
+    Range(Option<isize>, Option<isize>, Option<usize>),
     // 1, 2, 3
     Union(Vec<isize>),
 
@@ -291,7 +288,7 @@ impl Parser {
         debug!("#array_value_key");
         match tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
-                let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
+                let digit = utils::string_to_num(val, || tokenizer.err_msg_with_pos(pos))?;
                 Self::eat_whitespace(tokenizer);
 
                 match tokenizer.peek_token() {
@@ -348,7 +345,7 @@ impl Parser {
             Self::eat_whitespace(tokenizer);
             match tokenizer.next_token() {
                 Ok(Token::Key(pos, ref val)) => {
-                    let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
+                    let digit = utils::string_to_num(val, || tokenizer.err_msg_with_pos(pos))?;
                     values.push(digit);
                 }
                 _ => {
@@ -359,33 +356,70 @@ impl Parser {
         Ok(Self::node(ParseToken::Union(values)))
     }
 
-    fn range_from(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn range_value<S: FromStr>(tokenizer: &mut TokenReader) -> Result<Option<S>, String> {
+        if tokenizer.peek_is(SPLIT) {
+            Self::eat_token(tokenizer);
+            Self::eat_whitespace(tokenizer);
+
+            if tokenizer.peek_is(KEY) {
+                match tokenizer.next_token() {
+                    Ok(Token::Key(pos, str_step)) => {
+                        match utils::string_to_num(&str_step, || tokenizer.err_msg_with_pos(pos)) {
+                            Ok(step) => Ok(Some(step)),
+                            Err(e) => Err(e)
+                        }
+                    }
+                    _ => Ok(None)
+                }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn range_from(from: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range_from");
         Self::eat_token(tokenizer);
         Self::eat_whitespace(tokenizer);
+
         match tokenizer.peek_token() {
             Ok(Token::Key(_, _)) => {
-                Self::range(num, tokenizer)
+                Self::range(from, tokenizer)
+            }
+            Ok(Token::Split(_)) => {
+                match Self::range_value(tokenizer)? {
+                    Some(step) => Ok(Self::node(ParseToken::Range(Some(from), None, Some(step)))),
+                    _ => Ok(Self::node(ParseToken::Range(Some(from), None, None)))
+                }
             }
             _ => {
-                Ok(Self::node(ParseToken::Range(Some(num), None)))
+                Ok(Self::node(ParseToken::Range(Some(from), None, None)))
             }
         }
     }
 
     fn range_to(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range_to");
+
+        match Self::range_value(tokenizer)? {
+            Some(step) => return Ok(Self::node(ParseToken::Range(None, None, Some(step)))),
+            _ => {}
+        }
+
         match tokenizer.peek_token() {
             Ok(Token::CloseArray(_)) => {
-                return Ok(Self::node(ParseToken::Range(None, None)));
+                return Ok(Self::node(ParseToken::Range(None, None, None)));
             }
             _ => {}
         }
 
         match tokenizer.next_token() {
-            Ok(Token::Key(pos, ref val)) => {
-                let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
-                Ok(Self::node(ParseToken::Range(None, Some(digit))))
+            Ok(Token::Key(pos, ref to_str)) => {
+                let to = utils::string_to_num(to_str, || tokenizer.err_msg_with_pos(pos))?;
+                let step = Self::range_value(tokenizer)?;
+                Ok(Self::node(ParseToken::Range(None, Some(to), step)))
             }
             _ => {
                 Err(tokenizer.err_msg())
@@ -393,12 +427,13 @@ impl Parser {
         }
     }
 
-    fn range(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn range(from: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range");
         match tokenizer.next_token() {
-            Ok(Token::Key(pos, ref val)) => {
-                let digit = utils::string_to_isize(val, || tokenizer.err_msg_with_pos(pos))?;
-                Ok(Self::node(ParseToken::Range(Some(num), Some(digit))))
+            Ok(Token::Key(pos, ref str_to)) => {
+                let to = utils::string_to_num(str_to, || tokenizer.err_msg_with_pos(pos))?;
+                let step = Self::range_value(tokenizer)?;
+                Ok(Self::node(ParseToken::Range(Some(from), Some(to), step)))
             }
             _ => {
                 Err(tokenizer.err_msg())
@@ -505,7 +540,7 @@ impl Parser {
                         Self::term_num_float(val.as_str(), tokenizer)
                     }
                     _ => {
-                        let number = utils::string_to_f64(&val, || tokenizer.err_msg_with_pos(pos))?;
+                        let number = utils::string_to_num(&val, || tokenizer.err_msg_with_pos(pos))?;
                         Ok(Self::node(ParseToken::Number(number)))
                     }
                 }
@@ -528,7 +563,7 @@ impl Parser {
                 f.push_str(&mut num);
                 f.push('.');
                 f.push_str(frac.as_str());
-                let number = utils::string_to_f64(&f, || tokenizer.err_msg_with_pos(pos))?;
+                let number = utils::string_to_num(&f, || tokenizer.err_msg_with_pos(pos))?;
                 Ok(Self::node(ParseToken::Number(number)))
             }
             _ => {
@@ -659,7 +694,7 @@ pub trait NodeVisitor {
             | ParseToken::Relative
             | ParseToken::All
             | ParseToken::Key(_)
-            | ParseToken::Range(_, _)
+            | ParseToken::Range(_, _, _)
             | ParseToken::Union(_)
             | ParseToken::Number(_)
             | ParseToken::Bool(_) => {
