@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="selector" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+  <configuration default="false" name="mutable" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="channel" value="DEFAULT" />
-    <option name="command" value="test --package jsonpath_lib --test selector &quot;&quot;" />
+    <option name="command" value="test --package jsonpath_lib --test mutable &quot;&quot;" />
     <option name="allFeatures" value="false" />
     <option name="nocapture" value="false" />
     <option name="backtrace" value="SHORT" />
