@@ -31,11 +31,15 @@ pub fn read_contents(path: &str) -> String {
 
 #[allow(dead_code)]
 pub fn select_and_then_compare<'a>(path: &str, json: Value, target: Value) {
-    let mut s = Selector::new();
-    let _ = s.str_path(path);
-    let _ = s.value(&json);
-    let result = serde_json::to_value(s.select().unwrap()).unwrap();
-    assert_eq!(result, target, "{}", path);
+    let mut selector = Selector::new();
+    let result = selector.str_path(path).unwrap()
+        .value(&json)
+        .select_as::<Value>().unwrap();
+
+    assert_eq!(result, match target {
+        Value::Array(vec) => vec,
+        _ => panic!("Give me the Array!")
+    }, "{}", path);
 }
 
 #[allow(dead_code)]
