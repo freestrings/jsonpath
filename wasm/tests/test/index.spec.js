@@ -412,6 +412,20 @@ describe('filter test', () => {
             done();
         }
     });
+
+    it('escaped single quote notation', (done) => {
+        let result = jsonpath.select({"single'quote":"value"}, "$['single\\'quote']");
+        if (JSON.stringify(result) === JSON.stringify(["value"])) {
+            done();
+        }
+    });
+
+    it('escaped double quote notation', (done) => {
+        let result = jsonpath.select({"single\"quote":"value"}, "$['single\"quote']");
+        if (JSON.stringify(result) === JSON.stringify(["value"])) {
+            done();
+        }
+    });
 });
 
 describe('SelectorMut test', () => {

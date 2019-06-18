@@ -398,6 +398,34 @@ describe('filter test', () => {
             run (done, i, list[i]);
         })
     }
+
+    it('object equal', (done) => {
+        let selector = new jsonpath.Selector();
+        selector.path('$..[?(@.a == 1)]');
+        selector.value({
+            'a': 1,
+            'b': {'a': 1},
+            'c': {'a': 1},
+        });
+        let result = selector.select();
+        if (JSON.stringify(result) === JSON.stringify([{'a': 1}, {'a': 1}])) {
+            done();
+        }
+    });
+
+    it('escaped single quote notation', (done) => {
+        let result = jsonpath.select({"single'quote":"value"}, "$['single\\'quote']");
+        if (JSON.stringify(result) === JSON.stringify(["value"])) {
+            done();
+        }
+    });
+
+    it('escaped double quote notation', (done) => {
+        let result = jsonpath.select({"single\"quote":"value"}, "$['single\"quote']");
+        if (JSON.stringify(result) === JSON.stringify(["value"])) {
+            done();
+        }
+    });
 });
 
 describe('SelectorMut test', () => {
