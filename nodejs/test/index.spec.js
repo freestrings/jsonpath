@@ -426,6 +426,55 @@ describe('filter test', () => {
             done();
         }
     });
+
+    it('array range with step - $[::]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[::]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "second", "third", "forth", "fifth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[::2]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[::2]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "third", "fifth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[1: :]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[1: :]");
+        if (JSON.stringify(result) === JSON.stringify(["second", "third", "forth", "fifth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[1:2:]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[1:2:]");
+        if (JSON.stringify(result) === JSON.stringify(["second"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[1::2]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[1::2]");
+        if (JSON.stringify(result) === JSON.stringify(["second", "forth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[0:3:1]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[0:3:1]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "second", "third"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[0:3:2]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[0:3:2]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "third"])) {
+            done();
+        }
+    });
 });
 
 describe('SelectorMut test', () => {
