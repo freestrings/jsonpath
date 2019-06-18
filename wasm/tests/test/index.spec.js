@@ -475,6 +475,16 @@ describe('filter test', () => {
             done();
         }
     });
+
+    it('array keys', (done) => {
+        let result = jsonpath.select({
+            "key1": "value1",
+            "key2": 2
+        }, "$['key1', 'key2']");
+        if (JSON.stringify(result) === JSON.stringify(["value1", 2])) {
+            done();
+        }
+    });
 });
 
 describe('SelectorMut test', () => {
