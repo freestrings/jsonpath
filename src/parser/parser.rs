@@ -33,6 +33,7 @@ pub enum ParseToken {
     All,
 
     Key(String),
+    Keys(Vec<String>),
     // []
     Array,
     // 메타토큰
@@ -232,12 +233,39 @@ impl Parser {
         }
     }
 
-    fn array_quota_value(tokenizer: &mut TokenReader) -> ParseResult<Node> {
-        debug!("#array_quota_value");
+    fn array_keys(tokenizer: &mut TokenReader, first_key: String) -> ParseResult<Node> {
+        let mut keys = vec![first_key];
+        while tokenizer.peek_is(COMMA) {
+            Self::eat_token(tokenizer);
+            Self::eat_whitespace(tokenizer);
+
+            if !(tokenizer.peek_is(SINGLE_QUOTE) || tokenizer.peek_is(DOUBLE_QUOTE)) {
+                return Err(tokenizer.err_msg());
+            }
+
+            match tokenizer.next_token() {
+                Ok(Token::SingleQuoted(_, val))
+                | Ok(Token::DoubleQuoted(_, val)) => {
+                    keys.push(val);
+                }
+                _ => {}
+            }
+
+            Self::eat_whitespace(tokenizer);
+        }
+
+        Ok(Self::node(ParseToken::Keys(keys)))
+    }
+
+    fn array_quote_value(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+        debug!("#array_quote_value");
         match tokenizer.next_token() {
-            Ok(Token::SingleQuoted(_, val))
-            | Ok(Token::DoubleQuoted(_, val)) => {
-                Ok(Self::node(ParseToken::Key(val)))
+            Ok(Token::SingleQuoted(_, val)) | Ok(Token::DoubleQuoted(_, val)) => {
+                if !tokenizer.peek_is(COMMA) {
+                    Ok(Self::node(ParseToken::Key(val)))
+                } else {
+                    Self::array_keys(tokenizer, val)
+                }
             }
             Err(TokenError::Eof) => {
                 Ok(Self::node(ParseToken::Eof))
@@ -322,7 +350,7 @@ impl Parser {
             }
             Ok(Token::DoubleQuoted(_, _))
             | Ok(Token::SingleQuoted(_, _)) => {
-                Self::array_quota_value(tokenizer)
+                Self::array_quote_value(tokenizer)
             }
             Err(TokenError::Eof) => {
                 Ok(Self::node(ParseToken::Eof))
@@ -602,8 +630,8 @@ impl Parser {
             return Self::json_path(tokenizer);
         }
 
-        if tokenizer.peek_is(DOUBLE_QUOTA) || tokenizer.peek_is(SINGLE_QUOTA) {
-            return Self::array_quota_value(tokenizer);
+        if tokenizer.peek_is(DOUBLE_QUOTE) || tokenizer.peek_is(SINGLE_QUOTE) {
+            return Self::array_quote_value(tokenizer);
         }
 
         if tokenizer.peek_is(KEY) {
@@ -694,6 +722,7 @@ pub trait NodeVisitor {
             | ParseToken::Relative
             | ParseToken::All
             | ParseToken::Key(_)
+            | ParseToken::Keys(_)
             | ParseToken::Range(_, _, _)
             | ParseToken::Union(_)
             | ParseToken::Number(_)

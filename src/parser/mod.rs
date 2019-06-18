@@ -215,6 +215,13 @@ mod parser_tests {
             ParseToken::ArrayEof
         ]));
 
+        assert_eq!(run(r#"$["a", 'b']"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Keys(vec!["a".to_string(), "b".to_string()]),
+            ParseToken::ArrayEof
+        ]));
+
         assert_eq!(run("$.a[?(1>2)]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,

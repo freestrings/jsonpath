@@ -15,8 +15,8 @@ pub const SPLIT: &'static str = ":";
 pub const OPEN_PARENTHESIS: &'static str = "(";
 pub const CLOSE_PARENTHESIS: &'static str = ")";
 pub const KEY: &'static str = "Key";
-pub const DOUBLE_QUOTA: &'static str = "\"";
-pub const SINGLE_QUOTA: &'static str = "'";
+pub const DOUBLE_QUOTE: &'static str = "\"";
+pub const SINGLE_QUOTE: &'static str = "'";
 pub const EQUAL: &'static str = "==";
 pub const GREATER_OR_EQUAL: &'static str = ">=";
 pub const GREATER: &'static str = ">";
@@ -109,8 +109,8 @@ impl Token {
             Token::OpenParenthesis(_) => OPEN_PARENTHESIS,
             Token::CloseParenthesis(_) => CLOSE_PARENTHESIS,
             Token::Key(_, _) => KEY,
-            Token::DoubleQuoted(_, _) => DOUBLE_QUOTA,
-            Token::SingleQuoted(_, _) => SINGLE_QUOTA,
+            Token::DoubleQuoted(_, _) => DOUBLE_QUOTE,
+            Token::SingleQuoted(_, _) => SINGLE_QUOTE,
             Token::Equal(_) => EQUAL,
             Token::GreaterOrEqual(_) => GREATER_OR_EQUAL,
             Token::Greater(_) => GREATER,

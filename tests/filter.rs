@@ -40,6 +40,10 @@ fn array() {
     select_and_then_compare("$['school']['friends'][0].['name']", read_json("./benches/data_obj.json"), json!([
         "Millicent Norman"
     ]));
+
+    select_and_then_compare(r#"$.["eyeColor", "name"]"#, read_json("./benches/data_obj.json"), json!([
+        "blue", "Leonor Herman"
+    ]));
 }
 
 #[test]
