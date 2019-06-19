@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt;
 
 use array_tool::vec::{Intersect, Union};
 use indexmap::IndexMap;
@@ -514,12 +515,28 @@ enum FilterKey {
     All,
 }
 
-#[derive(Debug)]
 pub enum JsonPathError {
     EmptyPath,
     EmptyValue,
     Path(String),
     Serde(String),
+}
+
+impl fmt::Debug for JsonPathError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl fmt::Display for JsonPathError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            JsonPathError::EmptyPath => f.write_str("path not set"),
+            JsonPathError::EmptyValue => f.write_str("json value not set"),
+            JsonPathError::Path(msg) => f.write_str(&format!("path error: \n{}\n", msg)),
+            JsonPathError::Serde(msg) => f.write_str(&format!("serde error: \n{}\n", msg)),
+        }
+    }
 }
 
 #[derive(Debug)]

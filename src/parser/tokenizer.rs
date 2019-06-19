@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::result::Result;
 
 use super::path_reader::{PathReader, ReaderError};
@@ -368,13 +367,7 @@ impl<'a> TokenReader<'a> {
     }
 
     pub fn err_msg_with_pos(&self, pos: usize) -> String {
-        let mut w = Vec::new();
-        writeln!(&mut w, "{}", self.origin_input).unwrap();
-        writeln!(&mut w, "{}", "^".repeat(pos)).unwrap();
-        match std::str::from_utf8(&w[..]) {
-            Ok(s) => s.to_owned(),
-            Err(_) => panic!("Invalid UTF-8"),
-        }
+        format!("{}\n{}", self.origin_input, "^".repeat(pos))
     }
 
     pub fn err_msg(&self) -> String {
