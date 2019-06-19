@@ -693,20 +693,22 @@ impl<'a, 'b> Selector<'a, 'b> {
         debug!("next_from_current_with_num : {:?}, {:?}", &index, self.current);
     }
 
-    fn next_from_current_with_str(&mut self, key: &str) {
-        fn _collect<'a>(v: &'a Value, tmp: &mut Vec<&'a Value>, key: &str, visited: &mut HashSet<*const Value>) {
+    fn next_from_current_with_str(&mut self, keys: &Vec<String>) {
+        fn _collect<'a>(v: &'a Value, tmp: &mut Vec<&'a Value>, keys: &Vec<String>, visited: &mut HashSet<*const Value>) {
             match v {
                 Value::Object(map) => {
-                    if let Some(v) = map.get(key) {
-                        let ptr = v as *const Value;
-                        if !visited.contains(&ptr) {
-                            visited.insert(ptr);
-                            tmp.push(v)
+                    for key in keys {
+                        if let Some(v) = map.get(key) {
+                            let ptr = v as *const Value;
+                            if !visited.contains(&ptr) {
+                                visited.insert(ptr);
+                                tmp.push(v)
+                            }
                         }
                     }
                 }
                 Value::Array(vec) => for v in vec {
-                    _collect(v, tmp, key, visited);
+                    _collect(v, tmp, keys, visited);
                 }
                 _ => {}
             }
@@ -716,12 +718,12 @@ impl<'a, 'b> Selector<'a, 'b> {
             let mut tmp = Vec::new();
             let mut visited = HashSet::new();
             for c in current {
-                _collect(c, &mut tmp, key, &mut visited);
+                _collect(c, &mut tmp, keys, &mut visited);
             }
             self.current = Some(tmp);
         }
 
-        debug!("next_from_current_with_str : {}, {:?}", key, self.current);
+        debug!("next_from_current_with_str : {:?}, {:?}", keys, self.current);
     }
 
     fn next_all_from_current(&mut self) {
@@ -838,7 +840,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                             self.next_from_current_with_num(to_f64(&n));
                         }
                         ExprTerm::String(key) => {
-                            self.next_from_current_with_str(&key);
+                            self.next_from_current_with_str(&vec![key]);
                         }
                         ExprTerm::Json(_, v) => {
                             if v.is_empty() {
@@ -886,7 +888,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                                     self.all_from_current_with_str(key.as_str())
                                 }
                                 ParseToken::In => {
-                                    self.next_from_current_with_str(key.as_str())
+                                    self.next_from_current_with_str(&vec![key.clone()])
                                 }
                                 _ => {}
                             }
@@ -903,6 +905,17 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                         }
                     }
                     _ => {}
+                }
+            }
+            ParseToken::Keys(keys) => {
+                if !self.terms.is_empty() {
+                    unimplemented!("keys in filter");
+                }
+
+                if let Some(ParseToken::Array) = self.tokens.pop() {
+                    self.next_from_current_with_str(keys);
+                } else {
+                    unreachable!();
                 }
             }
             ParseToken::Number(v) => {
@@ -933,7 +946,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                     unreachable!()
                 }
             }
-            ParseToken::Range(from, to) => {
+            ParseToken::Range(from, to, step) => {
                 if !self.terms.is_empty() {
                     unimplemented!("range syntax in filter");
                 }
@@ -955,7 +968,10 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                                     vec.len()
                                 };
 
-                                for i in from..to {
+                                for i in (from..to).step_by(match step {
+                                    Some(step) => *step,
+                                    _ => 1
+                                }) {
                                     if let Some(v) = vec.get(i) {
                                         tmp.push(v);
                                     }

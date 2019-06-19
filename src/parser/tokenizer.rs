@@ -15,8 +15,8 @@ pub const SPLIT: &'static str = ":";
 pub const OPEN_PARENTHESIS: &'static str = "(";
 pub const CLOSE_PARENTHESIS: &'static str = ")";
 pub const KEY: &'static str = "Key";
-pub const DOUBLE_QUOTA: &'static str = "\"";
-pub const SINGLE_QUOTA: &'static str = "'";
+pub const DOUBLE_QUOTE: &'static str = "\"";
+pub const SINGLE_QUOTE: &'static str = "'";
 pub const EQUAL: &'static str = "==";
 pub const GREATER_OR_EQUAL: &'static str = ">=";
 pub const GREATER: &'static str = ">";
@@ -44,8 +44,8 @@ const CH_PIPE: char = '|';
 const CH_LITTLE: char = '<';
 const CH_GREATER: char = '>';
 const CH_EXCLAMATION: char = '!';
-const CH_SINGLE_QUOTA: char = '\'';
-const CH_DOUBLE_QUOTA: char = '"';
+const CH_SINGLE_QUOTE: char = '\'';
+const CH_DOUBLE_QUOTE: char = '"';
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenError {
@@ -109,8 +109,8 @@ impl Token {
             Token::OpenParenthesis(_) => OPEN_PARENTHESIS,
             Token::CloseParenthesis(_) => CLOSE_PARENTHESIS,
             Token::Key(_, _) => KEY,
-            Token::DoubleQuoted(_, _) => DOUBLE_QUOTA,
-            Token::SingleQuoted(_, _) => SINGLE_QUOTA,
+            Token::DoubleQuoted(_, _) => DOUBLE_QUOTE,
+            Token::SingleQuoted(_, _) => SINGLE_QUOTE,
             Token::Equal(_) => EQUAL,
             Token::GreaterOrEqual(_) => GREATER_OR_EQUAL,
             Token::Greater(_) => GREATER,
@@ -147,20 +147,36 @@ pub struct Tokenizer<'a> {
 
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
+        trace!("input: {}", input);
         Tokenizer {
             input: PathReader::new(input),
         }
     }
 
-    fn single_quota(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
-        let (_, val) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
-        self.input.next_char().map_err(to_token_error)?;
+    fn quote(&mut self, ch: char) -> Result<String, TokenError> {
+        let (_, mut val) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+
+        if let Some('\\') = val.chars().last() {
+            self.input.next_char().map_err(to_token_error)?;
+            let _ = val.pop();
+            let (_, mut val_remain) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+            self.input.next_char().map_err(to_token_error)?;
+            val.push(ch);
+            val.push_str(val_remain.as_str());
+        } else {
+            self.input.next_char().map_err(to_token_error)?;
+        }
+
+        Ok(val)
+    }
+
+    fn single_quote(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+        let val = self.quote(ch)?;
         Ok(Token::SingleQuoted(pos, val))
     }
 
-    fn double_quota(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
-        let (_, val) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
-        self.input.next_char().map_err(to_token_error)?;
+    fn double_quote(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+        let val = self.quote(ch)?;
         Ok(Token::DoubleQuoted(pos, val))
     }
 
@@ -259,8 +275,8 @@ impl<'a> Tokenizer<'a> {
             Some(t) => Ok(t),
             None => {
                 match ch {
-                    CH_SINGLE_QUOTA => self.single_quota(pos, ch),
-                    CH_DOUBLE_QUOTA => self.double_quota(pos, ch),
+                    CH_SINGLE_QUOTE => self.single_quote(pos, ch),
+                    CH_DOUBLE_QUOTE => self.double_quote(pos, ch),
                     CH_EQUAL => self.equal(pos, ch),
                     CH_GREATER => self.greater(pos, ch),
                     CH_LITTLE => self.little(pos, ch),

@@ -4,7 +4,7 @@ pub mod parser;
 
 #[cfg(test)]
 mod parser_tests {
-    use parser::parser::{ParseToken, Parser, NodeVisitor, FilterToken};
+    use parser::parser::{FilterToken, NodeVisitor, Parser, ParseToken};
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,
@@ -162,21 +162,63 @@ mod parser_tests {
         assert_eq!(run("$.a[10:]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,
-            ParseToken::Range(Some(10), None),
+            ParseToken::Range(Some(10), None, None),
             ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[:11]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,
-            ParseToken::Range(None, Some(11)),
+            ParseToken::Range(None, Some(11), None),
             ParseToken::ArrayEof
         ]));
 
         assert_eq!(run("$.a[-12:13]"), Ok(vec![
             ParseToken::Absolute, ParseToken::In, ParseToken::Key("a".to_owned()),
             ParseToken::Array,
-            ParseToken::Range(Some(-12), Some(13)),
+            ParseToken::Range(Some(-12), Some(13), None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[0:3:2]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(Some(0), Some(3), Some(2)),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[:3:2]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, Some(3), Some(2)),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[:]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[::]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$[::2]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, Some(2)),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$["a", 'b']"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Keys(vec!["a".to_string(), "b".to_string()]),
             ParseToken::ArrayEof
         ]));
 
@@ -263,6 +305,27 @@ mod parser_tests {
             ParseToken::ArrayEof
         ]));
 
+        assert_eq!(run("$[:]"), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Range(None, None, None),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$['single\'quote']"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Key("single'quote".to_string()),
+            ParseToken::ArrayEof
+        ]));
+
+        assert_eq!(run(r#"$["single\"quote"]"#), Ok(vec![
+            ParseToken::Absolute,
+            ParseToken::Array,
+            ParseToken::Key(r#"single"quote"#.to_string()),
+            ParseToken::ArrayEof
+        ]));
+
         match run("$[") {
             Ok(_) => panic!(),
             _ => {}
@@ -331,6 +394,10 @@ mod parser_tests {
 mod tokenizer_tests {
     use parser::tokenizer::{Token, TokenError, Tokenizer, TokenReader};
 
+    fn setup() {
+        let _ = env_logger::try_init();
+    }
+
     fn collect_token(input: &str) -> (Vec<Token>, Option<TokenError>) {
         let mut tokenizer = Tokenizer::new(input);
         let mut vec = vec![];
@@ -373,6 +440,8 @@ mod tokenizer_tests {
 
     #[test]
     fn token() {
+        setup();
+
         run("$.01.a",
             (
                 vec![
@@ -520,5 +589,26 @@ mod tokenizer_tests {
             ]
             , Some(TokenError::Eof)
         ));
+
+        run("$[:]", (vec![
+            Token::Absolute(0),
+            Token::OpenArray(1),
+            Token::Split(2),
+            Token::CloseArray(3)
+        ], Some(TokenError::Eof)));
+
+        run(r#"$['single\'quote']"#, (vec![
+            Token::Absolute(0),
+            Token::OpenArray(1),
+            Token::SingleQuoted(2, "single\'quote".to_string()),
+            Token::CloseArray(17)
+        ], Some(TokenError::Eof)));
+
+        run(r#"$["double\"quote"]"#, (vec![
+            Token::Absolute(0),
+            Token::OpenArray(1),
+            Token::DoubleQuoted(2, "double\"quote".to_string()),
+            Token::CloseArray(17)
+        ], Some(TokenError::Eof)));
     }
 }

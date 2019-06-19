@@ -412,6 +412,79 @@ describe('filter test', () => {
             done();
         }
     });
+
+    it('escaped single quote notation', (done) => {
+        let result = jsonpath.select({"single'quote":"value"}, "$['single\\'quote']");
+        if (JSON.stringify(result) === JSON.stringify(["value"])) {
+            done();
+        }
+    });
+
+    it('escaped double quote notation', (done) => {
+        let result = jsonpath.select({"single\"quote":"value"}, "$['single\"quote']");
+        if (JSON.stringify(result) === JSON.stringify(["value"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[::]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[::]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "second", "third", "forth", "fifth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[::2]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[::2]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "third", "fifth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[1: :]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[1: :]");
+        if (JSON.stringify(result) === JSON.stringify(["second", "third", "forth", "fifth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[1:2:]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[1:2:]");
+        if (JSON.stringify(result) === JSON.stringify(["second"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[1::2]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[1::2]");
+        if (JSON.stringify(result) === JSON.stringify(["second", "forth"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[0:3:1]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[0:3:1]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "second", "third"])) {
+            done();
+        }
+    });
+
+    it('array range with step - $[0:3:2]', (done) => {
+        let result = jsonpath.select(["first", "second", "third", "forth", "fifth"], "$[0:3:2]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "third"])) {
+            done();
+        }
+    });
+
+    it('array keys', (done) => {
+        let result = jsonpath.select({
+            "key1": "value1",
+            "key2": 2
+        }, "$['key1', 'key2']");
+        if (JSON.stringify(result) === JSON.stringify(["value1", 2])) {
+            done();
+        }
+    });
 });
 
 describe('SelectorMut test', () => {
@@ -818,6 +891,15 @@ describe('README test', () => {
                 {'name': '친구4'},
             ],
         })) {
+            done();
+        }
+    });
+});
+
+describe('ISSUE test', () => {
+    it('Results do not match other implementations #6', (done) => {
+        let result = jsonpath.select(["first", "second"], "$[:]");
+        if (JSON.stringify(result) === JSON.stringify(["first", "second"])) {
             done();
         }
     });
