@@ -18,7 +18,7 @@ fn select(mut ctx: FunctionContext) -> JsResult<JsValue> {
 
     match jsonpath::select(&json, path.as_str()) {
         Ok(value) => Ok(neon_serde::to_value(&mut ctx, &value)?),
-        Err(e) => panic!("{:?}", e)
+        Err(e) => panic!("{:?}", e),
     }
 }
 
@@ -27,7 +27,7 @@ fn select_str(mut ctx: FunctionContext) -> JsResult<JsValue> {
     let path = ctx.argument::<JsString>(1)?.value();
     match jsonpath::select_as_str(&json_val, path.as_str()) {
         Ok(value) => Ok(JsString::new(&mut ctx, &value).upcast()),
-        Err(e) => panic!("{:?}", e)
+        Err(e) => panic!("{:?}", e),
     }
 }
 
@@ -35,15 +35,19 @@ fn delete(mut ctx: FunctionContext) -> JsResult<JsValue> {
     let json_val = ctx.argument::<JsString>(0)?.value();
     let json: Value = match serde_json::from_str(&json_val) {
         Ok(value) => value,
-        Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
     };
     let path = ctx.argument::<JsString>(1)?.value();
     match jsonpath::delete(json, &path) {
-        Ok(value) => Ok(JsString::new(&mut ctx, match serde_json::to_string(&value) {
-            Ok(value) => value,
-            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
-        }).upcast()),
-        Err(e) => panic!("{:?}", e)
+        Ok(value) => Ok(JsString::new(
+            &mut ctx,
+            match serde_json::to_string(&value) {
+                Ok(value) => value,
+                Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
+            },
+        )
+        .upcast()),
+        Err(e) => panic!("{:?}", e),
     }
 }
 
@@ -51,36 +55,43 @@ fn replace_with(mut ctx: FunctionContext) -> JsResult<JsValue> {
     let json_val = ctx.argument::<JsString>(0)?.value();
     let json: Value = match serde_json::from_str(&json_val) {
         Ok(value) => value,
-        Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+        Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
     };
     let path = ctx.argument::<JsString>(1)?.value();
     let fun = ctx.argument::<JsFunction>(2)?;
     match jsonpath::replace_with(json, &path, &mut |v| {
-        let json_str = JsString::new(&mut ctx, match serde_json::to_string(v) {
-            Ok(value) => value,
-            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
-        });
+        let json_str = JsString::new(
+            &mut ctx,
+            match serde_json::to_string(v) {
+                Ok(value) => value,
+                Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
+            },
+        );
 
         let null = ctx.null();
         let args = vec![ctx.string(json_str.value())];
         let result = match fun.call(&mut ctx, null, args) {
             Ok(result) => result,
-            Err(e) => panic!("{:?}", e)
+            Err(e) => panic!("{:?}", e),
         };
         let json_str = match result.downcast::<JsString>() {
             Ok(v) => v.value(),
-            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
         };
         match serde_json::from_str(&json_str) {
             Ok(v) => v,
-            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
         }
     }) {
-        Ok(value) => Ok(JsString::new(&mut ctx, match serde_json::to_string(&value) {
-            Ok(value) => value,
-            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
-        }).upcast()),
-        Err(e) => panic!("{:?}", e)
+        Ok(value) => Ok(JsString::new(
+            &mut ctx,
+            match serde_json::to_string(&value) {
+                Ok(value) => value,
+                Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
+            },
+        )
+        .upcast()),
+        Err(e) => panic!("{:?}", e),
     }
 }
 
@@ -93,7 +104,7 @@ impl SelectorCls {
     fn path(&mut self, path: &str) {
         let node = match Parser::compile(path) {
             Ok(node) => node,
-            Err(e) => panic!("{:?}", e)
+            Err(e) => panic!("{:?}", e),
         };
 
         self.node = Some(node);
@@ -102,7 +113,7 @@ impl SelectorCls {
     fn value(&mut self, json_str: &str) {
         let value: Value = match serde_json::from_str(&json_str) {
             Ok(value) => value,
-            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string()))
+            Err(e) => panic!("{:?}", JsonPathError::Serde(e.to_string())),
         };
 
         self.value = Some(value);
@@ -111,12 +122,12 @@ impl SelectorCls {
     fn select(&self) -> String {
         let node = match &self.node {
             Some(node) => node,
-            None => panic!("{:?}", JsonPathError::EmptyPath)
+            None => panic!("{:?}", JsonPathError::EmptyPath),
         };
 
         let value = match &self.value {
             Some(value) => value,
-            None => panic!("{:?}", JsonPathError::EmptyValue)
+            None => panic!("{:?}", JsonPathError::EmptyValue),
         };
 
         let mut selector = Selector::new();
@@ -124,7 +135,7 @@ impl SelectorCls {
         selector.value(&value);
         match selector.select_as_str() {
             Ok(ret) => ret,
-            Err(e) => panic!("{:?}", e)
+            Err(e) => panic!("{:?}", e),
         }
     }
 }
@@ -257,10 +268,14 @@ declare_types! {
     }
 }
 register_module!(mut m, {
-    m.export_class::<JsCompileFn>("CompileFn").expect("CompileFn class error");
-    m.export_class::<JsSelectorFn>("SelectorFn").expect("SelectorFn class error");
-    m.export_class::<JsSelector>("Selector").expect("Selector class error");
-    m.export_class::<JsSelectorMut>("SelectorMut").expect("SelectorMut class error");
+    m.export_class::<JsCompileFn>("CompileFn")
+        .expect("CompileFn class error");
+    m.export_class::<JsSelectorFn>("SelectorFn")
+        .expect("SelectorFn class error");
+    m.export_class::<JsSelector>("Selector")
+        .expect("Selector class error");
+    m.export_class::<JsSelectorMut>("SelectorMut")
+        .expect("SelectorMut class error");
     m.export_function("select", select)?;
     m.export_function("deleteValue", delete)?;
     m.export_function("replaceWith", replace_with)?;

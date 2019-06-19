@@ -52,83 +52,105 @@ fn readme() {
 
     let mut selector = jsonpath::selector(&json_obj);
 
-    assert_eq!(selector("$.store.book[*].author").unwrap(),
-               vec![
-                   "Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"
-               ]);
+    assert_eq!(
+        selector("$.store.book[*].author").unwrap(),
+        vec![
+            "Nigel Rees",
+            "Evelyn Waugh",
+            "Herman Melville",
+            "J. R. R. Tolkien"
+        ]
+    );
 
-    assert_eq!(selector("$..author").unwrap(),
-               vec![
-                   "Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"
-               ]);
+    assert_eq!(
+        selector("$..author").unwrap(),
+        vec![
+            "Nigel Rees",
+            "Evelyn Waugh",
+            "Herman Melville",
+            "J. R. R. Tolkien"
+        ]
+    );
 
-    assert_eq!(selector("$.store.*").unwrap(),
-               vec![
-                   &json!([
-                       { "category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95 },
-                       { "category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99 },
-                       { "category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99 },
-                       { "category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99 }
-                   ]),
-                   &json!({ "color": "red", "price": 19.95 })
-               ]);
+    assert_eq!(
+        selector("$.store.*").unwrap(),
+        vec![
+            &json!([
+                { "category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95 },
+                { "category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99 },
+                { "category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99 },
+                { "category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99 }
+            ]),
+            &json!({ "color": "red", "price": 19.95 })
+        ]
+    );
 
-    assert_eq!(selector("$.store..price").unwrap(),
-               vec![
-                   8.95, 12.99, 8.99, 22.99, 19.95
-               ]);
+    assert_eq!(
+        selector("$.store..price").unwrap(),
+        vec![8.95, 12.99, 8.99, 22.99, 19.95]
+    );
 
-    assert_eq!(selector("$..book[2]").unwrap(),
-               vec![
-                   &json!({
-                        "category" : "fiction",
-                        "author" : "Herman Melville",
-                        "title" : "Moby Dick",
-                        "isbn" : "0-553-21311-3",
-                        "price" : 8.99
-                    })
-               ]);
+    assert_eq!(
+        selector("$..book[2]").unwrap(),
+        vec![&json!({
+            "category" : "fiction",
+            "author" : "Herman Melville",
+            "title" : "Moby Dick",
+            "isbn" : "0-553-21311-3",
+            "price" : 8.99
+        })]
+    );
 
-    assert_eq!(selector("$..book[-2]").unwrap(),
-               vec![
-                   &json!({
-                        "category" : "fiction",
-                        "author" : "Herman Melville",
-                        "title" : "Moby Dick",
-                        "isbn" : "0-553-21311-3",
-                        "price" : 8.99
-                    })
-               ]);
+    assert_eq!(
+        selector("$..book[-2]").unwrap(),
+        vec![&json!({
+            "category" : "fiction",
+            "author" : "Herman Melville",
+            "title" : "Moby Dick",
+            "isbn" : "0-553-21311-3",
+            "price" : 8.99
+        })]
+    );
 
-    assert_eq!(selector("$..book[0,1]").unwrap(),
-               vec![
-                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
-                   &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
-               ]);
+    assert_eq!(
+        selector("$..book[0,1]").unwrap(),
+        vec![
+            &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+            &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+        ]
+    );
 
-    assert_eq!(selector("$..book[:2]").unwrap(),
-               vec![
-                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
-                   &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
-               ]);
+    assert_eq!(
+        selector("$..book[:2]").unwrap(),
+        vec![
+            &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+            &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+        ]
+    );
 
-    assert_eq!(selector("$..book[:2]").unwrap(),
-               vec![
-                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
-                   &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
-               ]);
+    assert_eq!(
+        selector("$..book[:2]").unwrap(),
+        vec![
+            &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+            &json!({"category" : "fiction","author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99})
+        ]
+    );
 
-    assert_eq!(selector("$..book[?(@.isbn)]").unwrap(),
-               vec![
-                   &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99}),
-                   &json!({"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99})
-               ]);
+    assert_eq!(
+        selector("$..book[?(@.isbn)]").unwrap(),
+        vec![
+            &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99}),
+            &json!({"category" : "fiction","author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99})
+        ]
+    );
 
-    assert_eq!(selector("$.store.book[?(@.price < 10)]").unwrap(),
-               vec![
-                   &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
-                   &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99})
-               ]);
+    assert_eq!(
+        selector("$.store.book[?(@.price < 10)]").unwrap(),
+        vec![
+            &json!({"category" : "reference","author" : "Nigel Rees","title" : "Sayings of the Century","price" : 8.95}),
+            &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99})
+        ]
+    );
 }
 
 #[test]
@@ -154,9 +176,11 @@ fn readme_selector() {
     let mut selector = Selector::new();
 
     let result = selector
-        .str_path("$..[?(@.age >= 30)]").unwrap()
+        .str_path("$..[?(@.age >= 30)]")
+        .unwrap()
         .value(&json_obj)
-        .select().unwrap();
+        .select()
+        .unwrap();
 
     assert_eq!(vec![&json!({"name": "친구3", "age": 30})], result);
 
@@ -164,7 +188,13 @@ fn readme_selector() {
     assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
 
     let result = selector.select_as::<Friend>().unwrap();
-    assert_eq!(vec![Friend { name: "친구3".to_string(), age: Some(30) }], result);
+    assert_eq!(
+        vec![Friend {
+            name: "친구3".to_string(),
+            age: Some(30)
+        }],
+        result
+    );
 }
 
 #[test]
@@ -184,7 +214,8 @@ fn readme_selector_mut() {
     let mut selector_mut = SelectorMut::new();
 
     let result = selector_mut
-        .str_path("$..[?(@.age == 20)].age").unwrap()
+        .str_path("$..[?(@.age == 20)].age")
+        .unwrap()
         .value(json_obj)
         .replace_with(&mut |v| {
             let age = if let Value::Number(n) = v {
@@ -194,20 +225,25 @@ fn readme_selector_mut() {
             };
 
             json!(age)
-        }).unwrap()
-        .take().unwrap();
+        })
+        .unwrap()
+        .take()
+        .unwrap();
 
-    assert_eq!(result, json!({
-        "school": {
+    assert_eq!(
+        result,
+        json!({
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 40},
+                    {"name": "친구2", "age": 40}
+                ]
+            },
             "friends": [
-                {"name": "친구1", "age": 40},
-                {"name": "친구2", "age": 40}
-            ]
-        },
-        "friends": [
-            {"name": "친구3", "age": 30},
-            {"name": "친구4"}
-    ]}));
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+        ]})
+    );
 }
 
 #[test]
@@ -226,15 +262,19 @@ fn readme_select() {
 
     let json = jsonpath::select(&json_obj, "$..friends[0]").unwrap();
 
-    assert_eq!(json, vec![
-        &json!({"name": "친구3", "age": 30}),
-        &json!({"name": "친구1", "age": 20})
-    ]);
+    assert_eq!(
+        json,
+        vec![
+            &json!({"name": "친구3", "age": 30}),
+            &json!({"name": "친구1", "age": 20})
+        ]
+    );
 }
 
 #[test]
 fn readme_select_as_str() {
-    let ret = jsonpath::select_as_str(r#"
+    let ret = jsonpath::select_as_str(
+        r#"
     {
         "school": {
             "friends": [
@@ -247,9 +287,15 @@ fn readme_select_as_str() {
             {"name": "친구4"}
         ]
     }
-    "#, "$..friends[0]").unwrap();
+    "#,
+        "$..friends[0]",
+    )
+    .unwrap();
 
-    assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
+    assert_eq!(
+        ret,
+        r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#
+    );
 }
 
 #[test]
@@ -261,19 +307,21 @@ fn readme_select_as() {
         phones: Vec<String>,
     }
 
-    let ret: Vec<Person> = jsonpath::select_as(r#"
-    {
-        "person":
-            {
-                "name": "Doe John",
-                "age": 44,
-                "phones": [
-                    "+44 1234567",
-                    "+44 2345678"
-                ]
-            }
-    }
-    "#, "$.person").unwrap();
+    let ret: Vec<Person> = jsonpath::select_as(
+        r#"{
+                    "person":
+                        {
+                            "name": "Doe John",
+                            "age": 44,
+                            "phones": [
+                                "+44 1234567",
+                                "+44 2345678"
+                            ]
+                        }
+                }"#,
+        "$.person",
+    )
+    .unwrap();
 
     let person = Person {
         name: "Doe John".to_string(),
@@ -302,10 +350,13 @@ fn readme_compile() {
 
     let json = first_firend(&json_obj).unwrap();
 
-    assert_eq!(json, vec![
-        &json!({"name": "친구3", "age": 30}),
-        &json!({"name": "친구1", "age": 20})
-    ]);
+    assert_eq!(
+        json,
+        vec![
+            &json!({"name": "친구3", "age": 30}),
+            &json!({"name": "친구1", "age": 20})
+        ]
+    );
 }
 
 #[test]
@@ -326,17 +377,23 @@ fn readme_selector_fn() {
 
     let json = selector("$..friends[0]").unwrap();
 
-    assert_eq!(json, vec![
-        &json!({"name": "친구3", "age": 30}),
-        &json!({"name": "친구1", "age": 20})
-    ]);
+    assert_eq!(
+        json,
+        vec![
+            &json!({"name": "친구3", "age": 30}),
+            &json!({"name": "친구1", "age": 20})
+        ]
+    );
 
     let json = selector("$..friends[1]").unwrap();
 
-    assert_eq!(json, vec![
-        &json!({"name": "친구4"}),
-        &json!({"name": "친구2", "age": 20})
-    ]);
+    assert_eq!(
+        json,
+        vec![
+            &json!({"name": "친구4"}),
+            &json!({"name": "친구2", "age": 20})
+        ]
+    );
 }
 
 #[test]
@@ -363,22 +420,33 @@ fn readme_selector_as() {
 
     let json = selector("$..friends[0]").unwrap();
 
-    let ret = vec!(
-        Friend { name: "친구3".to_string(), age: Some(30) },
-        Friend { name: "친구1".to_string(), age: Some(20) }
-    );
+    let ret = vec![
+        Friend {
+            name: "친구3".to_string(),
+            age: Some(30),
+        },
+        Friend {
+            name: "친구1".to_string(),
+            age: Some(20),
+        },
+    ];
     assert_eq!(json, ret);
 
     let json = selector("$..friends[1]").unwrap();
 
-    let ret = vec!(
-        Friend { name: "친구4".to_string(), age: None },
-        Friend { name: "친구2".to_string(), age: Some(20) }
-    );
+    let ret = vec![
+        Friend {
+            name: "친구4".to_string(),
+            age: None,
+        },
+        Friend {
+            name: "친구2".to_string(),
+            age: Some(20),
+        },
+    ];
 
     assert_eq!(json, ret);
 }
-
 
 #[test]
 fn readme_delete() {
@@ -396,17 +464,20 @@ fn readme_delete() {
 
     let ret = jsonpath::delete(json_obj, "$..[?(20 == @.age)]").unwrap();
 
-    assert_eq!(ret, json!({
-        "school": {
+    assert_eq!(
+        ret,
+        json!({
+            "school": {
+                "friends": [
+                    null,
+                    null
+                ]
+            },
             "friends": [
-                null,
-                null
-            ]
-        },
-        "friends": [
-            {"name": "친구3", "age": 30},
-            {"name": "친구4"}
-    ]}));
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+        ]})
+    );
 }
 
 #[test]
@@ -417,16 +488,19 @@ fn readme_delete2() {
 
     println!("{:?}", ret);
 
-    assert_eq!(ret, json!({
-       "store": {
-           "book": null,
-           "bicycle": {
-               "color": "red",
-               "price": 19.95
-           }
-       },
-       "expensive": 10
-   }));
+    assert_eq!(
+        ret,
+        json!({
+            "store": {
+                "book": null,
+                "bicycle": {
+                    "color": "red",
+                    "price": 19.95
+                }
+            },
+            "expensive": 10
+        })
+    );
 }
 
 #[test]
@@ -451,17 +525,21 @@ fn readme_replace_with() {
         };
 
         json!(age)
-    }).unwrap();
+    })
+    .unwrap();
 
-    assert_eq!(result, json!({
-        "school": {
+    assert_eq!(
+        result,
+        json!({
+            "school": {
+                "friends": [
+                    {"name": "친구1", "age": 40},
+                    {"name": "친구2", "age": 40}
+                ]
+            },
             "friends": [
-                {"name": "친구1", "age": 40},
-                {"name": "친구2", "age": 40}
-            ]
-        },
-        "friends": [
-            {"name": "친구3", "age": 30},
-            {"name": "친구4"}
-    ]}));
+                {"name": "친구3", "age": 30},
+                {"name": "친구4"}
+        ]})
+    );
 }

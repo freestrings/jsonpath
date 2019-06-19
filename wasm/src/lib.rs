@@ -5,9 +5,9 @@ extern crate serde_json;
 extern crate wasm_bindgen;
 
 use cfg_if::cfg_if;
-use jsonpath::{JsonPathError, Parser};
 use jsonpath::Selector as _Selector;
 use jsonpath::SelectorMut as _SelectorMut;
+use jsonpath::{JsonPathError, Parser};
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
@@ -40,40 +40,37 @@ macro_rules! console_error {
 }
 
 fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
-    where D: for<'a> serde::de::Deserialize<'a>
+where
+    D: for<'a> serde::de::Deserialize<'a>,
 {
     if js_value.is_string() {
         match serde_json::from_str(js_value.as_string().unwrap().as_str()) {
             Ok(json) => Ok(json),
-            Err(e) => Err(e.to_string())
+            Err(e) => Err(e.to_string()),
         }
     } else {
         match js_value.into_serde() {
             Ok(json) => Ok(json),
-            Err(e) => Err(e.to_string())
+            Err(e) => Err(e.to_string()),
         }
     }
 }
 
 fn replace_fun(v: &Value, fun: &js_sys::Function) -> Value {
     match JsValue::from_serde(v) {
-        Ok(js_v) => {
-            match fun.call1(&JsValue::NULL, &js_v) {
-                Ok(result) => {
-                    match into_serde_json(&result) {
-                        Ok(json) => json,
-                        Err(e) => {
-                            console_error!("replace_with - closure returned a invalid JSON: {:?}", e);
-                            Value::Null
-                        }
-                    }
-                }
+        Ok(js_v) => match fun.call1(&JsValue::NULL, &js_v) {
+            Ok(result) => match into_serde_json(&result) {
+                Ok(json) => json,
                 Err(e) => {
-                    console_error!("replace_with - fail to call closure: {:?}", e);
+                    console_error!("replace_with - closure returned a invalid JSON: {:?}", e);
                     Value::Null
                 }
+            },
+            Err(e) => {
+                console_error!("replace_with - fail to call closure: {:?}", e);
+                Value::Null
             }
-        }
+        },
         Err(e) => {
             console_error!("replace_with - invalid JSON object: {:?}", e);
             Value::Null
@@ -88,22 +85,22 @@ pub fn compile(path: &str) -> JsValue {
     let cb = Closure::wrap(Box::new(move |js_value: JsValue| {
         let json = match into_serde_json(&js_value) {
             Ok(json) => json,
-            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e))),
         };
 
         let mut selector = _Selector::new();
 
         match &node {
             Ok(node) => selector.compiled_path(node),
-            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone())))
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone()))),
         };
 
         match selector.value(&json).select() {
             Ok(ret) => match JsValue::from_serde(&ret) {
                 Ok(ret) => ret,
-                Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+                Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))),
             },
-            Err(e) => JsValue::from_str(&format!("{:?}", e))
+            Err(e) => JsValue::from_str(&format!("{:?}", e)),
         }
     }) as Box<Fn(JsValue) -> JsValue>);
 
@@ -116,25 +113,27 @@ pub fn compile(path: &str) -> JsValue {
 pub fn selector(js_value: JsValue) -> JsValue {
     let json: Value = match JsValue::into_serde(&js_value) {
         Ok(json) => json,
-        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))),
     };
 
-    let cb = Closure::wrap(Box::new(move |path: String| {
-        match Parser::compile(path.as_str()) {
+    let cb = Closure::wrap(
+        Box::new(move |path: String| match Parser::compile(path.as_str()) {
             Ok(node) => {
                 let mut selector = _Selector::new();
                 let _ = selector.compiled_path(&node);
                 match selector.value(&json).select() {
                     Ok(ret) => match JsValue::from_serde(&ret) {
                         Ok(ret) => ret,
-                        Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+                        Err(e) => {
+                            JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+                        }
                     },
-                    Err(e) => JsValue::from_str(&format!("{:?}", e))
+                    Err(e) => JsValue::from_str(&format!("{:?}", e)),
                 }
             }
-            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e)))
-        }
-    }) as Box<Fn(String) -> JsValue>);
+            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e))),
+        }) as Box<Fn(String) -> JsValue>,
+    );
 
     let ret = cb.as_ref().clone();
     cb.forget();
@@ -145,15 +144,15 @@ pub fn selector(js_value: JsValue) -> JsValue {
 pub fn select(js_value: JsValue, path: &str) -> JsValue {
     let json = match into_serde_json(&js_value) {
         Ok(json) => json,
-        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
+        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e))),
     };
 
     match jsonpath::select(&json, path) {
         Ok(ret) => match JsValue::from_serde(&ret) {
             Ok(ret) => ret,
-            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))),
         },
-        Err(e) => JsValue::from_str(&format!("{:?}", e))
+        Err(e) => JsValue::from_str(&format!("{:?}", e)),
     }
 }
 
@@ -161,17 +160,15 @@ pub fn select(js_value: JsValue, path: &str) -> JsValue {
 pub fn delete(js_value: JsValue, path: &str) -> JsValue {
     let json = match into_serde_json(&js_value) {
         Ok(json) => json,
-        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
+        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e))),
     };
 
     match jsonpath::delete(json, path) {
-        Ok(ret) => {
-            match JsValue::from_serde(&ret) {
-                Ok(ret) => ret,
-                Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
-            }
-        }
-        Err(e) => JsValue::from_str(&format!("{:?}", e))
+        Ok(ret) => match JsValue::from_serde(&ret) {
+            Ok(ret) => ret,
+            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))),
+        },
+        Err(e) => JsValue::from_str(&format!("{:?}", e)),
     }
 }
 
@@ -179,15 +176,15 @@ pub fn delete(js_value: JsValue, path: &str) -> JsValue {
 pub fn replace_with(js_value: JsValue, path: &str, fun: js_sys::Function) -> JsValue {
     let json = match into_serde_json(&js_value) {
         Ok(json) => json,
-        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e)))
+        Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e))),
     };
 
     match jsonpath::replace_with(json, path, &mut |v| replace_fun(v, &fun)) {
         Ok(ret) => match JsValue::from_serde(&ret) {
             Ok(ret) => ret,
-            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))),
         },
-        Err(e) => JsValue::from_str(&format!("{:?}", e))
+        Err(e) => JsValue::from_str(&format!("{:?}", e)),
     }
 }
 
@@ -205,7 +202,10 @@ pub struct Selector {
 impl Selector {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Selector { path: None, value: None }
+        Selector {
+            path: None,
+            value: None,
+        }
     }
 
     #[wasm_bindgen(catch)]
@@ -227,23 +227,34 @@ impl Selector {
         let mut selector = _Selector::new();
 
         if let Some(path) = &self.path {
-            let _ = selector.str_path(&path).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+            let _ = selector
+                .str_path(&path)
+                .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         } else {
-            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyPath)));
+            return Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyPath
+            )));
         }
 
         if let Some(value) = &self.value {
             let _ = selector.value(value);
         } else {
-            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyValue)));
+            return Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyValue
+            )));
         }
 
         match selector.select() {
             Ok(ret) => match JsValue::from_serde(&ret) {
                 Ok(ret) => Ok(ret),
-                Err(e) => Err(JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))))
+                Err(e) => Err(JsValue::from_str(&format!(
+                    "{:?}",
+                    JsonPathError::Serde(e.to_string())
+                ))),
             },
-            Err(e) => Err(JsValue::from_str(&format!("{:?}", e)))
+            Err(e) => Err(JsValue::from_str(&format!("{:?}", e))),
         }
     }
 }
@@ -261,7 +272,10 @@ pub struct SelectorMut {
 impl SelectorMut {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        SelectorMut { path: None, value: None }
+        SelectorMut {
+            path: None,
+            value: None,
+        }
     }
 
     #[wasm_bindgen(catch)]
@@ -285,13 +299,19 @@ impl SelectorMut {
         if let Some(path) = &self.path {
             let _ = selector.str_path(path);
         } else {
-            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyPath)));
+            return Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyPath
+            )));
         };
 
         if let Some(value) = self.value.take() {
             selector.value(value);
         } else {
-            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyValue)));
+            return Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyValue
+            )));
         };
 
         match selector.delete() {
@@ -310,13 +330,19 @@ impl SelectorMut {
         if let Some(path) = &self.path {
             let _ = selector.str_path(path);
         } else {
-            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyPath)));
+            return Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyPath
+            )));
         };
 
         if let Some(value) = self.value.take() {
             selector.value(value);
         } else {
-            return Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyValue)));
+            return Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyValue
+            )));
         };
 
         match selector.replace_with(&mut |v| replace_fun(v, &fun)) {
@@ -333,9 +359,12 @@ impl SelectorMut {
         match self.value.take() {
             Some(ret) => match JsValue::from_serde(&ret) {
                 Ok(ret) => Ok(ret),
-                Err(e) => Err(JsValue::from_str(&format!("{:?}", e)))
+                Err(e) => Err(JsValue::from_str(&format!("{:?}", e))),
             },
-            None => Err(JsValue::from_str(&format!("{:?}", JsonPathError::EmptyValue)))
+            None => Err(JsValue::from_str(&format!(
+                "{:?}",
+                JsonPathError::EmptyValue
+            ))),
         }
     }
 }

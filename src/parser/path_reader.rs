@@ -12,10 +12,7 @@ pub struct PathReader<'a> {
 
 impl<'a> PathReader<'a> {
     pub fn new(input: &'a str) -> Self {
-        PathReader {
-            input,
-            pos: 0,
-        }
+        PathReader { input, pos: 0 }
     }
 
     pub fn peek_char(&self) -> Result<(usize, char), ReaderError> {
@@ -24,8 +21,8 @@ impl<'a> PathReader<'a> {
     }
 
     pub fn take_while<F>(&mut self, fun: F) -> Result<(usize, String), ReaderError>
-        where
-            F: Fn(&char) -> bool
+    where
+        F: Fn(&char) -> bool,
     {
         let mut char_len: usize = 0;
         let mut ret = String::new();

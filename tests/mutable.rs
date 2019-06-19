@@ -3,7 +3,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 
 use common::{read_json, setup};
-use jsonpath::{SelectorMut, Selector};
+use jsonpath::{Selector, SelectorMut};
 use serde_json::Value;
 
 mod common;
@@ -16,7 +16,8 @@ fn selector_mut() {
 
     let mut nums = Vec::new();
     let result = selector_mut
-        .str_path(r#"$.store..price"#).unwrap()
+        .str_path(r#"$.store..price"#)
+        .unwrap()
         .value(read_json("./benches/example.json"))
         .replace_with(&mut |v| {
             match v {
@@ -26,15 +27,32 @@ fn selector_mut() {
                 _ => {}
             }
             Value::String("a".to_string())
-        }).unwrap()
-        .take().unwrap();
+        })
+        .unwrap()
+        .take()
+        .unwrap();
 
-    assert_eq!(nums, vec![8.95_f64, 12.99_f64, 8.99_f64, 22.99_f64, 19.95_f64]);
+    assert_eq!(
+        nums,
+        vec![8.95_f64, 12.99_f64, 8.99_f64, 22.99_f64, 19.95_f64]
+    );
 
     let mut selector = Selector::new();
-    let result = selector.str_path(r#"$.store..price"#).unwrap()
+    let result = selector
+        .str_path(r#"$.store..price"#)
+        .unwrap()
         .value(&result)
-        .select().unwrap();
+        .select()
+        .unwrap();
 
-    assert_eq!(vec![&json!("a"), &json!("a"), &json!("a"), &json!("a"), &json!("a")], result);
+    assert_eq!(
+        vec![
+            &json!("a"),
+            &json!("a"),
+            &json!("a"),
+            &json!("a"),
+            &json!("a")
+        ],
+        result
+    );
 }

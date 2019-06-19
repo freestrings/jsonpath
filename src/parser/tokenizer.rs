@@ -55,7 +55,7 @@ pub enum TokenError {
 
 fn to_token_error(read_err: ReaderError) -> TokenError {
     match read_err {
-        ReaderError::Eof => TokenError::Eof
+        ReaderError::Eof => TokenError::Eof,
     }
 }
 
@@ -119,7 +119,7 @@ impl Token {
             Token::NotEqual(_) => NOT_EQUAL,
             Token::And(_) => AND,
             Token::Or(_) => OR,
-            Token::Whitespace(_, _) => WHITESPACE
+            Token::Whitespace(_, _) => WHITESPACE,
         }
     }
 }
@@ -137,7 +137,7 @@ fn simple_matched_token(ch: char, pos: usize) -> Option<Token> {
         CH_QUESTION => Some(Token::Question(pos)),
         CH_COMMA => Some(Token::Comma(pos)),
         CH_SEMICOLON => Some(Token::Split(pos)),
-        _ => None
+        _ => None,
     }
 }
 
@@ -154,12 +154,18 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn quote(&mut self, ch: char) -> Result<String, TokenError> {
-        let (_, mut val) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+        let (_, mut val) = self
+            .input
+            .take_while(|c| *c != ch)
+            .map_err(to_token_error)?;
 
         if let Some('\\') = val.chars().last() {
             self.input.next_char().map_err(to_token_error)?;
             let _ = val.pop();
-            let (_, mut val_remain) = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+            let (_, mut val_remain) = self
+                .input
+                .take_while(|c| *c != ch)
+                .map_err(to_token_error)?;
             self.input.next_char().map_err(to_token_error)?;
             val.push(ch);
             val.push_str(val_remain.as_str());
@@ -187,7 +193,7 @@ impl<'a> Tokenizer<'a> {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::Equal(pos))
             }
-            _ => Err(TokenError::Position(pos))
+            _ => Err(TokenError::Position(pos)),
         }
     }
 
@@ -198,7 +204,7 @@ impl<'a> Tokenizer<'a> {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::NotEqual(pos))
             }
-            _ => Err(TokenError::Position(pos))
+            _ => Err(TokenError::Position(pos)),
         }
     }
 
@@ -231,7 +237,7 @@ impl<'a> Tokenizer<'a> {
                 let _ = self.input.next_char().map_err(to_token_error);
                 Ok(Token::And(pos))
             }
-            _ => Err(TokenError::Position(pos))
+            _ => Err(TokenError::Position(pos)),
         }
     }
 
@@ -242,27 +248,31 @@ impl<'a> Tokenizer<'a> {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::Or(pos))
             }
-            _ => Err(TokenError::Position(pos))
+            _ => Err(TokenError::Position(pos)),
         }
     }
 
     fn whitespace(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
-        let (_, vec) = self.input.take_while(|c| c.is_whitespace()).map_err(to_token_error)?;
+        let (_, vec) = self
+            .input
+            .take_while(|c| c.is_whitespace())
+            .map_err(to_token_error)?;
         Ok(Token::Whitespace(pos, vec.len()))
     }
 
     fn other(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
-        let fun = |c: &char| {
-            match simple_matched_token(*c, pos) {
-                Some(_) => false,
-                _ if c == &CH_LITTLE
-                    || c == &CH_GREATER
-                    || c == &CH_EQUAL
-                    || c == &CH_AMPERSAND
-                    || c == &CH_PIPE
-                    || c == &CH_EXCLAMATION => false,
-                _ => !c.is_whitespace()
+        let fun = |c: &char| match simple_matched_token(*c, pos) {
+            Some(_) => false,
+            _ if c == &CH_LITTLE
+                || c == &CH_GREATER
+                || c == &CH_EQUAL
+                || c == &CH_AMPERSAND
+                || c == &CH_PIPE
+                || c == &CH_EXCLAMATION =>
+            {
+                false
             }
+            _ => !c.is_whitespace(),
         };
         let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
         vec.insert(0, ch);
@@ -273,20 +283,18 @@ impl<'a> Tokenizer<'a> {
         let (pos, ch) = self.input.next_char().map_err(to_token_error)?;
         match simple_matched_token(ch, pos) {
             Some(t) => Ok(t),
-            None => {
-                match ch {
-                    CH_SINGLE_QUOTE => self.single_quote(pos, ch),
-                    CH_DOUBLE_QUOTE => self.double_quote(pos, ch),
-                    CH_EQUAL => self.equal(pos, ch),
-                    CH_GREATER => self.greater(pos, ch),
-                    CH_LITTLE => self.little(pos, ch),
-                    CH_AMPERSAND => self.and(pos, ch),
-                    CH_PIPE => self.or(pos, ch),
-                    CH_EXCLAMATION => self.not_equal(pos, ch),
-                    _ if ch.is_whitespace() => self.whitespace(pos, ch),
-                    _ => self.other(pos, ch),
-                }
-            }
+            None => match ch {
+                CH_SINGLE_QUOTE => self.single_quote(pos, ch),
+                CH_DOUBLE_QUOTE => self.double_quote(pos, ch),
+                CH_EQUAL => self.equal(pos, ch),
+                CH_GREATER => self.greater(pos, ch),
+                CH_LITTLE => self.little(pos, ch),
+                CH_AMPERSAND => self.and(pos, ch),
+                CH_PIPE => self.or(pos, ch),
+                CH_EXCLAMATION => self.not_equal(pos, ch),
+                _ if ch.is_whitespace() => self.whitespace(pos, ch),
+                _ => self.other(pos, ch),
+            },
         }
     }
 
@@ -328,7 +336,7 @@ impl<'a> TokenReader<'a> {
     pub fn peek_is(&self, simple_token: &str) -> bool {
         match self.peek_token() {
             Ok(t) => t.simple_eq(simple_token),
-            _ => false
+            _ => false,
         }
     }
 
@@ -365,18 +373,14 @@ impl<'a> TokenReader<'a> {
         writeln!(&mut w, "{}", "^".repeat(pos)).unwrap();
         match std::str::from_utf8(&w[..]) {
             Ok(s) => s.to_owned(),
-            Err(_) => panic!("Invalid UTF-8")
+            Err(_) => panic!("Invalid UTF-8"),
         }
     }
 
     pub fn err_msg(&self) -> String {
         match self.curr_pos {
-            Some(pos) => {
-                self.err_msg_with_pos(pos)
-            }
-            _ => {
-                self.err_msg_with_pos(self.err_pos)
-            }
+            Some(pos) => self.err_msg_with_pos(pos),
+            _ => self.err_msg_with_pos(self.err_pos),
         }
     }
 }
