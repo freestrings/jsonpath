@@ -486,8 +486,6 @@ fn readme_delete2() {
 
     let ret = jsonpath::delete(json_obj, "$.store.book").unwrap();
 
-    println!("{:?}", ret);
-
     assert_eq!(
         ret,
         json!({

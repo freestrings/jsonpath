@@ -111,17 +111,7 @@ impl Parser {
     fn paths_dot(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#paths_dot");
         let node = Self::path(prev, tokenizer)?;
-        match tokenizer.peek_token() {
-            Ok(Token::Equal(_))
-            | Ok(Token::NotEqual(_))
-            | Ok(Token::Little(_))
-            | Ok(Token::LittleOrEqual(_))
-            | Ok(Token::Greater(_))
-            | Ok(Token::GreaterOrEqual(_))
-            | Ok(Token::And(_))
-            | Ok(Token::Or(_)) => Ok(node),
-            _ => Self::paths(node, tokenizer),
-        }
+        Self::paths(node, tokenizer)
     }
 
     fn path(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
@@ -201,7 +191,12 @@ impl Parser {
     fn boolean(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#boolean");
         match tokenizer.next_token() {
-            Ok(Token::Key(_, v)) => {
+            Ok(Token::Key(_, ref v))
+                if {
+                    let b = v.as_bytes();
+                    b.len() > 0 && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
+                } =>
+            {
                 Ok(Self::node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
             }
             _ => Err(tokenizer.err_msg()),
@@ -214,15 +209,11 @@ impl Parser {
             Self::eat_token(tokenizer);
             Self::eat_whitespace(tokenizer);
 
-            if !(tokenizer.peek_is(SINGLE_QUOTE) || tokenizer.peek_is(DOUBLE_QUOTE)) {
-                return Err(tokenizer.err_msg());
-            }
-
             match tokenizer.next_token() {
                 Ok(Token::SingleQuoted(_, val)) | Ok(Token::DoubleQuoted(_, val)) => {
                     keys.push(val);
                 }
-                _ => {}
+                _ => return Err(tokenizer.err_msg()),
             }
 
             Self::eat_whitespace(tokenizer);
@@ -241,7 +232,6 @@ impl Parser {
                     Self::array_keys(tokenizer, val)
                 }
             }
-            Err(TokenError::Eof) => Ok(Self::node(ParseToken::Eof)),
             _ => Err(tokenizer.err_msg()),
         }
     }
@@ -341,25 +331,33 @@ impl Parser {
     fn range_value<S: FromStr>(tokenizer: &mut TokenReader) -> Result<Option<S>, String> {
         Self::eat_whitespace(tokenizer);
 
-        if tokenizer.peek_is(SPLIT) {
-            Self::eat_token(tokenizer);
-            Self::eat_whitespace(tokenizer);
-
-            if tokenizer.peek_is(KEY) {
-                match tokenizer.next_token() {
-                    Ok(Token::Key(pos, str_step)) => {
-                        match utils::string_to_num(&str_step, || tokenizer.err_msg_with_pos(pos)) {
-                            Ok(step) => Ok(Some(step)),
-                            Err(e) => Err(e),
-                        }
-                    }
-                    _ => Ok(None),
-                }
-            } else {
-                Ok(None)
+        match tokenizer.peek_token() {
+            Ok(Token::Split(_)) => {
+                Self::eat_token(tokenizer);
+                Self::eat_whitespace(tokenizer);
             }
-        } else {
-            Ok(None)
+            _ => {
+                return Ok(None);
+            }
+        }
+
+        match tokenizer.peek_token() {
+            Ok(Token::Key(_, _)) => {}
+            _ => {
+                return Ok(None);
+            }
+        }
+
+        match tokenizer.next_token() {
+            Ok(Token::Key(pos, str_step)) => {
+                match utils::string_to_num(&str_step, || tokenizer.err_msg_with_pos(pos)) {
+                    Ok(step) => Ok(Some(step)),
+                    Err(e) => Err(e),
+                }
+            }
+            _ => {
+                unreachable!();
+            }
         }
     }
 
@@ -423,7 +421,6 @@ impl Parser {
                 Self::eat_whitespace(tokenizer);
                 Self::close_token(ret, Token::CloseParenthesis(DUMMY), tokenizer)
             }
-            Err(TokenError::Eof) => Ok(Self::node(ParseToken::Eof)),
             _ => Err(tokenizer.err_msg()),
         }
     }
@@ -509,7 +506,6 @@ impl Parser {
                     Ok(Self::node(ParseToken::Number(number)))
                 }
             },
-            Err(TokenError::Eof) => Ok(Self::node(ParseToken::Eof)),
             _ => Err(tokenizer.err_msg()),
         }
     }
@@ -527,14 +523,6 @@ impl Parser {
                 Ok(Self::node(ParseToken::Number(number)))
             }
             _ => Err(tokenizer.err_msg()),
-        }
-    }
-
-    fn peek_key(tokenizer: &mut TokenReader) -> Option<String> {
-        if let Ok(Token::Key(_, k)) = tokenizer.peek_token() {
-            Some(k.clone())
-        } else {
-            None
         }
     }
 
@@ -563,15 +551,15 @@ impl Parser {
         }
 
         if tokenizer.peek_is(KEY) {
-            return match Self::peek_key(tokenizer) {
-                Some(key) => match key.chars().next() {
-                    Some(ch) => match ch {
-                        '-' | '0'...'9' => Self::term_num(tokenizer),
-                        _ => Self::boolean(tokenizer),
-                    },
-                    _ => Err(tokenizer.err_msg()),
-                },
-                _ => Err(tokenizer.err_msg()),
+            let key = if let Ok(Token::Key(_, k)) = tokenizer.peek_token() {
+                k.clone()
+            } else {
+                unreachable!()
+            };
+
+            return match key.as_bytes()[0] {
+                b'-' | b'0'...b'9' => Self::term_num(tokenizer),
+                _ => Self::boolean(tokenizer),
             };
         }
 
@@ -587,7 +575,6 @@ impl Parser {
             Ok(Token::LittleOrEqual(_)) => ParseToken::Filter(FilterToken::LittleOrEqual),
             Ok(Token::Greater(_)) => ParseToken::Filter(FilterToken::Greater),
             Ok(Token::GreaterOrEqual(_)) => ParseToken::Filter(FilterToken::GreaterOrEqual),
-            Err(TokenError::Eof) => ParseToken::Eof,
             _ => {
                 return Err(tokenizer.err_msg());
             }
