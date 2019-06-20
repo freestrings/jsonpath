@@ -1,5 +1,9 @@
 language: rust
-sudo: false
+sudo: required
+addons:
+  apt:
+    packages:
+      - libssl-dev
 
 cache: cargo
 
@@ -13,27 +17,22 @@ matrix:
     - rust: stable
       os: linux
       env: RUST_BACKTRACE=1
-      addons:
-        chrome: stable
-      before_script:
-        - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
-        - (test -x $HOME/.cargo/bin/cargo-generate || cargo install --vers "^0.2" cargo-generate)
-        - cargo install-update -a
-        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+      before_cache: |
+        if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
+          cargo install cargo-tarpaulin -f
+        fi
       script:
+        - cargo clean
         - cargo build --verbose --all
         - cargo test --verbose --all
+      after_success: |
+        cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
+        bash <(curl -s https://codecov.io/bash)
     - rust: stable
       os: osx
       env: RUST_BACKTRACE=1
-      addons:
-        chrome: stable
-      before_script:
-        - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
-        - (test -x $HOME/.cargo/bin/cargo-generate || cargo install --vers "^0.2" cargo-generate)
-        - cargo install-update -a
-        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
       script:
+        - cargo clean
         - cargo build --verbose --all
         - cargo test --verbose --all
     - language: node_js

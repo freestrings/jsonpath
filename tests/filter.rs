@@ -344,6 +344,22 @@ fn op_complex() {
 }
 
 #[test]
+fn op_compare() {
+    setup();
+
+    for path in [
+        r#"$[?("1" == 1)]"#,
+        r#"$[?(1 == "1")]"#,
+        r#"$[?(true == 1)]"#,
+        r#"$[?(@ == 1)]"#,
+    ]
+    .iter()
+    {
+        select_and_then_compare(path, json!({}), json!([Value::Null]));
+    }
+}
+
+#[test]
 fn example() {
     setup();
 

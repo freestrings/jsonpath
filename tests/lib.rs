@@ -7,50 +7,81 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use common::{compare_result, read_contents, read_json, setup};
+use jsonpath::JsonPathError;
 
 mod common;
 
 #[test]
 fn compile() {
+    let compile_object = |path| {
+        let mut template = jsonpath::compile(path);
+        let json_obj = read_json("./benches/data_obj.json");
+        let json = template(&json_obj).unwrap();
+        let ret = json!([
+            {"id": 2,"name": "Gray Berry"},
+            {"id": 2,"name": "Gray Berry"}
+        ]);
+        compare_result(json, ret);
+    };
+
+    let compile_array = |path| {
+        let mut template = jsonpath::compile(path);
+        let json_obj = read_json("./benches/data_array.json");
+        let json = template(&json_obj).unwrap();
+        let ret = json!([
+            {"id": 2,"name": "Gray Berry"},
+            {"id": 2,"name": "Rosetta Erickson"}
+        ]);
+        compare_result(json, ret);
+    };
+
+    fn compile_error() {
+        let mut template = jsonpath::compile("$[");
+        if let Err(JsonPathError::Path(_)) = template(&Value::Null) {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
+
     setup();
 
-    let mut template = jsonpath::compile("$..friends[2]");
-    let json_obj = read_json("./benches/data_obj.json");
-    let json = template(&json_obj).unwrap();
-    let ret = json!([
-        {"id": 2,"name": "Gray Berry"},
-        {"id": 2,"name": "Gray Berry"}
-    ]);
-    compare_result(json, ret);
-
-    let json_obj = read_json("./benches/data_array.json");
-    let json = template(&json_obj).unwrap();
-    let ret = json!([
-        {"id": 2,"name": "Gray Berry"},
-        {"id": 2,"name": "Rosetta Erickson"}
-    ]);
-    compare_result(json, ret);
+    compile_object("$..friends[2]");
+    compile_array("$..friends[2]");
+    compile_error();
 }
 
 #[test]
 fn selector() {
     setup();
 
-    let json_obj = read_json("./benches/data_obj.json");
-    let mut reader = jsonpath::selector(&json_obj);
-    let json = reader("$..friends[2]").unwrap();
-    let ret = json!([
-        {"id": 2,"name": "Gray Berry"},
-        {"id": 2,"name": "Gray Berry"}
-    ]);
-    compare_result(json, ret);
+    fn select<'a, F>(selector: &mut F, path: &'a str, target: Value)
+    where
+        F: FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError>,
+    {
+        let json = selector(path).unwrap();
+        compare_result(json, target);
+    };
 
-    let json = reader("$..friends[0]").unwrap();
-    let ret = json!([
-        {"id": 0},
-        {"id": 0,"name": "Millicent Norman"}
-    ]);
-    compare_result(json, ret);
+    let json_obj = read_json("./benches/data_obj.json");
+    let mut selector = jsonpath::selector(&json_obj);
+
+    select(
+        &mut selector,
+        "$..friends[2]",
+        json!([
+            {"id": 2,"name": "Gray Berry"},
+            {"id": 2,"name": "Gray Berry"}
+        ]),
+    );
+    select(
+        &mut selector,
+        "$..friends[0]",
+        json!([
+            {"id": 0},
+            {"id": 0,"name": "Millicent Norman"}
+        ]),
+    );
 }
 
 #[test]
@@ -61,31 +92,43 @@ fn selector_as() {
         name: Option<String>,
     }
 
+    fn select<'a, F>(selector: &mut F, path: &'a str, target: Vec<Friend>)
+    where
+        F: FnMut(&'a str) -> Result<Vec<Friend>, JsonPathError>,
+    {
+        let json = selector(path).unwrap();
+        assert_eq!(json, target);
+    };
+
     let json_obj = read_json("./benches/data_obj.json");
     let mut selector = jsonpath::selector_as::<Friend>(&json_obj);
-    let json = selector("$..friends[2]").unwrap();
 
-    let ret = vec![
-        Friend {
-            id: 2,
-            name: Some("Gray Berry".to_string()),
-        },
-        Friend {
-            id: 2,
-            name: Some("Gray Berry".to_string()),
-        },
-    ];
-    assert_eq!(json, ret);
+    select(
+        &mut selector,
+        "$..friends[2]",
+        vec![
+            Friend {
+                id: 2,
+                name: Some("Gray Berry".to_string()),
+            },
+            Friend {
+                id: 2,
+                name: Some("Gray Berry".to_string()),
+            },
+        ],
+    );
 
-    let json = selector("$..friends[0]").unwrap();
-    let ret = vec![
-        Friend { id: 0, name: None },
-        Friend {
-            id: 0,
-            name: Some("Millicent Norman".to_string()),
-        },
-    ];
-    assert_eq!(json, ret);
+    select(
+        &mut selector,
+        "$..friends[0]",
+        vec![
+            Friend { id: 0, name: None },
+            Friend {
+                id: 0,
+                name: Some("Millicent Norman".to_string()),
+            },
+        ],
+    );
 }
 
 #[test]

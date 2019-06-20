@@ -42,6 +42,38 @@ mod parser_tests {
     }
 
     #[test]
+    fn parse_error() {
+        setup();
+
+        fn invalid(path: &str) {
+            if let Err(_) = run(path) {
+                assert!(true);
+            } else {
+                assert!(false);
+            }
+        }
+
+        invalid("$[]");
+        invalid("$[a]");
+        invalid("$[?($.a)]");
+        invalid("$[?(@.a > @.b]");
+        invalid("$[?(@.a < @.b&&(@.c < @.d)]");
+        invalid("@.");
+        invalid("$..[?(a <= @.a)]"); // invalid term value
+        invalid("$['a', b]");
+        invalid("$[0, >=]");
+        invalid("$[a:]");
+        invalid("$[:a]");
+        invalid("$[::a]");
+        invalid("$[:>]");
+        invalid("$[1:>]");
+        invalid("$[1,,]");
+        invalid("$[?]");
+        invalid("$[?(1 = 1)]");
+        invalid("$[?(1 = >)]");
+    }
+
+    #[test]
     fn parse_path() {
         setup();
 
@@ -435,6 +467,18 @@ mod parser_tests {
         );
 
         assert_eq!(
+            run(r#"$[?(@ > 1)]"#),
+            Ok(vec![
+                ParseToken::Absolute,
+                ParseToken::Array,
+                ParseToken::Relative,
+                ParseToken::Number(1_f64),
+                ParseToken::Filter(FilterToken::Greater),
+                ParseToken::ArrayEof
+            ])
+        );
+
+        assert_eq!(
             run("$[:]"),
             Ok(vec![
                 ParseToken::Absolute,
@@ -463,36 +507,6 @@ mod parser_tests {
                 ParseToken::ArrayEof
             ])
         );
-
-        match run("$[") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[a]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?($.a)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(@.a > @.b]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
-
-        match run("$[?(@.a < @.b&&(@.c < @.d)]") {
-            Ok(_) => panic!(),
-            _ => {}
-        }
     }
 
     #[test]
@@ -771,6 +785,21 @@ mod tokenizer_tests {
                     Token::OpenArray(1),
                     Token::SingleQuoted(2, "single\'quote".to_string()),
                     Token::CloseArray(17),
+                ],
+                Some(TokenError::Eof),
+            ),
+        );
+
+        run(
+            r#"$['single\'1','single\'2']"#,
+            (
+                vec![
+                    Token::Absolute(0),
+                    Token::OpenArray(1),
+                    Token::SingleQuoted(2, "single\'1".to_string()),
+                    Token::Comma(13),
+                    Token::SingleQuoted(14, "single\'2".to_string()),
+                    Token::CloseArray(25),
                 ],
                 Some(TokenError::Eof),
             ),
