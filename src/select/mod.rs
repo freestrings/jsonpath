@@ -995,28 +995,44 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                     .push(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
             }
             ParseToken::Filter(ref ft) => {
-                if let Some(Some(ref right)) = self.terms.pop() {
-                    if let Some(Some(left)) = self.terms.pop() {
-                        let mut ret = None;
-                        match ft {
-                            FilterToken::Equal => left.eq(right, &mut ret),
-                            FilterToken::NotEqual => left.ne(right, &mut ret),
-                            FilterToken::Greater => left.gt(right, &mut ret),
-                            FilterToken::GreaterOrEqual => left.ge(right, &mut ret),
-                            FilterToken::Little => left.lt(right, &mut ret),
-                            FilterToken::LittleOrEqual => left.le(right, &mut ret),
-                            FilterToken::And => left.and(right, &mut ret),
-                            FilterToken::Or => left.or(right, &mut ret),
-                        };
+                let ref right = match self.terms.pop() {
+                    Some(Some(right)) => right,
+                    Some(None) => ExprTerm::Json(
+                        None,
+                        match &self.current {
+                            Some(current) => current.to_vec(),
+                            _ => unreachable!(),
+                        },
+                    ),
+                    _ => panic!("empty term right"),
+                };
 
-                        if let Some(e) = ret {
-                            self.terms.push(Some(e));
-                        }
-                    } else {
-                        unreachable!()
-                    }
-                } else {
-                    unreachable!()
+                let left = match self.terms.pop() {
+                    Some(Some(left)) => left,
+                    Some(None) => ExprTerm::Json(
+                        None,
+                        match &self.current {
+                            Some(current) => current.to_vec(),
+                            _ => unreachable!(),
+                        },
+                    ),
+                    _ => panic!("empty term left"),
+                };
+
+                let mut ret = None;
+                match ft {
+                    FilterToken::Equal => left.eq(right, &mut ret),
+                    FilterToken::NotEqual => left.ne(right, &mut ret),
+                    FilterToken::Greater => left.gt(right, &mut ret),
+                    FilterToken::GreaterOrEqual => left.ge(right, &mut ret),
+                    FilterToken::Little => left.lt(right, &mut ret),
+                    FilterToken::LittleOrEqual => left.le(right, &mut ret),
+                    FilterToken::And => left.and(right, &mut ret),
+                    FilterToken::Or => left.or(right, &mut ret),
+                };
+
+                if let Some(e) = ret {
+                    self.terms.push(Some(e));
                 }
             }
             ParseToken::Range(from, to, step) => {
