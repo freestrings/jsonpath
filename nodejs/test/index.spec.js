@@ -893,4 +893,36 @@ describe('ISSUE test', () => {
             done();
         }
     });
+
+    // it('Invalid wildcard filter results #7', (done) => {
+    //
+    //     function select(json, expected, paths) {
+    //         for (var i = 0 ; i < paths.length ; i++) {
+    //             let result = jsonpath.select(json, paths[i]);
+    //             if (JSON.stringify(result) !== JSON.stringify(expected)) {
+    //                 throw Error("Error: " + paths[i]);
+    //             }
+    //         }
+    //     }
+    //
+    //     select(
+    //         ["string", 42, { "key": "value" }, [0, 1]],
+    //         ["string", 42, { "key": "value" }, [0, 1]],
+    //         ["$.*", "$[*]"]
+    //     );
+    //
+    //     select(
+    //         ["string", 42, { "key": "value" }, [0, 1]],
+    //         [ "string", 42, { "key" : "value" }, [ 0, 1 ], "value", 0, 1 ],
+    //         ["$..*", "$..[*]"]
+    //     );
+    //
+    //     select(
+    //         ["string", 42, { "key": "value" }, [0, 1]],
+    //         ["value", 0, 1],
+    //         ["$.*.*", "$[*].*", "$.*[*]", "$[*][*]"]
+    //     );
+    //
+    //     done();
+    // });
 });
