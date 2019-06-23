@@ -470,12 +470,12 @@ fn walk_all<'a>(vec: &Vec<&'a Value>, tmp: &mut Vec<&'a Value>) {
 }
 
 fn walk<'a, F>(vec: &Vec<&'a Value>, tmp: &mut Vec<&'a Value>, fun: &F)
-where
-    F: Fn(&Value) -> Option<Vec<&Value>>,
-{
-    fn _walk<'a, F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
     where
         F: Fn(&Value) -> Option<Vec<&Value>>,
+{
+    fn _walk<'a, F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
+        where
+            F: Fn(&Value) -> Option<Vec<&Value>>,
     {
         if let Some(mut ret) = fun(v) {
             tmp.append(&mut ret);
@@ -896,17 +896,17 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
                 }
             }
             ParseToken::Relative => {
+                if let Some(ParseToken::Array) = self.tokens.last() {
+                    let array_token = self.tokens.pop();
+                    if let Some(ParseToken::Leaves) = self.tokens.last() {
+                        self.tokens.pop();
+                        self.all_from_current();
+                    }
+                    self.tokens.push(array_token.unwrap());
+                }
                 self.new_filter_context();
             }
-            ParseToken::In | ParseToken::Leaves => {
-                self.tokens.push(token.clone());
-            }
-            ParseToken::Array => {
-                if let Some(ParseToken::Leaves) = self.tokens.last() {
-                    self.tokens.pop();
-                    self.all_from_current();
-                }
-
+            ParseToken::In | ParseToken::Leaves | ParseToken::Array => {
                 self.tokens.push(token.clone());
             }
             ParseToken::ArrayEof => {
