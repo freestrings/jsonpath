@@ -619,3 +619,47 @@ fn quote() {
         json!(["value"]),
     );
 }
+
+#[test]
+fn all_filter() {
+    setup();
+
+    for path in vec![r#"$.*"#, r#"$[*]"#] {
+        select_and_then_compare(
+            path,
+            json!(["string", 42, { "key": "value" }, [0, 1]]),
+            json!(["string", 42, { "key": "value" }, [0, 1]]),
+        );
+    }
+
+    for path in vec![r#"$..*"#, r#"$..[*]"#] {
+        select_and_then_compare(
+            path,
+            json!(["string", 42, { "key": "value" }, [0, 1]]),
+            json!([ "string", 42, { "key" : "value" }, [ 0, 1 ], "value", 0, 1 ]),
+        );
+    }
+
+    for path in vec![r#"$.*.*"#, r#"$[*].*"#, r#"$.*[*]"#, r#"$[*][*]"#] {
+        select_and_then_compare(
+            path,
+            json!(["string", 42, { "key": "value" }, [0, 1]]),
+            json!(["value", 0, 1]),
+        );
+    }
+
+    for path in vec![r#"$..friends.*"#, r#"$[*].friends.*"#] {
+        select_and_then_compare(
+            path,
+            read_json("./benches/data_array.json"),
+            json!([
+               { "id" : 0, "name" : "Millicent Norman" },
+               { "id" : 1, "name" : "Vincent Cannon" },
+               { "id" : 2, "name" : "Gray Berry" },
+               { "id" : 0, "name" : "Tillman Mckay" },
+               { "id" : 1, "name" : "Rivera Berg" },
+               { "id" : 2, "name" : "Rosetta Erickson" }
+            ]),
+        );
+    }
+}
