@@ -470,12 +470,12 @@ fn walk_all<'a>(vec: &Vec<&'a Value>, tmp: &mut Vec<&'a Value>) {
 }
 
 fn walk<'a, F>(vec: &Vec<&'a Value>, tmp: &mut Vec<&'a Value>, fun: &F)
-    where
-        F: Fn(&Value) -> Option<Vec<&Value>>,
+where
+    F: Fn(&Value) -> Option<Vec<&Value>>,
 {
     fn _walk<'a, F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
-        where
-            F: Fn(&Value) -> Option<Vec<&Value>>,
+    where
+        F: Fn(&Value) -> Option<Vec<&Value>>,
     {
         if let Some(mut ret) = fun(v) {
             tmp.append(&mut ret);
@@ -758,38 +758,19 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn next_from_current_with_str(&mut self, keys: &Vec<String>) {
-        fn _collect<'a>(
-            v: &'a Value,
-            tmp: &mut Vec<&'a Value>,
-            keys: &Vec<String>,
-            visited: &mut HashSet<*const Value>,
-        ) {
-            match v {
-                Value::Object(map) => {
-                    for key in keys {
-                        if let Some(v) = map.get(key) {
-                            let ptr = v as *const Value;
-                            if !visited.contains(&ptr) {
-                                visited.insert(ptr);
+        if let Some(current) = self.current.take() {
+            let mut tmp = Vec::new();
+            for c in current {
+                match c {
+                    Value::Object(map) => {
+                        for key in keys {
+                            if let Some(v) = map.get(key) {
                                 tmp.push(v)
                             }
                         }
                     }
+                    _ => {}
                 }
-                Value::Array(vec) => {
-                    for v in vec {
-                        _collect(v, tmp, keys, visited);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(current) = self.current.take() {
-            let mut tmp = Vec::new();
-            let mut visited = HashSet::new();
-            for c in current {
-                _collect(c, &mut tmp, keys, &mut visited);
             }
             self.current = Some(tmp);
         }
@@ -801,26 +782,22 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn next_all_from_current(&mut self) {
-        fn _collect<'a>(v: &'a Value, tmp: &mut Vec<&'a Value>) {
-            match v {
-                Value::Object(map) => {
-                    for (_, v) in map {
-                        tmp.push(v)
-                    }
-                }
-                Value::Array(vec) => {
-                    for v in vec {
-                        _collect(v, tmp);
-                    }
-                }
-                _ => {}
-            }
-        }
-
         if let Some(current) = self.current.take() {
             let mut tmp = Vec::new();
             for c in current {
-                _collect(c, &mut tmp);
+                match c {
+                    Value::Object(map) => {
+                        for (_, v) in map {
+                            tmp.push(v)
+                        }
+                    }
+                    Value::Array(vec) => {
+                        for v in vec {
+                            tmp.push(v);
+                        }
+                    }
+                    _ => {}
+                }
             }
             self.current = Some(tmp);
         }
@@ -934,17 +911,28 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
 
                 self.tokens.pop();
             }
-            ParseToken::All => match self.tokens.last() {
-                Some(ParseToken::Leaves) => {
-                    self.tokens.pop();
-                    self.all_from_current();
+            ParseToken::All => {
+                match self.tokens.last() {
+                    Some(ParseToken::Array) => {
+                        self.tokens.pop();
+                    }
+                    _ => {}
                 }
-                Some(ParseToken::In) => {
-                    self.tokens.pop();
-                    self.next_all_from_current();
+
+                match self.tokens.last() {
+                    Some(ParseToken::Leaves) => {
+                        self.tokens.pop();
+                        self.all_from_current();
+                    }
+                    Some(ParseToken::In) => {
+                        self.tokens.pop();
+                        self.next_all_from_current();
+                    }
+                    _ => {
+                        self.next_all_from_current();
+                    }
                 }
-                _ => {}
-            },
+            }
             ParseToken::Bool(b) => {
                 self.terms.push(Some(ExprTerm::Bool(*b)));
             }
