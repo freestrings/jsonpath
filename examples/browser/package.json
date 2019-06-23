@@ -11,5 +11,8 @@
     "webpack": "^4.29.6",
     "webpack-cli": "^3.3.0",
     "webpack-dev-server": "^3.2.1"
+  },
+  "dependencies": {
+    "jsonpath-wasm": "^0.2.2"
   }
 }
