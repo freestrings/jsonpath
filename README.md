@@ -8,7 +8,7 @@
 
 `Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 유사한 API 인터페이스를 제공 한다.
 
-It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine written in `Rust`. it provide a similar API interface in `Webassembly` and` Javascript` also.
+It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine written in `Rust`. it provide a similar API interface in `Webassembly` and` Javascript` too.
 
 - [Webassembly Demo](https://freestrings.github.io/jsonpath/)
 - [NPM jsonpath-wasm - webassembly](https://www.npmjs.com/package/jsonpath-wasm)
