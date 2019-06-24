@@ -1,26 +1,11 @@
 extern crate jsonpath_lib as jsonpath;
 #[macro_use]
 extern crate neon;
-extern crate neon_serde;
 extern crate serde_json;
 
 use jsonpath::{JsonPathError, Node, Parser, Selector};
 use neon::prelude::*;
 use serde_json::Value;
-
-///
-/// `neon_serde::from_value` has very poor performance.
-///
-fn select(mut ctx: FunctionContext) -> JsResult<JsValue> {
-    let json_val = ctx.argument::<JsValue>(0)?;
-    let json: Value = neon_serde::from_value(&mut ctx, json_val)?;
-    let path = ctx.argument::<JsString>(1)?.value();
-
-    match jsonpath::select(&json, path.as_str()) {
-        Ok(value) => Ok(neon_serde::to_value(&mut ctx, &value)?),
-        Err(e) => panic!("{:?}", e),
-    }
-}
 
 fn select_str(mut ctx: FunctionContext) -> JsResult<JsValue> {
     let json_val = ctx.argument::<JsString>(0)?.value();
@@ -276,7 +261,6 @@ register_module!(mut m, {
         .expect("Selector class error");
     m.export_class::<JsSelectorMut>("SelectorMut")
         .expect("SelectorMut class error");
-    m.export_function("select", select)?;
     m.export_function("deleteValue", delete)?;
     m.export_function("replaceWith", replace_with)?;
     m.export_function("selectStr", select_str)?;

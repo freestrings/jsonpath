@@ -1,6 +1,6 @@
 [package]
 name = "jsonpath4nodejs"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Changseok Han <freestrings@gmail.com>"]
 description = "jsonpath_lib bindings for nodejs"
 keywords = ["library", "jsonpath", "json", "nodejs"]
@@ -17,7 +17,6 @@ neon-build = "0.2.0"
 jsonpath_lib = "0.2.2"
 #jsonpath_lib = { path = "../../" }
 neon = "0.2.0"
-neon-serde = "0.1.1"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [lib]
