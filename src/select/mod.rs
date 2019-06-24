@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::fmt;
 
 use array_tool::vec::{Intersect, Union};
-use indexmap::IndexMap;
 use serde_json::{Number, Value};
 
 use parser::parser::*;
@@ -1167,7 +1166,8 @@ impl SelectorMut {
             origin: &Value,
             target: &mut Vec<&Value>,
             tokens: &mut Vec<String>,
-            visited: &mut IndexMap<*const Value, Vec<String>>,
+            visited: &mut HashSet<*const Value>,
+            visited_order: &mut Vec<Vec<String>>,
         ) -> bool {
             trace!("{:?}, {:?}", target, tokens);
 
@@ -1177,7 +1177,9 @@ impl SelectorMut {
 
             target.retain(|t| {
                 if std::ptr::eq(origin, *t) {
-                    visited.insert(*t, tokens.to_vec());
+                    if visited.insert(*t) {
+                        visited_order.push(tokens.to_vec());
+                    }
                     false
                 } else {
                     true
@@ -1188,7 +1190,7 @@ impl SelectorMut {
                 Value::Array(vec) => {
                     for (i, v) in vec.iter().enumerate() {
                         tokens.push(i.to_string());
-                        if _walk(v, target, tokens, visited) {
+                        if _walk(v, target, tokens, visited, visited_order) {
                             return true;
                         }
                         tokens.pop();
@@ -1197,7 +1199,7 @@ impl SelectorMut {
                 Value::Object(map) => {
                     for (k, v) in map {
                         tokens.push(k.clone());
-                        if _walk(v, target, tokens, visited) {
+                        if _walk(v, target, tokens, visited, visited_order) {
                             return true;
                         }
                         tokens.pop();
@@ -1209,14 +1211,21 @@ impl SelectorMut {
             return false;
         }
 
-        let mut visited = IndexMap::new();
+        let mut visited = HashSet::new();
+        let mut visited_order = Vec::new();
 
         if let Some(origin) = &self.value {
             let mut tokens = Vec::new();
-            _walk(origin, &mut result, &mut tokens, &mut visited);
+            _walk(
+                origin,
+                &mut result,
+                &mut tokens,
+                &mut visited,
+                &mut visited_order,
+            );
         }
 
-        visited.iter().map(|(_, v)| v.to_vec()).collect()
+        visited_order
     }
 
     pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {

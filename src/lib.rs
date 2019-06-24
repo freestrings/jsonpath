@@ -125,7 +125,6 @@
 extern crate array_tool;
 extern crate core;
 extern crate env_logger;
-extern crate indexmap;
 #[macro_use]
 extern crate log;
 extern crate serde;
