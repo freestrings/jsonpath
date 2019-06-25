@@ -9,11 +9,11 @@ type ParseResult<T> = Result<T, String>;
 mod utils {
     use std::str::FromStr;
 
-    pub fn string_to_num<F, S: FromStr>(string: &String, msg_handler: F) -> Result<S, String>
+    pub fn string_to_num<F, S: FromStr>(string: &str, msg_handler: F) -> Result<S, String>
     where
         F: Fn() -> String,
     {
-        match string.as_str().parse() {
+        match string.parse() {
             Ok(n) => Ok(n),
             _ => Err(msg_handler()),
         }
@@ -194,7 +194,7 @@ impl Parser {
             Ok(Token::Key(_, ref v))
                 if {
                     let b = v.as_bytes();
-                    b.len() > 0 && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
+                    !b.is_empty() && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
                 } =>
             {
                 Ok(Self::node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
@@ -379,16 +379,12 @@ impl Parser {
     fn range_to(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#range_to");
 
-        match Self::range_value(tokenizer)? {
-            Some(step) => return Ok(Self::node(ParseToken::Range(None, None, Some(step)))),
-            _ => {}
+        if let Some(step) = Self::range_value(tokenizer)? {
+            return Ok(Self::node(ParseToken::Range(None, None, Some(step))));
         }
 
-        match tokenizer.peek_token() {
-            Ok(Token::CloseArray(_)) => {
-                return Ok(Self::node(ParseToken::Range(None, None, None)));
-            }
-            _ => {}
+        if let Ok(Token::CloseArray(_)) = tokenizer.peek_token() {
+            return Ok(Self::node(ParseToken::Range(None, None, None)));
         }
 
         match tokenizer.next_token() {
@@ -492,7 +488,7 @@ impl Parser {
         } else if has_prop_candidate {
             Ok(node)
         } else {
-            return Err(tokenizer.err_msg());
+            Err(tokenizer.err_msg())
         }
     }
 
@@ -510,13 +506,13 @@ impl Parser {
         }
     }
 
-    fn term_num_float(mut num: &str, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn term_num_float(num: &str, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term_num_float");
         Self::eat_token(tokenizer);
         match tokenizer.next_token() {
             Ok(Token::Key(pos, frac)) => {
                 let mut f = String::new();
-                f.push_str(&mut num);
+                f.push_str(&num);
                 f.push('.');
                 f.push_str(frac.as_str());
                 let number = utils::string_to_num(&f, || tokenizer.err_msg_with_pos(pos))?;
@@ -563,7 +559,7 @@ impl Parser {
             };
         }
 
-        return Err(tokenizer.err_msg());
+        Err(tokenizer.err_msg())
     }
 
     fn op(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
@@ -631,56 +627,49 @@ pub trait NodeVisitor {
                 self.visit_token(&node.token);
             }
             ParseToken::In | ParseToken::Leaves => {
-                match &node.left {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.left {
+                    self.visit(&*n);
                 }
 
                 self.visit_token(&node.token);
 
-                match &node.right {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.right {
+                    self.visit(&*n);
                 }
             }
             ParseToken::Array => {
-                match &node.left {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.left {
+                    self.visit(&*n);
                 }
 
                 self.visit_token(&node.token);
 
-                match &node.right {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.right {
+                    self.visit(&*n);
                 }
+
                 self.visit_token(&ParseToken::ArrayEof);
             }
             ParseToken::Filter(FilterToken::And) | ParseToken::Filter(FilterToken::Or) => {
-                match &node.left {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.left {
+                    self.visit(&*n);
                 }
 
-                match &node.right {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.right {
+                    self.visit(&*n);
                 }
 
                 self.visit_token(&node.token);
             }
             ParseToken::Filter(_) => {
-                match &node.left {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.left {
+                    self.visit(&*n);
                 }
 
                 self.end_term();
 
-                match &node.right {
-                    Some(n) => self.visit(&*n),
-                    _ => {}
+                if let Some(n) = &node.right {
+                    self.visit(&*n);
                 }
 
                 self.end_term();

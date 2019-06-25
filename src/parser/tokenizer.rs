@@ -2,29 +2,29 @@ use std::result::Result;
 
 use super::path_reader::{PathReader, ReaderError};
 
-pub const ABSOLUTE: &'static str = "$";
-pub const DOT: &'static str = ".";
-pub const AT: &'static str = "@";
-pub const OPEN_ARRAY: &'static str = "[";
-pub const CLOSE_ARRAY: &'static str = "]";
-pub const ASTERISK: &'static str = "*";
-pub const QUESTION: &'static str = "?";
-pub const COMMA: &'static str = ",";
-pub const SPLIT: &'static str = ":";
-pub const OPEN_PARENTHESIS: &'static str = "(";
-pub const CLOSE_PARENTHESIS: &'static str = ")";
-pub const KEY: &'static str = "Key";
-pub const DOUBLE_QUOTE: &'static str = "\"";
-pub const SINGLE_QUOTE: &'static str = "'";
-pub const EQUAL: &'static str = "==";
-pub const GREATER_OR_EQUAL: &'static str = ">=";
-pub const GREATER: &'static str = ">";
-pub const LITTLE: &'static str = "<";
-pub const LITTLE_OR_EQUAL: &'static str = "<=";
-pub const NOT_EQUAL: &'static str = "!=";
-pub const AND: &'static str = "&&";
-pub const OR: &'static str = "||";
-pub const WHITESPACE: &'static str = " ";
+pub const ABSOLUTE: &str = "$";
+pub const DOT: &str = ".";
+pub const AT: &str = "@";
+pub const OPEN_ARRAY: &str = "[";
+pub const CLOSE_ARRAY: &str = "]";
+pub const ASTERISK: &str = "*";
+pub const QUESTION: &str = "?";
+pub const COMMA: &str = ",";
+pub const SPLIT: &str = ":";
+pub const OPEN_PARENTHESIS: &str = "(";
+pub const CLOSE_PARENTHESIS: &str = ")";
+pub const KEY: &str = "Key";
+pub const DOUBLE_QUOTE: &str = "\"";
+pub const SINGLE_QUOTE: &str = "'";
+pub const EQUAL: &str = "==";
+pub const GREATER_OR_EQUAL: &str = ">=";
+pub const GREATER: &str = ">";
+pub const LITTLE: &str = "<";
+pub const LITTLE_OR_EQUAL: &str = "<=";
+pub const NOT_EQUAL: &str = "!=";
+pub const AND: &str = "&&";
+pub const OR: &str = "||";
+pub const WHITESPACE: &str = " ";
 
 const CH_DOLLA: char = '$';
 const CH_DOT: char = '.';
@@ -321,7 +321,7 @@ impl<'a> TokenReader<'a> {
                 }
                 Err(e) => {
                     return TokenReader {
-                        origin_input: input.clone(),
+                        origin_input: input,
                         err: e,
                         err_pos: tokenizer.current_pos(),
                         tokens,

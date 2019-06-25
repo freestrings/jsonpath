@@ -12,7 +12,7 @@ mod common;
 fn selector_mut() {
     setup();
 
-    let mut selector_mut = SelectorMut::new();
+    let mut selector_mut = SelectorMut::default();
 
     let mut nums = Vec::new();
     let result = selector_mut
@@ -37,7 +37,7 @@ fn selector_mut() {
         vec![8.95_f64, 12.99_f64, 8.99_f64, 22.99_f64, 19.95_f64]
     );
 
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
     let result = selector
         .str_path(r#"$.store..price"#)
         .unwrap()

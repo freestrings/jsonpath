@@ -31,7 +31,7 @@ pub fn read_contents(path: &str) -> String {
 
 #[allow(dead_code)]
 pub fn select_and_then_compare<'a>(path: &str, json: Value, target: Value) {
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
     let result = selector
         .str_path(path)
         .unwrap()
