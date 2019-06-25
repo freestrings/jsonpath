@@ -109,7 +109,7 @@ fn bench_select_as(b: &mut Bencher) {
 #[bench]
 fn bench_delete(b: &mut Bencher) {
     let json = get_json();
-    let mut selector = SelectorMut::new();
+    let mut selector = SelectorMut::default();
     let _ = selector.str_path(get_path());
 
     b.iter(move || {
@@ -123,13 +123,13 @@ fn bench_delete(b: &mut Bencher) {
 fn bench_select_to_compare_with_delete(b: &mut Bencher) {
     let json = &get_json();
 
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
     let _ = selector.str_path(get_path());
 
     b.iter(move || {
         for _ in 1..100 {
             let json = json.clone();
-            let mut s = Selector::new();
+            let mut s = Selector::default();
             let _ = s.compiled_path(selector.node_ref().unwrap()).value(&json);
             let _ = s.select();
         }

@@ -132,7 +132,7 @@ extern crate serde_json;
 
 use serde_json::Value;
 
-pub use parser::parser::{Node, Parser};
+pub use parser::Parser;
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
 
@@ -169,10 +169,10 @@ mod select;
 /// ]);
 /// ```
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
-    let node = Parser::compile(path);
+    let node = parser::Parser::compile(path);
     move |json| match &node {
         Ok(node) => {
-            let mut selector = Selector::new();
+            let mut selector = Selector::default();
             selector.compiled_path(node).value(json).select()
         }
         Err(e) => Err(JsonPathError::Path(e.to_string())),
@@ -213,8 +213,9 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 ///     &json!({"name": "친구2", "age": 20})
 /// ]);
 /// ```
+#[allow(clippy::needless_lifetimes)]
 pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError> {
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
     let _ = selector.value(json);
     move |path: &str| selector.str_path(path)?.reset_value().select()
 }
@@ -268,7 +269,7 @@ pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value
 pub fn selector_as<T: serde::de::DeserializeOwned>(
     json: &Value,
 ) -> impl FnMut(&str) -> Result<Vec<T>, JsonPathError> + '_ {
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
     let _ = selector.value(json);
     move |path: &str| selector.str_path(path)?.reset_value().select_as()
 }
@@ -299,7 +300,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(
 /// ]);
 /// ```
 pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, JsonPathError> {
-    Selector::new().str_path(path)?.value(json).select()
+    Selector::default().str_path(path)?.value(json).select()
 }
 
 /// It is the same to `select` function but it return the result as string.
@@ -327,7 +328,7 @@ pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, Json
 /// ```
 pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    let ret = Selector::new().str_path(path)?.value(&json).select()?;
+    let ret = Selector::default().str_path(path)?.value(&json).select()?;
     serde_json::to_string(&ret).map_err(|e| JsonPathError::Serde(e.to_string()))
 }
 
@@ -374,7 +375,7 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
     path: &str,
 ) -> Result<Vec<T>, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    Selector::new().str_path(path)?.value(&json).select_as()
+    Selector::default().str_path(path)?.value(&json).select_as()
 }
 
 /// Delete(= replace with null) the JSON property using the jsonpath.
@@ -410,7 +411,7 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
 /// ]}));
 /// ```
 pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
-    let mut selector = SelectorMut::new();
+    let mut selector = SelectorMut::default();
     let ret = selector
         .str_path(path)?
         .value(value)
@@ -466,7 +467,7 @@ pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, J
 where
     F: FnMut(&Value) -> Value,
 {
-    let mut selector = SelectorMut::new();
+    let mut selector = SelectorMut::default();
     let ret = selector
         .str_path(path)?
         .value(value)

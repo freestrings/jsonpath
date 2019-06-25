@@ -624,7 +624,7 @@ fn quote() {
 fn all_filter() {
     setup();
 
-    for path in vec![r#"$.*"#, r#"$[*]"#] {
+    for path in &[r#"$.*"#, r#"$[*]"#] {
         select_and_then_compare(
             path,
             json!(["string", 42, { "key": "value" }, [0, 1]]),
@@ -632,7 +632,7 @@ fn all_filter() {
         );
     }
 
-    for path in vec![r#"$..*"#, r#"$..[*]"#] {
+    for path in &[r#"$..*"#, r#"$..[*]"#] {
         select_and_then_compare(
             path,
             json!(["string", 42, { "key": "value" }, [0, 1]]),
@@ -640,7 +640,7 @@ fn all_filter() {
         );
     }
 
-    for path in vec![r#"$.*.*"#, r#"$[*].*"#, r#"$.*[*]"#, r#"$[*][*]"#] {
+    for path in &[r#"$.*.*"#, r#"$[*].*"#, r#"$.*[*]"#, r#"$[*][*]"#] {
         select_and_then_compare(
             path,
             json!(["string", 42, { "key": "value" }, [0, 1]]),
@@ -648,7 +648,7 @@ fn all_filter() {
         );
     }
 
-    for path in vec![r#"$..friends.*"#, r#"$[*].friends.*"#] {
+    for path in &[r#"$..friends.*"#, r#"$[*].friends.*"#] {
         select_and_then_compare(
             path,
             read_json("./benches/data_array.json"),

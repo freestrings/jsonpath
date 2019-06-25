@@ -12,7 +12,7 @@ mod common;
 fn selector_mut() {
     setup();
 
-    let mut selector_mut = SelectorMut::new();
+    let mut selector_mut = SelectorMut::default();
 
     let mut nums = Vec::new();
     let result = selector_mut
@@ -20,11 +20,8 @@ fn selector_mut() {
         .unwrap()
         .value(read_json("./benches/example.json"))
         .replace_with(&mut |v| {
-            match v {
-                Value::Number(n) => {
-                    nums.push(n.as_f64().unwrap());
-                }
-                _ => {}
+            if let Value::Number(n) = v {
+                nums.push(n.as_f64().unwrap());
             }
             Value::String("a".to_string())
         })
@@ -37,7 +34,7 @@ fn selector_mut() {
         vec![8.95_f64, 12.99_f64, 8.99_f64, 22.99_f64, 19.95_f64]
     );
 
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
     let result = selector
         .str_path(r#"$.store..price"#)
         .unwrap()

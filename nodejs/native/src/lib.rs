@@ -206,7 +206,7 @@ declare_types! {
             {
                 let guard = ctx.lock();
                 let mut this = this.borrow_mut(&guard);
-                let _ = this.path(&path);
+                this.path(&path);
             }
 
             Ok(JsUndefined::new().upcast())
@@ -219,7 +219,7 @@ declare_types! {
             {
                 let guard = ctx.lock();
                 let mut this = this.borrow_mut(&guard);
-                let _ = this.value(&json_str);
+                this.value(&json_str);
             }
 
             Ok(JsUndefined::new().upcast())

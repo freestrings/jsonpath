@@ -173,7 +173,7 @@ fn readme_selector() {
             {"name": "친구4"}
     ]});
 
-    let mut selector = Selector::new();
+    let mut selector = Selector::default();
 
     let result = selector
         .str_path("$..[?(@.age >= 30)]")
@@ -211,7 +211,7 @@ fn readme_selector_mut() {
             {"name": "친구4"}
     ]});
 
-    let mut selector_mut = SelectorMut::new();
+    let mut selector_mut = SelectorMut::default();
 
     let result = selector_mut
         .str_path("$..[?(@.age == 20)].age")

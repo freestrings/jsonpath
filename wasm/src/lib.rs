@@ -102,7 +102,7 @@ pub fn compile(path: &str) -> JsValue {
             },
             Err(e) => JsValue::from_str(&format!("{:?}", e)),
         }
-    }) as Box<Fn(JsValue) -> JsValue>);
+    }) as Box<dyn Fn(JsValue) -> JsValue>);
 
     let ret = cb.as_ref().clone();
     cb.forget();
@@ -131,8 +131,8 @@ pub fn selector(js_value: JsValue) -> JsValue {
                     Err(e) => JsValue::from_str(&format!("{:?}", e)),
                 }
             }
-            Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e))),
-        }) as Box<Fn(String) -> JsValue>,
+            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Path(e))),
+        }) as Box<dyn Fn(String) -> JsValue>,
     );
 
     let ret = cb.as_ref().clone();
@@ -193,6 +193,7 @@ pub fn replace_with(js_value: JsValue, path: &str, fun: js_sys::Function) -> JsV
 /// lifetime 제약으로 Selector를 사용 할 수 없다.
 ///
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct Selector {
     path: Option<String>,
     value: Option<Value>,
@@ -202,10 +203,7 @@ pub struct Selector {
 impl Selector {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Selector {
-            path: None,
-            value: None,
-        }
+        Selector::default()
     }
 
     #[wasm_bindgen(catch)]
@@ -263,6 +261,7 @@ impl Selector {
 /// `wasm_bindgen` 제약으로 builder-pattern을 구사 할 수 없다.
 ///
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct SelectorMut {
     path: Option<String>,
     value: Option<Value>,
@@ -272,10 +271,7 @@ pub struct SelectorMut {
 impl SelectorMut {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        SelectorMut {
-            path: None,
-            value: None,
-        }
+        SelectorMut::default()
     }
 
     #[wasm_bindgen(catch)]

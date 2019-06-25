@@ -14,17 +14,23 @@ branches:
 
 matrix:
   include:
-    - rust: stable
+    - rust: nightly
       os: linux
       env: RUST_BACKTRACE=1
       before_cache: |
         if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
           cargo install cargo-tarpaulin -f
         fi
+      before_script:
+        - rustup component add clippy
       script:
         - cargo clean
+        - cargo clippy -- -D warnings
         - cargo build --verbose --all
+        - cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity
         - cargo test --verbose --all
+        - cd wasm && cargo clippy -- -D warnings -A clippy::suspicious_else_formatting
+        - cd ../nodejs/native && cargo clippy -- -D warnings
       after_success: |
         cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
         bash <(curl -s https://codecov.io/bash)

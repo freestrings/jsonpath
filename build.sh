@@ -28,6 +28,16 @@ __cargo_clean () {
         cd "${DIR}" && cargo clean
 }
 
+if [ "$1" = "clippy" ]
+then
+    echo
+    __msg "clippy"
+    cargo clippy -- -D warnings && \
+    cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity && \
+    cd "${WASM}" && cargo clippy -- -A clippy::suspicious_else_formatting && \
+    cd "${NODEJS}" && cargo clippy
+fi
+
 echo
 __msg "clean"
 rm -rf \
