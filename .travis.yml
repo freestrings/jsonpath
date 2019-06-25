@@ -29,6 +29,8 @@ matrix:
         - cargo build --verbose --all
         - cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity
         - cargo test --verbose --all
+        - cd wasm && cargo clippy -- -D warnings -A clippy::suspicious_else_formatting
+        - cd ../nodejs/native && cargo clippy -- -D warnings
       after_success: |
         cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
         bash <(curl -s https://codecov.io/bash)

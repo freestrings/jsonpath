@@ -132,6 +132,7 @@ extern crate serde_json;
 
 use serde_json::Value;
 
+pub use parser::Parser;
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
 

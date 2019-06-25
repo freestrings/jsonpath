@@ -2,9 +2,6 @@
 
 set -e
 
-cargo clippy -- -D warnings && \
-cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity
-
 # project_root
 DIR="$(pwd)"
 WASM="${DIR}"/wasm
@@ -30,6 +27,16 @@ __cargo_clean () {
         cd "${WASM}" && cargo clean && \
         cd "${DIR}" && cargo clean
 }
+
+if [ "$1" = "clippy" ]
+then
+    echo
+    __msg "clippy"
+    cargo clippy -- -D warnings && \
+    cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity && \
+    cd "${WASM}" && cargo clippy -- -A clippy::suspicious_else_formatting && \
+    cd "${NODEJS}" && cargo clippy
+fi
 
 echo
 __msg "clean"
