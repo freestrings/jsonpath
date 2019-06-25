@@ -20,11 +20,8 @@ fn selector_mut() {
         .unwrap()
         .value(read_json("./benches/example.json"))
         .replace_with(&mut |v| {
-            match v {
-                Value::Number(n) => {
-                    nums.push(n.as_f64().unwrap());
-                }
-                _ => {}
+            if let Value::Number(n) = v {
+                nums.push(n.as_f64().unwrap());
             }
             Value::String("a".to_string())
         })

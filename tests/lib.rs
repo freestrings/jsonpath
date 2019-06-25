@@ -37,11 +37,7 @@ fn compile() {
 
     fn compile_error() {
         let mut template = jsonpath::compile("$[");
-        if let Err(JsonPathError::Path(_)) = template(&Value::Null) {
-            assert!(true);
-        } else {
-            assert!(false);
-        }
+        assert!(template(&Value::Null).is_err());
     }
 
     setup();

@@ -2,6 +2,9 @@
 
 set -e
 
+cargo clippy -- -D warnings && \
+cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity
+
 # project_root
 DIR="$(pwd)"
 WASM="${DIR}"/wasm

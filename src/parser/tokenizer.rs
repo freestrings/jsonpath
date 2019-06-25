@@ -161,7 +161,7 @@ impl<'a> Tokenizer<'a> {
         if let Some('\\') = val.chars().last() {
             self.input.next_char().map_err(to_token_error)?;
             let _ = val.pop();
-            let (_, mut val_remain) = self
+            let (_, val_remain) = self
                 .input
                 .take_while(|c| *c != ch)
                 .map_err(to_token_error)?;

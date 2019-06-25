@@ -13,8 +13,8 @@ mod utils {
     use std::str::FromStr;
 
     pub fn string_to_num<F, S: FromStr>(string: &str, msg_handler: F) -> Result<S, String>
-        where
-            F: Fn() -> String,
+    where
+        F: Fn() -> String,
     {
         match string.parse() {
             Ok(n) => Ok(n),
@@ -195,13 +195,13 @@ impl Parser {
         debug!("#boolean");
         match tokenizer.next_token() {
             Ok(Token::Key(_, ref v))
-            if {
-                let b = v.as_bytes();
-                !b.is_empty() && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
-            } =>
-                {
-                    Ok(Self::node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
-                }
+                if {
+                    let b = v.as_bytes();
+                    !b.is_empty() && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
+                } =>
+            {
+                Ok(Self::node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
+            }
             _ => Err(tokenizer.err_msg()),
         }
     }
@@ -557,7 +557,7 @@ impl Parser {
             };
 
             return match key.as_bytes()[0] {
-                b'-' | b'0'...b'9' => Self::term_num(tokenizer),
+                b'-' | b'0'..=b'9' => Self::term_num(tokenizer),
                 _ => Self::boolean(tokenizer),
             };
         }
@@ -687,7 +687,6 @@ pub trait NodeVisitor {
     fn end_term(&mut self) {}
 }
 
-
 #[cfg(test)]
 mod parser_tests {
     use parser::{FilterToken, NodeVisitor, ParseToken, Parser};
@@ -732,11 +731,7 @@ mod parser_tests {
         setup();
 
         fn invalid(path: &str) {
-            if let Err(_) = run(path) {
-                assert!(true);
-            } else {
-                assert!(false);
-            }
+            assert!(run(path).is_err());
         }
 
         invalid("$[]");
@@ -821,24 +816,21 @@ mod parser_tests {
             ])
         );
 
-        match run("$.") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$.").is_ok() {
+            panic!();
         }
 
-        match run("$..") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$..").is_ok() {
+            panic!();
         }
 
-        match run("$. a") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$. a").is_ok() {
+            panic!();
         }
     }
 
     #[test]
-    fn parse_array_sytax() {
+    fn parse_array_syntax() {
         setup();
 
         assert_eq!(
@@ -1211,24 +1203,20 @@ mod parser_tests {
             ])
         );
 
-        match run("$[1.1]") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$[1.1]").is_ok() {
+            panic!();
         }
 
-        match run("$[?(1.1<.2)]") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$[?(1.1<.2)]").is_ok() {
+            panic!();
         }
 
-        match run("$[?(1.1<2.)]") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$[?(1.1<2.)]").is_ok() {
+            panic!();
         }
 
-        match run("$[?(1.1<2.a)]") {
-            Ok(_) => panic!(),
-            _ => {}
+        if run("$[?(1.1<2.a)]").is_ok() {
+            panic!();
         }
     }
 }
@@ -1253,7 +1241,7 @@ mod tokenizer_tests {
     }
 
     fn run(input: &str, expected: (Vec<Token>, Option<TokenError>)) {
-        let (vec, err) = collect_token(input.clone());
+        let (vec, err) = collect_token(input);
         assert_eq!((vec, err), expected, "\"{}\"", input);
     }
 

@@ -30,7 +30,7 @@ pub fn read_contents(path: &str) -> String {
 }
 
 #[allow(dead_code)]
-pub fn select_and_then_compare<'a>(path: &str, json: Value, target: Value) {
+pub fn select_and_then_compare(path: &str, json: Value, target: Value) {
     let mut selector = Selector::default();
     let result = selector
         .str_path(path)
@@ -50,7 +50,7 @@ pub fn select_and_then_compare<'a>(path: &str, json: Value, target: Value) {
 }
 
 #[allow(dead_code)]
-pub fn compare_result<'a>(result: Vec<&Value>, target: Value) {
+pub fn compare_result(result: Vec<&Value>, target: Value) {
     let result = serde_json::to_value(result).unwrap();
     assert_eq!(result, target);
 }
