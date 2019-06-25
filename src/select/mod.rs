@@ -199,34 +199,6 @@ enum ExprTerm<'a> {
 }
 
 impl<'a> ExprTerm<'a> {
-    fn is_string(&self) -> bool {
-        match &self {
-            ExprTerm::String(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_number(&self) -> bool {
-        match &self {
-            ExprTerm::Number(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_bool(&self) -> bool {
-        match &self {
-            ExprTerm::Bool(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_json(&self) -> bool {
-        match &self {
-            ExprTerm::Json(_, _) => true,
-            _ => false,
-        }
-    }
-
     fn cmp<C1: Cmp, C2: Cmp>(
         &self,
         other: &Self,
@@ -249,29 +221,58 @@ impl<'a> ExprTerm<'a> {
                 ExprTerm::Json(_, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
-            ExprTerm::Json(fk1, vec1) if other.is_string() => {
-                let s2 = if let ExprTerm::String(s2) = &other {
-                    s2
-                } else {
-                    unreachable!()
-                };
-
-                let ret: Vec<&Value> = vec1
-                    .iter()
-                    .filter(|v1| match v1 {
-                        Value::String(s1) => cmp_fn.cmp_string(s1, s2),
-                        Value::Object(map1) => {
-                            if let Some(FilterKey::String(k)) = fk1 {
-                                if let Some(Value::String(s1)) = map1.get(k) {
-                                    return cmp_fn.cmp_string(s1, s2);
+            ExprTerm::Json(fk1, vec1) => {
+                let ret: Vec<&Value> = match &other {
+                    ExprTerm::String(s2) => vec1
+                        .iter()
+                        .filter(|v1| match v1 {
+                            Value::String(s1) => cmp_fn.cmp_string(s1, s2),
+                            Value::Object(map1) => {
+                                if let Some(FilterKey::String(k)) = fk1 {
+                                    if let Some(Value::String(s1)) = map1.get(k) {
+                                        return cmp_fn.cmp_string(s1, s2);
+                                    }
                                 }
+                                cmp_fn.default()
                             }
-                            cmp_fn.default()
-                        }
-                        _ => cmp_fn.default(),
-                    })
-                    .map(|v| *v)
-                    .collect();
+                            _ => cmp_fn.default(),
+                        })
+                        .map(|v| *v)
+                        .collect(),
+                    ExprTerm::Number(n2) => vec1
+                        .iter()
+                        .filter(|v1| match v1 {
+                            Value::Number(n1) => cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2)),
+                            Value::Object(map1) => {
+                                if let Some(FilterKey::String(k)) = fk1 {
+                                    if let Some(Value::Number(n1)) = map1.get(k) {
+                                        return cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2));
+                                    }
+                                }
+                                cmp_fn.default()
+                            }
+                            _ => cmp_fn.default(),
+                        })
+                        .map(|v| *v)
+                        .collect(),
+                    ExprTerm::Bool(b2) => vec1
+                        .iter()
+                        .filter(|v1| match v1 {
+                            Value::Bool(b1) => cmp_fn.cmp_bool(b1, b2),
+                            Value::Object(map1) => {
+                                if let Some(FilterKey::String(k)) = fk1 {
+                                    if let Some(Value::Bool(b1)) = map1.get(k) {
+                                        return cmp_fn.cmp_bool(b1, b2);
+                                    }
+                                }
+                                cmp_fn.default()
+                            }
+                            _ => cmp_fn.default(),
+                        })
+                        .map(|v| *v)
+                        .collect(),
+                    ExprTerm::Json(_, vec2) => cmp_fn.cmp_json(vec1, vec2),
+                };
 
                 if ret.is_empty() {
                     ExprTerm::Bool(cmp_fn.default())
@@ -279,76 +280,6 @@ impl<'a> ExprTerm<'a> {
                     ExprTerm::Json(None, ret)
                 }
             }
-            ExprTerm::Json(fk1, vec1) if other.is_number() => {
-                let n2 = if let ExprTerm::Number(n2) = &other {
-                    n2
-                } else {
-                    unreachable!()
-                };
-                let ret: Vec<&Value> = vec1
-                    .iter()
-                    .filter(|v1| match v1 {
-                        Value::Number(n1) => cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2)),
-                        Value::Object(map1) => {
-                            if let Some(FilterKey::String(k)) = fk1 {
-                                if let Some(Value::Number(n1)) = map1.get(k) {
-                                    return cmp_fn.cmp_f64(&to_f64(n1), &to_f64(n2));
-                                }
-                            }
-                            cmp_fn.default()
-                        }
-                        _ => cmp_fn.default(),
-                    })
-                    .map(|v| *v)
-                    .collect();
-
-                if ret.is_empty() {
-                    ExprTerm::Bool(cmp_fn.default())
-                } else {
-                    ExprTerm::Json(None, ret)
-                }
-            }
-            ExprTerm::Json(fk1, vec1) if other.is_bool() => {
-                let b2 = if let ExprTerm::Bool(b2) = &other {
-                    b2
-                } else {
-                    unreachable!()
-                };
-                let ret: Vec<&Value> = vec1
-                    .iter()
-                    .filter(|v1| match v1 {
-                        Value::Bool(b1) => cmp_fn.cmp_bool(b1, b2),
-                        Value::Object(map1) => {
-                            if let Some(FilterKey::String(k)) = fk1 {
-                                if let Some(Value::Bool(b1)) = map1.get(k) {
-                                    return cmp_fn.cmp_bool(b1, b2);
-                                }
-                            }
-                            cmp_fn.default()
-                        }
-                        _ => cmp_fn.default(),
-                    })
-                    .map(|v| *v)
-                    .collect();
-
-                if ret.is_empty() {
-                    ExprTerm::Bool(cmp_fn.default())
-                } else {
-                    ExprTerm::Json(None, ret)
-                }
-            }
-            ExprTerm::Json(_, vec1) if other.is_json() => match &other {
-                ExprTerm::Json(_, vec2) => {
-                    let vec = cmp_fn.cmp_json(vec1, vec2);
-                    if vec.is_empty() {
-                        ExprTerm::Bool(cmp_fn.default())
-                    } else {
-                        ExprTerm::Json(None, vec)
-                    }
-                }
-                _ => unreachable!(),
-            },
-            _ => unreachable!(),
         }
     }
 
