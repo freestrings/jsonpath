@@ -132,7 +132,6 @@ extern crate serde_json;
 
 use serde_json::Value;
 
-pub use parser::parser::{Node, Parser};
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
 
@@ -169,7 +168,7 @@ mod select;
 /// ]);
 /// ```
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
-    let node = Parser::compile(path);
+    let node = parser::Parser::compile(path);
     move |json| match &node {
         Ok(node) => {
             let mut selector = Selector::default();
