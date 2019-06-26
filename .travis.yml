@@ -80,3 +80,39 @@ matrix:
         - npm install
       script:
         - npm test
+    - language: node_js
+      os: linux
+      node_js:
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - node -v
+        - npm -v
+      before_script:
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+      script:
+        - bash ./build-wasm.sh
+    - language: node_js
+      os: osx
+      node_js:
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - node -v
+        - npm -v
+      before_script:
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+      script:
+        - bash ./build-wasm.sh
