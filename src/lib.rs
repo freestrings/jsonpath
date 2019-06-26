@@ -412,13 +412,8 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
 /// ```
 pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
     let mut selector = SelectorMut::default();
-    let ret = selector
-        .str_path(path)?
-        .value(value)
-        .delete()?
-        .take()
-        .unwrap_or(Value::Null);
-    Ok(ret)
+    let value = selector.str_path(path)?.value(value).delete()?;
+    Ok(value.take().unwrap_or(Value::Null))
 }
 
 /// Select JSON properties using a jsonpath and transform the result and then replace it. via closure that implements `FnMut` you can transform the selected results.
@@ -468,11 +463,6 @@ where
     F: FnMut(&Value) -> Value,
 {
     let mut selector = SelectorMut::default();
-    let ret = selector
-        .str_path(path)?
-        .value(value)
-        .replace_with(fun)?
-        .take()
-        .unwrap_or(Value::Null);
-    Ok(ret)
+    let value = selector.str_path(path)?.value(value).replace_with(fun)?;
+    Ok(value.take().unwrap_or(Value::Null))
 }
