@@ -22,7 +22,7 @@ fn read_json(path: &str) -> String {
 }
 
 fn get_string() -> String {
-    read_json("./benches/example.json")
+    read_json("./example.json")
 }
 
 fn get_json() -> Value {

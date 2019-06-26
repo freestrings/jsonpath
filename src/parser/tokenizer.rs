@@ -94,6 +94,7 @@ impl Token {
         self.to_simple() == str_token
     }
 
+    #[cfg_attr(tarpaulin, skip)]
     fn to_simple(&self) -> &'static str {
         match self {
             Token::Absolute(_) => ABSOLUTE,

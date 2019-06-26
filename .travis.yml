@@ -14,7 +14,7 @@ branches:
 
 matrix:
   include:
-    - rust: nightly
+    - rust: stable
       os: linux
       env: RUST_BACKTRACE=1
       before_cache: |
@@ -31,6 +31,7 @@ matrix:
         - cargo test --verbose --all
         - cd wasm && cargo clippy -- -D warnings -A clippy::suspicious_else_formatting
         - cd ../nodejs/native && cargo clippy -- -D warnings
+        - cd ../../
       after_success: |
         cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
         bash <(curl -s https://codecov.io/bash)
@@ -79,3 +80,39 @@ matrix:
         - npm install
       script:
         - npm test
+    - language: node_js
+      os: linux
+      node_js:
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - node -v
+        - npm -v
+      before_script:
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+      script:
+        - bash ./build-wasm.sh
+    - language: node_js
+      os: osx
+      node_js:
+        - '11'
+        - '10'
+        - '9'
+        - '8'
+      before_install:
+        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
+        - sh /tmp/rustup.sh -y
+        - export PATH="$HOME/.cargo/bin:$PATH"
+        - source "$HOME/.cargo/env"
+        - node -v
+        - npm -v
+      before_script:
+        - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh -s -- -f
+      script:
+        - bash ./build-wasm.sh

@@ -482,7 +482,7 @@ fn readme_delete() {
 
 #[test]
 fn readme_delete2() {
-    let json_obj = common::read_json("./benches/example.json");
+    let json_obj = common::read_json("./benchmark/example.json");
 
     let ret = jsonpath::delete(json_obj, "$.store.book").unwrap();
 

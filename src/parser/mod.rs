@@ -193,13 +193,14 @@ impl Parser {
 
     fn boolean(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#boolean");
+
+        fn validation_bool_value(v: &str) -> bool {
+            let b = v.as_bytes();
+            !b.is_empty() && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
+        }
+
         match tokenizer.next_token() {
-            Ok(Token::Key(_, ref v))
-                if {
-                    let b = v.as_bytes();
-                    !b.is_empty() && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
-                } =>
-            {
+            Ok(Token::Key(_, ref v)) if validation_bool_value(v) => {
                 Ok(Self::node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))))
             }
             _ => Err(tokenizer.err_msg()),
@@ -229,10 +230,10 @@ impl Parser {
         debug!("#array_quote_value");
         match tokenizer.next_token() {
             Ok(Token::SingleQuoted(_, val)) | Ok(Token::DoubleQuoted(_, val)) => {
-                if !tokenizer.peek_is(COMMA) {
-                    Ok(Self::node(ParseToken::Key(val)))
-                } else {
+                if tokenizer.peek_is(COMMA) {
                     Self::array_keys(tokenizer, val)
+                } else {
+                    Ok(Self::node(ParseToken::Key(val)))
                 }
             }
             _ => Err(tokenizer.err_msg()),

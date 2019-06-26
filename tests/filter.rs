@@ -13,7 +13,7 @@ fn array() {
 
     select_and_then_compare(
         "$.school.friends[1, 2]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             {"id": 1, "name": "Vincent Cannon" },
             {"id": 2, "name": "Gray Berry"}
@@ -22,7 +22,7 @@ fn array() {
 
     select_and_then_compare(
         "$.school.friends[1: ]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             {"id": 1, "name": "Vincent Cannon" },
             {"id": 2, "name": "Gray Berry"}
@@ -31,7 +31,7 @@ fn array() {
 
     select_and_then_compare(
         "$.school.friends[:-2]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             {"id": 0, "name": "Millicent Norman"}
         ]),
@@ -39,13 +39,13 @@ fn array() {
 
     select_and_then_compare(
         "$..friends[2].name",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!(["Gray Berry", "Gray Berry"]),
     );
 
     select_and_then_compare(
         "$..friends[*].name",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             "Vincent Cannon",
             "Gray Berry",
@@ -57,19 +57,19 @@ fn array() {
 
     select_and_then_compare(
         "$['school']['friends'][*].['name']",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!(["Millicent Norman", "Vincent Cannon", "Gray Berry"]),
     );
 
     select_and_then_compare(
         "$['school']['friends'][0].['name']",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!(["Millicent Norman"]),
     );
 
     select_and_then_compare(
         r#"$.["eyeColor", "name"]"#,
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!(["blue", "Leonor Herman"]),
     );
 }
@@ -80,7 +80,7 @@ fn return_type() {
 
     select_and_then_compare(
         "$.school",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([{
             "friends": [
                 {"id": 0, "name": "Millicent Norman"},
@@ -92,7 +92,7 @@ fn return_type() {
 
     select_and_then_compare(
         "$.school[?(@.friends[0])]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([{
             "friends": [
                 {"id": 0, "name": "Millicent Norman"},
@@ -104,7 +104,7 @@ fn return_type() {
 
     select_and_then_compare(
         "$.school[?(@.friends[10])]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([{
             "friends": [
                 {"id": 0, "name": "Millicent Norman"},
@@ -116,7 +116,7 @@ fn return_type() {
 
     select_and_then_compare(
         "$.school[?(1==1)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([{
             "friends": [
                 {"id": 0, "name": "Millicent Norman"},
@@ -128,7 +128,7 @@ fn return_type() {
 
     select_and_then_compare(
         "$.school.friends[?(1==1)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([[
             {"id": 0, "name": "Millicent Norman"},
             {"id": 1, "name": "Vincent Cannon" },
@@ -143,7 +143,7 @@ fn op_default() {
 
     select_and_then_compare(
         "$.school[?(@.friends == @.friends)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([{
             "friends": [
                 {"id": 0, "name": "Millicent Norman"},
@@ -155,7 +155,7 @@ fn op_default() {
 
     select_and_then_compare(
         "$.friends[?(@.name)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             { "id" : 1, "name" : "Vincent Cannon" },
             { "id" : 2, "name" : "Gray Berry" }
@@ -164,7 +164,7 @@ fn op_default() {
 
     select_and_then_compare(
         "$.friends[?(@.id >= 2)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             { "id" : 2, "name" : "Gray Berry" }
         ]),
@@ -172,7 +172,7 @@ fn op_default() {
 
     select_and_then_compare(
         "$.friends[?(@.id >= 2 || @.id == 1)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([
             { "id" : 2, "name" : "Gray Berry" },
             { "id" : 1, "name" : "Vincent Cannon" }
@@ -181,25 +181,25 @@ fn op_default() {
 
     select_and_then_compare(
         "$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([Value::Null]),
     );
 
     select_and_then_compare(
         "$..friends[?(@.id == $.index)].id",
-        read_json("./benches/data_obj.json"),
+        read_json("./benchmark/data_obj.json"),
         json!([0, 0]),
     );
 
     select_and_then_compare(
         "$..book[?($.store.bicycle.price < @.price)].price",
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([22.99]),
     );
 
     select_and_then_compare(
         "$..book[?( (@.price == 12.99 || @.category == 'reference') && @.price > 10)].price",
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([12.99]),
     );
 
@@ -365,7 +365,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$.store.book[*].author"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             "Nigel Rees",
             "Evelyn Waugh",
@@ -376,7 +376,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$..author"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             "Nigel Rees",
             "Evelyn Waugh",
@@ -387,7 +387,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$.store.*"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
              [
                 {"category" : "reference", "author" : "Nigel Rees","title" : "Sayings of the Century", "price" : 8.95},
@@ -401,13 +401,13 @@ fn example() {
 
     select_and_then_compare(
         r#"$.store..price"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([8.95, 12.99, 8.99, 22.99, 19.95]),
     );
 
     select_and_then_compare(
         r#"$..book[2]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
             "category" : "fiction",
@@ -421,7 +421,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$..book[-2]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
                 "category" : "fiction",
@@ -435,7 +435,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$..book[0, 1]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
                 "category" : "reference",
@@ -454,7 +454,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$..book[:2]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
                 "category" : "reference",
@@ -473,7 +473,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$..book[2:]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
                 "category" : "fiction",
@@ -494,7 +494,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$..book[?(@.isbn)]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
                 "category" : "fiction",
@@ -515,7 +515,7 @@ fn example() {
 
     select_and_then_compare(
         r#"$.store.book[?(@.price < 10)]"#,
-        read_json("./benches/example.json"),
+        read_json("./benchmark/example.json"),
         json!([
             {
                 "category" : "reference",
@@ -535,8 +535,8 @@ fn example() {
 
     select_and_then_compare(
         r#"$..*"#,
-        read_json("./benches/example.json"),
-        read_json("./benches/giveme_every_thing_result.json"),
+        read_json("./benchmark/example.json"),
+        read_json("./benchmark/giveme_every_thing_result.json"),
     );
 }
 
@@ -651,7 +651,7 @@ fn all_filter() {
     for path in &[r#"$..friends.*"#, r#"$[*].friends.*"#] {
         select_and_then_compare(
             path,
-            read_json("./benches/data_array.json"),
+            read_json("./benchmark/data_array.json"),
             json!([
                { "id" : 0, "name" : "Millicent Norman" },
                { "id" : 1, "name" : "Vincent Cannon" },
