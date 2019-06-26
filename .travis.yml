@@ -14,7 +14,7 @@ branches:
 
 matrix:
   include:
-    - rust: nightly
+    - rust: stable
       os: linux
       env: RUST_BACKTRACE=1
       before_cache: |
@@ -31,6 +31,7 @@ matrix:
         - cargo test --verbose --all
         - cd wasm && cargo clippy -- -D warnings -A clippy::suspicious_else_formatting
         - cd ../nodejs/native && cargo clippy -- -D warnings
+        - cd ../../
       after_success: |
         cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
         bash <(curl -s https://codecov.io/bash)

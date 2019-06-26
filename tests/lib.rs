@@ -15,7 +15,7 @@ mod common;
 fn compile() {
     let compile_object = |path| {
         let mut template = jsonpath::compile(path);
-        let json_obj = read_json("./benches/data_obj.json");
+        let json_obj = read_json("./benchmark/data_obj.json");
         let json = template(&json_obj).unwrap();
         let ret = json!([
             {"id": 2,"name": "Gray Berry"},
@@ -26,7 +26,7 @@ fn compile() {
 
     let compile_array = |path| {
         let mut template = jsonpath::compile(path);
-        let json_obj = read_json("./benches/data_array.json");
+        let json_obj = read_json("./benchmark/data_array.json");
         let json = template(&json_obj).unwrap();
         let ret = json!([
             {"id": 2,"name": "Gray Berry"},
@@ -59,7 +59,7 @@ fn selector() {
         compare_result(json, target);
     };
 
-    let json_obj = read_json("./benches/data_obj.json");
+    let json_obj = read_json("./benchmark/data_obj.json");
     let mut selector = jsonpath::selector(&json_obj);
 
     select(
@@ -96,7 +96,7 @@ fn selector_as() {
         assert_eq!(json, target);
     };
 
-    let json_obj = read_json("./benches/data_obj.json");
+    let json_obj = read_json("./benchmark/data_obj.json");
     let mut selector = jsonpath::selector_as::<Friend>(&json_obj);
 
     select(
@@ -129,7 +129,7 @@ fn selector_as() {
 
 #[test]
 fn select() {
-    let json_obj = read_json("./benches/example.json");
+    let json_obj = read_json("./benchmark/example.json");
     let json = jsonpath::select(&json_obj, "$..book[2]").unwrap();
     let ret = json!([{
         "category" : "fiction",
@@ -143,7 +143,7 @@ fn select() {
 
 #[test]
 fn select_str() {
-    let json_str = read_contents("./benches/example.json");
+    let json_str = read_contents("./benchmark/example.json");
     let result_str = jsonpath::select_as_str(&json_str, "$..book[2]").unwrap();
     let ret = json!([{
         "category" : "fiction",

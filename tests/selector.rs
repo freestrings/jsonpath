@@ -18,7 +18,7 @@ fn selector_mut() {
     let result = selector_mut
         .str_path(r#"$.store..price"#)
         .unwrap()
-        .value(read_json("./benches/example.json"))
+        .value(read_json("./benchmark/example.json"))
         .replace_with(&mut |v| {
             if let Value::Number(n) = v {
                 nums.push(n.as_f64().unwrap());
