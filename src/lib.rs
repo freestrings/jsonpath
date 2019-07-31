@@ -299,7 +299,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(
 ///     &json!({"name": "친구1", "age": 20})
 /// ]);
 /// ```
-pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, JsonPathError> {
+pub fn select<'a>(json: &'a Value, path: &str) -> Result<Vec<&'a Value>, JsonPathError> {
     Selector::default().str_path(path)?.value(json).select()
 }
 
