@@ -214,7 +214,7 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 /// ]);
 /// ```
 #[allow(clippy::needless_lifetimes)]
-pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError> {
+pub fn selector<'a>(json: &'a Value) -> impl FnMut(&str) -> Result<Vec<&'a Value>, JsonPathError> {
     let mut selector = Selector::default();
     let _ = selector.value(json);
     move |path: &str| selector.str_path(path)?.reset_value().select()
