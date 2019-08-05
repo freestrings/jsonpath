@@ -214,7 +214,7 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 /// ]);
 /// ```
 #[allow(clippy::needless_lifetimes)]
-pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError> {
+pub fn selector<'a>(json: &'a Value) -> impl FnMut(&str) -> Result<Vec<&'a Value>, JsonPathError> {
     let mut selector = Selector::default();
     let _ = selector.value(json);
     move |path: &str| selector.str_path(path)?.reset_value().select()
@@ -299,7 +299,7 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(
 ///     &json!({"name": "친구1", "age": 20})
 /// ]);
 /// ```
-pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, JsonPathError> {
+pub fn select<'a>(json: &'a Value, path: &str) -> Result<Vec<&'a Value>, JsonPathError> {
     Selector::default().str_path(path)?.value(json).select()
 }
 
