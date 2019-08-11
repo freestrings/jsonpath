@@ -1027,11 +1027,15 @@ pub struct SelectorMut {
     value: Option<Value>,
 }
 
+<<<<<<< HEAD
 fn replace_value<F: FnMut(Value) -> Value>(
     mut tokens: Vec<String>,
     value: &mut Value,
     fun: &mut F,
 ) {
+=======
+fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+>>>>>>> improve performance avoid remove & insert to map
     let mut target = value;
 
     let last_index = tokens.len() - 1;
