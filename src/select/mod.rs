@@ -5,7 +5,6 @@ use array_tool::vec::{Intersect, Union};
 use serde_json::{Number, Value};
 
 use parser::*;
-use serde_json::map::Entry;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
@@ -1027,23 +1026,21 @@ pub struct SelectorMut {
     value: Option<Value>,
 }
 
-fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+fn replace_value<F: FnMut(Value) -> Value>(tokens: Vec<String>, value: &mut Value, fun: &mut F) {
     let mut target = value;
 
-    let last_index = tokens.len() - 1;
-    for (i, token) in tokens.drain(..).enumerate() {
+    for (i, token) in tokens.iter().enumerate() {
         let target_once = target;
-        let is_last = i == last_index;
+        let is_last = i == tokens.len() - 1;
         let target_opt = match *target_once {
             Value::Object(ref mut map) => {
                 if is_last {
-                    if let Entry::Occupied(mut e) = map.entry(token) {
-                        let v = e.insert(Value::Null);
-                        e.insert(fun(v));
+                    if let Some(v) = map.remove(token) {
+                        map.insert(token.clone(), fun(v));
                     }
                     return;
                 }
-                map.get_mut(&token)
+                map.get_mut(token)
             }
             Value::Array(ref mut vec) => {
                 if let Ok(x) = token.parse::<usize>() {
