@@ -1027,7 +1027,11 @@ pub struct SelectorMut {
     value: Option<Value>,
 }
 
-fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+fn replace_value<F: FnMut(Value) -> Value>(
+    mut tokens: Vec<String>,
+    value: &mut Value,
+    fun: &mut F,
+) {
     let mut target = value;
 
     let last_index = tokens.len() - 1;
@@ -1039,7 +1043,11 @@ fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut 
                 if is_last {
                     if let Entry::Occupied(mut e) = map.entry(token) {
                         let v = e.insert(Value::Null);
-                        e.insert(fun(v));
+                        if let Some(res) = fun(v) {
+                            e.insert(res);
+                        } else {
+                            e.remove();
+                        }
                     }
                     return;
                 }
