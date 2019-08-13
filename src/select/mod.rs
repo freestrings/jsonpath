@@ -517,7 +517,7 @@ impl<'a, 'b> Selector<'a, 'b> {
 
     fn _select(&mut self) -> Result<(), JsonPathError> {
         if self.node_ref.is_some() {
-            let node_ref = self.node_ref.take().unwrap();
+            let node_ref = self.node_ref.unwrap();
             self.visit(node_ref);
             return Ok(());
         }
@@ -526,7 +526,7 @@ impl<'a, 'b> Selector<'a, 'b> {
             return Err(JsonPathError::EmptyPath);
         }
 
-        let node = self.node.take().unwrap();
+        let node = self.node.unwrap();
         self.visit(&node);
         self.node = Some(node);
 
