@@ -3,7 +3,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 
 use common::{read_json, setup};
-use jsonpath::{Selector, SelectorMut, Parser};
+use jsonpath::{Parser, Selector, SelectorMut};
 use serde_json::Value;
 
 mod common;
@@ -60,4 +60,39 @@ fn selector_node_ref() {
     let mut selector = Selector::default();
     selector.compiled_path(&node);
     assert!(std::ptr::eq(selector.node_ref().unwrap(), &node));
+}
+
+#[test]
+fn selector_delete() {
+    setup();
+
+    let mut selector_mut = SelectorMut::default();
+
+    let result = selector_mut
+        .str_path(r#"$.store..price[?(@>13)]"#)
+        .unwrap()
+        .value(read_json("./benchmark/example.json"))
+        .delete()
+        .unwrap()
+        .take()
+        .unwrap();
+
+    let mut selector = Selector::default();
+    let result = selector
+        .str_path(r#"$.store..price"#)
+        .unwrap()
+        .value(&result)
+        .select()
+        .unwrap();
+
+    assert_eq!(
+        result,
+        vec![
+            &json!(8.95),
+            &json!(12.99),
+            &json!(8.99),
+            &Value::Null,
+            &Value::Null
+        ]
+    );
 }
