@@ -31,6 +31,3 @@ path = "src/lib.rs"
 [profile.release]
 #debug = true
 #lto = false
-
-[workspace]
-members = ["wasm"]
