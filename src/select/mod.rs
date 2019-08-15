@@ -5,6 +5,7 @@ use array_tool::vec::{Intersect, Union};
 use serde_json::{Number, Value};
 
 use parser::*;
+use serde_json::map::Entry;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
@@ -1026,31 +1027,29 @@ pub struct SelectorMut {
     value: Option<Value>,
 }
 
-fn replace_value<F: FnMut(&Value) -> Value>(tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut Value, fun: &mut F) {
     let mut target = value;
 
-    for (i, token) in tokens.iter().enumerate() {
+    let last_index = tokens.len() - 1;
+    for (i, token) in tokens.drain(..).enumerate() {
         let target_once = target;
-        let is_last = i == tokens.len() - 1;
+        let is_last = i == last_index;
         let target_opt = match *target_once {
             Value::Object(ref mut map) => {
                 if is_last {
-                    let v = if let Some(v) = map.get(token) {
-                        fun(v)
-                    } else {
-                        return;
-                    };
-
-                    map.insert(token.clone(), v);
+                    if let Entry::Occupied(mut e) = map.entry(token) {
+                        let v = e.insert(Value::Null);
+                        e.insert(fun(v));
+                    }
                     return;
                 }
-                map.get_mut(token)
+                map.get_mut(&token)
             }
             Value::Array(ref mut vec) => {
                 if let Ok(x) = token.parse::<usize>() {
                     if is_last {
-                        let v = { fun(&vec[x]) };
-                        vec[x] = v;
+                        let v = std::mem::replace(&mut vec[x], Value::Null);
+                        vec[x] = fun(v);
                         return;
                     }
                     vec.get_mut(x)
@@ -1174,7 +1173,7 @@ impl SelectorMut {
         }
     }
 
-    pub fn replace_with<F: FnMut(&Value) -> Value>(
+    pub fn replace_with<F: FnMut(Value) -> Value>(
         &mut self,
         fun: &mut F,
     ) -> Result<&mut Self, JsonPathError> {
