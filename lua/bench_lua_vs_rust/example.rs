@@ -14,7 +14,7 @@ fn read_json(path: &str) -> String {
 }
 
 fn get_string() -> String {
-    read_json("../benchmark/example.json")
+    read_json("../../benchmark/example.json")
 }
 
 fn get_json() -> Value {
