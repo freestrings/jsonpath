@@ -135,9 +135,9 @@ use serde_json::Value;
 pub use parser::Parser;
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
-use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_void};
 
+#[doc(hidden)]
+mod ffi;
 #[doc(hidden)]
 mod parser;
 #[doc(hidden)]
@@ -467,72 +467,4 @@ where
     let mut selector = SelectorMut::default();
     let value = selector.str_path(path)?.value(value).replace_with(fun)?;
     Ok(value.take().unwrap_or(Value::Null))
-}
-
-
-#[no_mangle]
-pub extern "C" fn ffi_select(json_str: *const c_char, path: *const c_char) -> *const c_char {
-    let json_str = match unsafe { CStr::from_ptr(json_str) }.to_str() {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("{:?}", e);
-        }
-    };
-
-    let path = match unsafe { CStr::from_ptr(path) }.to_str() {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("{:?}", e);
-        }
-    };
-
-    match select_as_str(json_str, path) {
-        Ok(v) => match serde_json::to_string(&v) {
-            Ok(s) => {
-                let s = CString::new(s.as_str()).unwrap();
-                let p = s.as_ptr();
-                std::mem::forget(s);
-                p
-            }
-            Err(e) => {
-                panic!("{:?}", e);
-            }
-        },
-        Err(e) => {
-            panic!("{:?}", e);
-        }
-    }
-}
-
-
-#[no_mangle]
-pub extern "C" fn ffi_path_compile(path: *const c_char) -> *mut c_void {
-    let path = match unsafe { CStr::from_ptr(path) }.to_str() {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("{:?}", e);
-        }
-    };
-
-    Box::into_raw(Box::new(Parser::compile(path).unwrap())) as *mut c_void
-}
-
-#[no_mangle]
-pub extern "C" fn ffi_select_with_compiled(
-    path_ptr: *mut c_void,
-    json_ptr: *const c_char,
-) -> *const c_char {
-    let node = unsafe { Box::from_raw(path_ptr as *mut parser::Node) };
-    let json_str = unsafe { CStr::from_ptr(json_ptr) }.to_str().expect("invalid 'json_ptr' input");
-    let json = serde_json::from_str(json_str).expect(&format!("invalid json string: {}", json_str));
-
-    let mut selector = Selector::default();
-    let found = selector.compiled_path(&node).value(&json).select().unwrap();
-    std::mem::forget(node);
-
-    let result = serde_json::to_string(&found).expect(&format!("json serialize error: {:?}", found));
-    let result_cstring = CString::new(result.as_str()).expect(&format!("empty result: {:?}", result));
-    let result_ptr = result_cstring.as_ptr();
-    std::mem::forget(result_cstring);
-    result_ptr
 }

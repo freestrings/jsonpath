@@ -9,12 +9,12 @@ end
 
 print(string.format("%s - %u", "lua iter", iter));
 
-local file = io.open("../../benchmark/example.json", "r");
+local file = io.open("../benchmark/example.json", "r");
 io.input(file)
 local data = io.read("*a");
 io.close(file);
-local cb = compile("$..book[?(@.price<30 && @.category==\"fiction\")]");
+local template = compile("$..book[?(@.price<30 && @.category==\"fiction\")]");
 for i = 0, iter do
-    local r = cb(data);
+    local r = template(data);
 --    print(r);
 end
