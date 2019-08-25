@@ -2,3 +2,4 @@
 .vscode
 /target/
 Cargo.lock
+docker_example/ab_results/**
