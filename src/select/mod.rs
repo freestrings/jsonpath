@@ -1058,6 +1058,7 @@ fn replace_value<F: FnMut(Value) -> Option<Value>>(mut tokens: Vec<String>, valu
                         } else {
                             vec.remove(x);
                         }
+                        vec[x] = fun(v);
                         return;
                     }
                     vec.get_mut(x)
