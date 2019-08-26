@@ -1028,14 +1028,14 @@ pub struct SelectorMut {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 fn replace_value<F: FnMut(Value) -> Value>(
     mut tokens: Vec<String>,
     value: &mut Value,
     fun: &mut F,
 ) {
-=======
+
 fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut Value, fun: &mut F) {
->>>>>>> improve performance avoid remove & insert to map
     let mut target = value;
 
     let last_index = tokens.len() - 1;
@@ -1061,7 +1061,11 @@ fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut 
                 if let Ok(x) = token.parse::<usize>() {
                     if is_last {
                         let v = std::mem::replace(&mut vec[x], Value::Null);
-                        vec[x] = fun(v);
+                        if let Some(res) = fun(v) {
+                            vec[x] = res;
+                        } else {
+                            vec.remove(x);
+                        }
                         return;
                     }
                     vec.get_mut(x)
@@ -1167,7 +1171,11 @@ impl SelectorMut {
     }
 
     pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {
-        self.replace_with(&mut |_| Value::Null)
+        self.replace_with(&mut |_| Some(Value::Null))
+    }
+
+    pub fn remove(&mut self) -> Result<&mut Self, JsonPathError> {
+        self.replace_with(&mut |_| None)
     }
 
     fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
@@ -1185,7 +1193,7 @@ impl SelectorMut {
         }
     }
 
-    pub fn replace_with<F: FnMut(Value) -> Value>(
+    pub fn replace_with<F: FnMut(Value) -> Option<Value>>(
         &mut self,
         fun: &mut F,
     ) -> Result<&mut Self, JsonPathError> {

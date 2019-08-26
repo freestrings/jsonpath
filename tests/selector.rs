@@ -23,7 +23,7 @@ fn selector_mut() {
             if let Value::Number(n) = v {
                 nums.push(n.as_f64().unwrap());
             }
-            Value::String("a".to_string())
+            Some(Value::String("a".to_string()))
         })
         .unwrap()
         .take()
