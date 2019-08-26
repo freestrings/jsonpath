@@ -443,7 +443,7 @@ pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
 ///         0
 ///     };
 ///
-///     json!(age)
+///     Some(json!(age))
 /// }).unwrap();
 ///
 /// assert_eq!(ret, json!({
