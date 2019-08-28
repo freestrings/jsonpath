@@ -23,7 +23,7 @@ fn selector_mut() {
             if let Value::Number(n) = v {
                 nums.push(n.as_f64().unwrap());
             }
-            Value::String("a".to_string())
+            Some(Value::String("a".to_string()))
         })
         .unwrap()
         .take()
@@ -96,3 +96,37 @@ fn selector_delete() {
         ]
     );
 }
+
+#[test]
+fn selector_remove() {
+    setup();
+
+    let mut selector_mut = SelectorMut::default();
+
+    let result = selector_mut
+        .str_path(r#"$.store..price[?(@>13)]"#)
+        .unwrap()
+        .value(read_json("./benchmark/example.json"))
+        .remove()
+        .unwrap()
+        .take()
+        .unwrap();
+
+    let mut selector = Selector::default();
+    let result = selector
+        .str_path(r#"$.store..price"#)
+        .unwrap()
+        .value(&result)
+        .select()
+        .unwrap();
+
+    assert_eq!(
+        result,
+        vec![
+            &json!(8.95),
+            &json!(12.99),
+            &json!(8.99)
+        ]
+    );
+}
+
