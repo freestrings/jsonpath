@@ -56,8 +56,8 @@ where
     }
 }
 
-fn replace_fun(v: &Value, fun: &js_sys::Function) -> Value {
-    match JsValue::from_serde(v) {
+fn replace_fun(v: Value, fun: &js_sys::Function) -> Value {
+    match JsValue::from_serde(&v) {
         Ok(js_v) => match fun.call1(&JsValue::NULL, &js_v) {
             Ok(result) => match into_serde_json(&result) {
                 Ok(json) => json,
