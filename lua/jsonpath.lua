@@ -23,7 +23,9 @@ if existsVaiable('ngx') then
     _ngx = ngx
 else
     _ngx = {}
-    _ngx.log = function() end
+    _ngx.log = function(level, msg)
+        print('['..level..'] ' .. msg)
+    end
 end
 
 function module.compile(path)

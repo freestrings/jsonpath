@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# cd lua/docker_example && ./run.sh
+# cd lua && cargo build --release && cd docker_example && ./run.sh
 
 set -v
 
-docker kill jsonpath
+[ "$(docker ps -a | grep jsonpath)" ] && docker kill jsonpath
 
 docker run -d --rm --name jsonpath \
   -v "${PWD}/../../benchmark/example.json":/etc/jsonpath/example/example.json:ro \
@@ -16,35 +16,5 @@ docker run -d --rm --name jsonpath \
   -p 8080:80 \
   openresty/openresty:bionic
 
-paths=(
-    "$.store.book[*].author"
-    "$..author"
-    "$.store.*"
-    "$.store..price"
-    "$..book[2]"
-    "$..book[-2]"
-    "$..book[0,1]"
-    "$..book[:2]"
-    "$..book[1:2]"
-    "$..book[-2:]"
-    "$..book[2:]"
-    "$..book[?(@.isbn)]"
-    "$.store.book[?(@.price == 10)]"
-    "$..*"
-    "$..book[ ?( (@.price < 13 || $.store.bicycle.price < @.price) && @.price <=10 ) ]"
-    "$.store.book[?( (@.price < 10 || @.price > 10) && @.price > 10 )]"
-)
-
-encoded_paths=()
-
-for i in "${!paths[@]}"
-do
-  encoded_paths+=("$(node --eval "console.log(encodeURIComponent('${paths[$i]}'))")")
-  curl http://localhost:8080/1?path="${encoded_paths[$i]}"
-done
-
-for i in "${!encoded_paths[@]}"
-do
-  ab -n 1000 -c 10 http://localhost:8080/1?path="${encoded_paths[$i]}" > ab_results/"${paths[$i]}".txt
-done
-
+sleep 1
+curl http://localhost:8080/3
