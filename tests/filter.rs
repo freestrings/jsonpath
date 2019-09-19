@@ -663,3 +663,43 @@ fn all_filter() {
         );
     }
 }
+
+#[test]
+fn current_path() {
+    setup();
+    select_and_then_compare(
+        "$.a[?(@.b.c == 1)]",
+        json!({
+            "a": {
+                "b": {
+                    "c": 1
+                }
+            }
+        }),
+        json!([
+           {
+              "b" : {
+                 "c" : 1
+              }
+           }
+        ]),
+    );
+
+    select_and_then_compare(
+        "$.a[?(@.b.c)]",
+        json!({
+            "a": {
+                "b": {
+                    "c": 1
+                }
+            }
+        }),
+        json!([
+           {
+              "b" : {
+                 "c" : 1
+              }
+           }
+        ]),
+    );
+}
