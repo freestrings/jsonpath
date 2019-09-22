@@ -35,8 +35,15 @@ function module.compile(path)
         cache[path] = jsonpath.ffi_path_compile(path)
         _ngx.log(_ngx.INFO, 'compile : [' .. path .. ']')
     end
+end
 
+function module.exec(path)
     local compiledPath = cache[path]
+
+    if(cache[path] == nil) then
+        assert(jsonpath, path .. ": is not compiled")
+    end
+
     return function(jsonStr)
         local result = jsonpath.ffi_select_with_compiled_path(compiledPath, jsonStr)
         return ffi.string(result);
