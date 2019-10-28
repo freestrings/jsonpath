@@ -11,7 +11,7 @@ fn to_str(v: *const c_char, err_msg: &str) -> &str {
 }
 
 fn to_char_ptr(v: &str) -> *const c_char {
-    let s = CString::new(v).expect(&format!("invalid string: {}", v));
+    let s = CString::new(v).unwrap_or_else(|_| panic!("invalid string: {}", v));
     let ptr = s.as_ptr();
     std::mem::forget(s);
     ptr
@@ -30,6 +30,7 @@ pub extern "C" fn ffi_select(json_str: *const c_char, path: *const c_char) -> *c
 }
 
 #[no_mangle]
+#[allow(clippy::forget_copy)]
 pub extern "C" fn ffi_path_compile(path: *const c_char) -> *mut c_void {
     let path = to_str(path, INVALID_PATH);
     let ref_node = Box::into_raw(Box::new(parser::Parser::compile(path).unwrap()));
@@ -45,13 +46,14 @@ pub extern "C" fn ffi_select_with_compiled_path(
 ) -> *const c_char {
     let node = unsafe { Box::from_raw(path_ptr as *mut parser::Node) };
     let json_str = to_str(json_ptr, INVALID_JSON);
-    let json = serde_json::from_str(json_str).expect(&format!("invalid json string: {}", json_str));
+    let json = serde_json::from_str(json_str)
+        .unwrap_or_else(|_| panic!("invalid json string: {}", json_str));
 
     let mut selector = select::Selector::default();
     let found = selector.compiled_path(&node).value(&json).select().unwrap();
     std::mem::forget(node);
 
-    let result =
-        serde_json::to_string(&found).expect(&format!("json serialize error: {:?}", found));
+    let result = serde_json::to_string(&found)
+        .unwrap_or_else(|_| panic!("json serialize error: {:?}", found));
     to_char_ptr(result.as_str())
 }
