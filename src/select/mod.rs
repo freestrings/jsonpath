@@ -2,10 +2,10 @@ use std::collections::HashSet;
 use std::fmt;
 
 use array_tool::vec::{Intersect, Union};
+use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
 use parser::*;
-use serde_json::map::Entry;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
