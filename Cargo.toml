@@ -27,6 +27,7 @@ array_tool = "1.0.3"
 [lib]
 name = "jsonpath_lib"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [profile.release]
 #debug = true

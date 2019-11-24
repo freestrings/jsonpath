@@ -137,7 +137,9 @@ pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
 
 #[doc(hidden)]
-pub mod parser;
+mod ffi;
+#[doc(hidden)]
+mod parser;
 #[doc(hidden)]
 mod select;
 
@@ -443,7 +445,7 @@ pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
 ///         0
 ///     };
 ///
-///     json!(age)
+///     Some(json!(age))
 /// }).unwrap();
 ///
 /// assert_eq!(ret, json!({
@@ -460,7 +462,7 @@ pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
 /// ```
 pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
 where
-    F: FnMut(Value) -> Value,
+    F: FnMut(Value) -> Option<Value>,
 {
     let mut selector = SelectorMut::default();
     let value = selector.str_path(path)?.value(value).replace_with(fun)?;

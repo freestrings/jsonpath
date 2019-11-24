@@ -2,10 +2,10 @@ use std::collections::HashSet;
 use std::fmt;
 
 use array_tool::vec::{Intersect, Union};
+use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
 use parser::*;
-use serde_json::map::Entry;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
@@ -196,7 +196,7 @@ enum ExprTerm<'a> {
     String(String),
     Number(Number),
     Bool(bool),
-    Json(Option<FilterKey>, Vec<&'a Value>),
+    Json(Option<Vec<&'a Value>>, Option<FilterKey>, Vec<&'a Value>),
 }
 
 impl<'a> ExprTerm<'a> {
@@ -209,20 +209,20 @@ impl<'a> ExprTerm<'a> {
         match &self {
             ExprTerm::String(s1) => match &other {
                 ExprTerm::String(s2) => ExprTerm::Bool(cmp_fn.cmp_string(s1, s2)),
-                ExprTerm::Json(_, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Number(n1) => match &other {
                 ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(to_f64(n1), to_f64(n2))),
-                ExprTerm::Json(_, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Bool(b1) => match &other {
                 ExprTerm::Bool(b2) => ExprTerm::Bool(cmp_fn.cmp_bool(*b1, *b2)),
-                ExprTerm::Json(_, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
-            ExprTerm::Json(fk1, vec1) => {
+            ExprTerm::Json(rel, fk1, vec1) => {
                 let ret: Vec<&Value> = match &other {
                     ExprTerm::String(s2) => vec1
                         .iter()
@@ -272,13 +272,15 @@ impl<'a> ExprTerm<'a> {
                         })
                         .cloned()
                         .collect(),
-                    ExprTerm::Json(_, vec2) => cmp_fn.cmp_json(vec1, vec2),
+                    ExprTerm::Json(_, _, vec2) => cmp_fn.cmp_json(vec1, vec2),
                 };
 
                 if ret.is_empty() {
                     ExprTerm::Bool(cmp_fn.default())
+                } else if let Some(rel) = rel {
+                    ExprTerm::Json(Some(rel.to_vec()), None, ret)
                 } else {
-                    ExprTerm::Json(None, ret)
+                    ExprTerm::Json(None, None, ret)
                 }
             }
         }
@@ -360,7 +362,7 @@ impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
             }
         }
 
-        ExprTerm::Json(None, self.to_vec())
+        ExprTerm::Json(None, None, self.to_vec())
     }
 }
 
@@ -584,10 +586,27 @@ impl<'a, 'b> Selector<'a, 'b> {
                     debug!("in_filter 1.: {:?}", v);
 
                     match v {
-                        ExprTerm::Json(_, vec) => {
+                        ExprTerm::Json(rel, fk, vec) => {
                             let mut tmp = Vec::new();
-                            let filter_key = fun(&vec, &mut tmp);
-                            self.terms.push(Some(ExprTerm::Json(Some(filter_key), tmp)));
+                            let filter_key = if let Some(FilterKey::String(key)) = fk {
+                                fun(
+                                    &vec.iter()
+                                        .map(|v| match v {
+                                            Value::Object(map) if map.contains_key(&key) => {
+                                                map.get(&key).unwrap()
+                                            }
+                                            _ => v,
+                                        })
+                                        .collect(),
+                                    &mut tmp,
+                                )
+                            } else {
+                                fun(&vec, &mut tmp)
+                            };
+
+                            let parent = if rel.is_some() { rel } else { Some(vec) };
+                            self.terms
+                                .push(Some(ExprTerm::Json(parent, Some(filter_key), tmp)));
                         }
                         _ => unreachable!(),
                     };
@@ -598,7 +617,8 @@ impl<'a, 'b> Selector<'a, 'b> {
                     if let Some(current) = &self.current {
                         let mut tmp = Vec::new();
                         let filter_key = fun(current, &mut tmp);
-                        self.terms.push(Some(ExprTerm::Json(Some(filter_key), tmp)));
+                        self.terms
+                            .push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
                     }
                 }
             }
@@ -803,9 +823,11 @@ impl<'a, 'b> Selector<'a, 'b> {
                 ExprTerm::String(key) => {
                     self.next_from_current_with_str(&[key]);
                 }
-                ExprTerm::Json(_, v) => {
+                ExprTerm::Json(rel, _, v) => {
                     if v.is_empty() {
                         self.current = Some(vec![&Value::Null]);
+                    } else if let Some(vec) = rel {
+                        self.current = Some(vec);
                     } else {
                         self.current = Some(v);
                     }
@@ -884,6 +906,7 @@ impl<'a, 'b> Selector<'a, 'b> {
             Some(Some(right)) => right,
             Some(None) => ExprTerm::Json(
                 None,
+                None,
                 match &self.current {
                     Some(current) => current.to_vec(),
                     _ => unreachable!(),
@@ -895,6 +918,7 @@ impl<'a, 'b> Selector<'a, 'b> {
         let left = match self.terms.pop() {
             Some(Some(left)) => left,
             Some(None) => ExprTerm::Json(
+                None,
                 None,
                 match &self.current {
                     Some(current) => current.to_vec(),
@@ -1027,7 +1051,11 @@ pub struct SelectorMut {
     value: Option<Value>,
 }
 
-fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut Value, fun: &mut F) {
+fn replace_value<F: FnMut(Value) -> Option<Value>>(
+    mut tokens: Vec<String>,
+    value: &mut Value,
+    fun: &mut F,
+) {
     let mut target = value;
 
     let last_index = tokens.len() - 1;
@@ -1039,7 +1067,11 @@ fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut 
                 if is_last {
                     if let Entry::Occupied(mut e) = map.entry(token) {
                         let v = e.insert(Value::Null);
-                        e.insert(fun(v));
+                        if let Some(res) = fun(v) {
+                            e.insert(res);
+                        } else {
+                            e.remove();
+                        }
                     }
                     return;
                 }
@@ -1049,7 +1081,11 @@ fn replace_value<F: FnMut(Value) -> Value>(mut tokens: Vec<String>, value: &mut 
                 if let Ok(x) = token.parse::<usize>() {
                     if is_last {
                         let v = std::mem::replace(&mut vec[x], Value::Null);
-                        vec[x] = fun(v);
+                        if let Some(res) = fun(v) {
+                            vec[x] = res;
+                        } else {
+                            vec.remove(x);
+                        }
                         return;
                     }
                     vec.get_mut(x)
@@ -1155,7 +1191,11 @@ impl SelectorMut {
     }
 
     pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {
-        self.replace_with(&mut |_| Value::Null)
+        self.replace_with(&mut |_| Some(Value::Null))
+    }
+
+    pub fn remove(&mut self) -> Result<&mut Self, JsonPathError> {
+        self.replace_with(&mut |_| None)
     }
 
     fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
@@ -1173,7 +1213,7 @@ impl SelectorMut {
         }
     }
 
-    pub fn replace_with<F: FnMut(Value) -> Value>(
+    pub fn replace_with<F: FnMut(Value) -> Option<Value>>(
         &mut self,
         fun: &mut F,
     ) -> Result<&mut Self, JsonPathError> {
