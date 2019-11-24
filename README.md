@@ -92,7 +92,7 @@ let result = selector_mut
             0
         };
 
-        json!(age)
+        Some(json!(age))
     }).unwrap()
     .take().unwrap();
 
@@ -353,7 +353,7 @@ let ret = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
         0
     };
 
-    json!(age)
+    Some(json!(age))
 }).unwrap();
 
 assert_eq!(ret, json!({

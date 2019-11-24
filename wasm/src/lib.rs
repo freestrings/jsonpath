@@ -56,24 +56,24 @@ where
     }
 }
 
-fn replace_fun(v: Value, fun: &js_sys::Function) -> Value {
+fn replace_fun(v: Value, fun: &js_sys::Function) -> Option<Value> {
     match JsValue::from_serde(&v) {
         Ok(js_v) => match fun.call1(&JsValue::NULL, &js_v) {
             Ok(result) => match into_serde_json(&result) {
-                Ok(json) => json,
+                Ok(json) => Some(json),
                 Err(e) => {
                     console_error!("replace_with - closure returned a invalid JSON: {:?}", e);
-                    Value::Null
+                    Some(Value::Null)
                 }
             },
             Err(e) => {
                 console_error!("replace_with - fail to call closure: {:?}", e);
-                Value::Null
+                Some(Value::Null)
             }
         },
         Err(e) => {
             console_error!("replace_with - invalid JSON object: {:?}", e);
-            Value::Null
+            Some(Value::Null)
         }
     }
 }
