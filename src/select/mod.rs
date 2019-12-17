@@ -1058,7 +1058,7 @@ fn replace_value<F: FnMut(Value) -> Option<Value>>(
 ) {
     let mut target = value;
 
-    let last_index = tokens.len() - 1;
+    let last_index = tokens.len().checked_sub(1).unwrap_or(0);
     for (i, token) in tokens.drain(..).enumerate() {
         let target_once = target;
         let is_last = i == last_index;
