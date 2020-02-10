@@ -588,7 +588,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn in_filter<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(&mut self, fun: F) {
-        fn get_parent<'a>(prev: Option<Vec<&'a Value>>, current_value: &Vec<&'a Value>, not_matched: HashSet<usize>) -> Option<Vec<&'a Value>> {
+        fn get_parent<'a>(prev: Option<Vec<&'a Value>>, current_value: &[&'a Value], not_matched: HashSet<usize>) -> Option<Vec<&'a Value>> {
             if prev.is_some() {
                 return prev;
             }
