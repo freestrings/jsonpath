@@ -41,7 +41,7 @@ pub fn select_and_then_compare(path: &str, json: Value, target: Value) {
     assert_eq!(
         result,
         match target {
-            Value::Array(vec) => vec.clone(),
+            Value::Array(vec) => vec,
             _ => panic!("Give me the Array!"),
         },
         "{}",
