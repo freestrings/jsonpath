@@ -272,7 +272,15 @@ impl<'a> ExprTerm<'a> {
                         })
                         .cloned()
                         .collect(),
-                    ExprTerm::Json(_, _, vec2) => cmp_fn.cmp_json(vec1, vec2),
+                    ExprTerm::Json(parent, _, vec2) => {
+                        if let Some(vec1) = rel {
+                            cmp_fn.cmp_json(vec1, vec2)
+                        } else if let Some(vec2) = parent {
+                            cmp_fn.cmp_json(vec1, vec2)
+                        } else {
+                            cmp_fn.cmp_json(vec1, vec2)
+                        }
+                    }
                 };
 
                 if ret.is_empty() {
@@ -398,12 +406,12 @@ fn walk_all<'a>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>) {
 }
 
 fn walk<'a, F>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, fun: &F)
-where
-    F: Fn(&Value) -> Option<Vec<&Value>>,
-{
-    fn _walk<'a, F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
     where
         F: Fn(&Value) -> Option<Vec<&Value>>,
+{
+    fn _walk<'a, F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
+        where
+            F: Fn(&Value) -> Option<Vec<&Value>>,
     {
         if let Some(mut ret) = fun(v) {
             tmp.append(&mut ret);
@@ -579,7 +587,20 @@ impl<'a, 'b> Selector<'a, 'b> {
         debug!("new_filter_context: {:?}", self.terms);
     }
 
-    fn in_filter<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>) -> FilterKey>(&mut self, fun: F) {
+    fn in_filter<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(&mut self, fun: F) {
+        fn get_parent<'a>(prev: Option<Vec<&'a Value>>, current_value: &[&'a Value], not_matched: HashSet<usize>) -> Option<Vec<&'a Value>> {
+            if prev.is_some() {
+                return prev;
+            }
+
+            let filtered: Vec<&Value> = current_value.iter().enumerate().filter(|(idx, _)| !not_matched.contains(idx))
+                .map(|(_, v)| *v)
+                .collect();
+
+            Some(filtered)
+        }
+
+
         if let Some(peek) = self.terms.pop() {
             match peek {
                 Some(v) => {
@@ -588,25 +609,19 @@ impl<'a, 'b> Selector<'a, 'b> {
                     match v {
                         ExprTerm::Json(rel, fk, vec) => {
                             let mut tmp = Vec::new();
+                            let mut not_matched = HashSet::new();
                             let filter_key = if let Some(FilterKey::String(key)) = fk {
-                                fun(
-                                    &vec.iter()
-                                        .map(|v| match v {
-                                            Value::Object(map) if map.contains_key(&key) => {
-                                                map.get(&key).unwrap()
-                                            }
-                                            _ => v,
-                                        })
-                                        .collect(),
-                                    &mut tmp,
-                                )
+                                let key_contained = &vec.iter().map(|v| match v {
+                                    Value::Object(map) if map.contains_key(&key) => map.get(&key).unwrap(),
+                                    _ => v,
+                                }).collect();
+                                fun(key_contained, &mut tmp, &mut not_matched)
                             } else {
-                                fun(&vec, &mut tmp)
+                                fun(&vec, &mut tmp, &mut not_matched)
                             };
 
-                            let parent = if rel.is_some() { rel } else { Some(vec) };
-                            self.terms
-                                .push(Some(ExprTerm::Json(parent, Some(filter_key), tmp)));
+                            let parent = get_parent(rel, &vec, not_matched);
+                            self.terms.push(Some(ExprTerm::Json(parent, Some(filter_key), tmp)));
                         }
                         _ => unreachable!(),
                     };
@@ -616,9 +631,9 @@ impl<'a, 'b> Selector<'a, 'b> {
 
                     if let Some(current) = &self.current {
                         let mut tmp = Vec::new();
-                        let filter_key = fun(current, &mut tmp);
-                        self.terms
-                            .push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
+                        let mut not_matched = HashSet::new();
+                        let filter_key = fun(current, &mut tmp, &mut not_matched);
+                        self.terms.push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
                     }
                 }
             }
@@ -626,7 +641,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn all_in_filter_with_str(&mut self, key: &str) {
-        self.in_filter(|vec, tmp| {
+        self.in_filter(|vec, tmp, _| {
             walk_all_with_str(&vec, tmp, key, true);
             FilterKey::All
         });
@@ -640,6 +655,7 @@ impl<'a, 'b> Selector<'a, 'b> {
             tmp: &mut Vec<&'a Value>,
             key: &str,
             visited: &mut HashSet<*const Value>,
+            not_matched: &mut HashSet<usize>,
         ) {
             match v {
                 Value::Object(map) => {
@@ -653,18 +669,40 @@ impl<'a, 'b> Selector<'a, 'b> {
                 }
                 Value::Array(vec) => {
                     for v in vec {
-                        _collect(v, tmp, key, visited);
+                        _collect(v, tmp, key, visited, not_matched);
                     }
                 }
                 _ => {}
             }
         }
 
-        self.in_filter(|vec, tmp| {
+        self.in_filter(|vec, tmp, not_matched| {
             let mut visited = HashSet::new();
-            for v in vec {
-                _collect(v, tmp, key, &mut visited);
+            for (idx, v) in vec.iter().enumerate() {
+                match v {
+                    Value::Object(map) => {
+                        if map.contains_key(key) {
+                            let ptr = *v as *const Value;
+                            if !visited.contains(&ptr) {
+                                visited.insert(ptr);
+                                tmp.push(v)
+                            }
+                        } else {
+                            not_matched.insert(idx);
+                        }
+                    }
+                    Value::Array(vec) => {
+                        not_matched.insert(idx);
+                        for v in vec {
+                            _collect(v, tmp, key, &mut visited, not_matched);
+                        }
+                    }
+                    _ => {
+                        not_matched.insert(idx);
+                    }
+                }
             }
+
             FilterKey::String(key.to_owned())
         });
 
