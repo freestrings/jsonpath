@@ -30,7 +30,6 @@ matrix:
         - cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity
         - cargo test --verbose --all
         - cd wasm && cargo clippy -- -D warnings -A clippy::suspicious_else_formatting
-        - cd ../nodejs/native && cargo clippy -- -D warnings
         - cd ../../
       after_success: |
         cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
@@ -42,44 +41,6 @@ matrix:
         - cargo clean
         - cargo build --verbose --all
         - cargo test --verbose --all
-    - language: node_js
-      os: linux
-      node_js:
-        - '11'
-        - '10'
-        - '9'
-        - '8'
-      before_install:
-        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
-        - sh /tmp/rustup.sh -y
-        - export PATH="$HOME/.cargo/bin:$PATH"
-        - source "$HOME/.cargo/env"
-        - npm install -g neon-cli
-        - cd nodejs
-        - node -v
-        - npm -v
-        - npm install
-      script:
-        - npm test
-    - language: node_js
-      os: osx
-      node_js:
-        - '11'
-        - '10'
-        - '9'
-        - '8'
-      before_install:
-        - curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
-        - sh /tmp/rustup.sh -y
-        - export PATH="$HOME/.cargo/bin:$PATH"
-        - source "$HOME/.cargo/env"
-        - npm install -g neon-cli
-        - cd nodejs
-        - node -v
-        - npm -v
-        - npm install
-      script:
-        - npm test
     - language: node_js
       os: linux
       node_js:
