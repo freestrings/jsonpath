@@ -106,8 +106,7 @@ cd "${WASM_WWW_BENCH}" && \
     npm link jsonpath-wasm
 
 cd "${BENCHES_JS}" && \
-    npm link jsonpath-wasm && \
-    npm link jsonpath-rs
+    npm link jsonpath-wasm
 
 cd "${WASM_TEST}" && \
     npm link jsonpath-wasm

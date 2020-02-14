@@ -1,5 +1,0 @@
-.idea/*
-.vscode
-!.idea/runConfigurations/
-/target/
-Cargo.lock

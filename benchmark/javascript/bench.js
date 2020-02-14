@@ -43,31 +43,10 @@ function getJson() {
 const path = '$..book[?(@.price<30 && @.category=="fiction")]';
 const jp = require('jsonpath');
 const jpw = require('jsonpath-wasm');
-const jpwRs = require('jsonpath-rs');
 
 function jsonpath() {
     for (var i = 0; i < iter; i++) {
         let _ = jp.query(getJson(), path);
-    }
-}
-
-function nativeCompile() {
-    let template = jpwRs.compile(path);
-    for (var i = 0; i < iter; i++) {
-        let _ = template(JSON.stringify(json));
-    }
-}
-
-function nativeSelector() {
-    let selector = jpwRs.selector(getJson());
-    for (var i = 0; i < iter; i++) {
-        let _ = selector(path);
-    }
-}
-
-function nativeSelect() {
-    for (var i = 0; i < iter; i++) {
-        let _ = jpwRs.select(JSON.stringify(json), path);
     }
 }
 

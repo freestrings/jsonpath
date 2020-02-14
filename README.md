@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
 ![crates.io](https://img.shields.io/crates/v/jsonpath_lib.svg)
-![npm](https://img.shields.io/npm/v/jsonpath-rs.svg?label=npm%20%60jsonpath-rs%60)
 ![npm](https://img.shields.io/npm/v/jsonpath-wasm.svg?label=npm%20%60jsonpath-wasm%60)
 ![Codecov](https://img.shields.io/codecov/c/github/freestrings/jsonpath.svg?token=92c41b4e7cf04a9cbebc08f68c5da615)
 
@@ -12,7 +11,6 @@ It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine writte
 
 - [Webassembly Demo](https://freestrings.github.io/jsonpath/)
 - [NPM jsonpath-wasm - webassembly](https://www.npmjs.com/package/jsonpath-wasm)
-- [NPM jsonpath-rs - native addon](https://www.npmjs.com/package/jsonpath-rs)
 
 ## Rust API
 
@@ -388,18 +386,6 @@ import * as jsonpath from "jsonpath-wasm";
 const jsonpath = require('jsonpath-wasm');
 ```
 
-##### jsonpath-rs (NodeJS only)
-
-Goto [`jsonpath-rs` npmjs.org](https://www.npmjs.com/package/jsonpath-rs)
-
-```javascript
-const jsonpath = require('jsonpath-rs');
-```
-
-</details>
-
-<details><summary><b>Javascript - jsonpath.Selector class</b></summary>
-
 ##### jsonpath-wasm
 `wasm-bindgen` 리턴 타입 제약 때문에 빌더 패턴은 지원하지 않는다.
 
@@ -434,42 +420,6 @@ console.log(JSON.stringify(ret) == JSON.stringify(retObj));
 
 // => true
 ```
-
-##### jsonpath-rs
-
-```javascript
-let jsonObj = {
-    "school": {
-        "friends": [
-            {"name": "친구1", "age": 20},
-            {"name": "친구2", "age": 20}
-        ]
-    },
-    "friends": [
-        {"name": "친구3", "age": 30},
-        {"name": "친구4"}
-    ]
-};
-
-let ret = [
-    {"name": "친구3", "age": 30},
-    {"name": "친구1", "age": 20}
-];
-
-let selector = new jsonpath.Selector()
-    .path('$..friends[0]')
-    .value(jsonObj);
-
-let retObj = selector.select();
-
-console.log(JSON.stringify(ret) == JSON.stringify(retObj));
-
-// => true
-```
-
-</details>
-
-<details><summary><b>Javascript - jsonpath.SelectorMut class</b></summary>
 
 빌더 패턴 제약은 `Selector class`와 동일하다.
 
