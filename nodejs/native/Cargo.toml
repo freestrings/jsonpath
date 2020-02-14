@@ -1,6 +1,6 @@
 [package]
 name = "jsonpath4nodejs"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Changseok Han <freestrings@gmail.com>"]
 description = "jsonpath_lib bindings for nodejs"
 keywords = ["library", "jsonpath", "json", "nodejs"]
