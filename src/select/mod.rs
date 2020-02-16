@@ -439,9 +439,9 @@ fn walk<'a, F>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, fun: &F)
 
 fn abs_index(n: isize, len: usize) -> usize {
     if n < 0_isize {
-        (n + len as isize) as usize
+        (n + len as isize).max(0) as usize
     } else {
-        n as usize
+        n.min(len as isize) as usize
     }
 }
 
