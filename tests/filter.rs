@@ -602,6 +602,16 @@ fn range() {
         json!(["first", "second", "third", "forth", "fifth"]),
         json!(["first", "third"]),
     );
+    select_and_then_compare(
+        "$[-4:]",
+        json!(["first", "second", "third"]),
+        json!(["first", "second", "third"]),
+    );
+    select_and_then_compare(
+        "$[:4]",
+        json!(["first", "second", "third"]),
+        json!(["first", "second", "third"]),
+    );
 }
 
 #[test]
