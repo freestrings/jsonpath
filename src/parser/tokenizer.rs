@@ -2,30 +2,6 @@ use std::result::Result;
 
 use super::path_reader::{PathReader, ReaderError};
 
-pub const ABSOLUTE: &str = "$";
-pub const DOT: &str = ".";
-pub const AT: &str = "@";
-pub const OPEN_ARRAY: &str = "[";
-pub const CLOSE_ARRAY: &str = "]";
-pub const ASTERISK: &str = "*";
-pub const QUESTION: &str = "?";
-pub const COMMA: &str = ",";
-pub const SPLIT: &str = ":";
-pub const OPEN_PARENTHESIS: &str = "(";
-pub const CLOSE_PARENTHESIS: &str = ")";
-pub const KEY: &str = "Key";
-pub const DOUBLE_QUOTE: &str = "\"";
-pub const SINGLE_QUOTE: &str = "'";
-pub const EQUAL: &str = "==";
-pub const GREATER_OR_EQUAL: &str = ">=";
-pub const GREATER: &str = ">";
-pub const LITTLE: &str = "<";
-pub const LITTLE_OR_EQUAL: &str = "<=";
-pub const NOT_EQUAL: &str = "!=";
-pub const AND: &str = "&&";
-pub const OR: &str = "||";
-pub const WHITESPACE: &str = " ";
-
 const CH_DOLLA: char = '$';
 const CH_DOT: char = '.';
 const CH_ASTERISK: char = '*';
@@ -86,58 +62,101 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn partial_eq(&self, other: Token) -> bool {
-        self.to_simple() == other.to_simple()
-    }
-
-    pub fn simple_eq(&self, str_token: &str) -> bool {
-        self.to_simple() == str_token
-    }
-
-    #[cfg_attr(tarpaulin, skip)]
-    fn to_simple(&self) -> &'static str {
+    pub fn is_match_token_type(&self, other: Token) -> bool {
         match self {
-            Token::Absolute(_) => ABSOLUTE,
-            Token::Dot(_) => DOT,
-            Token::At(_) => AT,
-            Token::OpenArray(_) => OPEN_ARRAY,
-            Token::CloseArray(_) => CLOSE_ARRAY,
-            Token::Asterisk(_) => ASTERISK,
-            Token::Question(_) => QUESTION,
-            Token::Comma(_) => COMMA,
-            Token::Split(_) => SPLIT,
-            Token::OpenParenthesis(_) => OPEN_PARENTHESIS,
-            Token::CloseParenthesis(_) => CLOSE_PARENTHESIS,
-            Token::Key(_, _) => KEY,
-            Token::DoubleQuoted(_, _) => DOUBLE_QUOTE,
-            Token::SingleQuoted(_, _) => SINGLE_QUOTE,
-            Token::Equal(_) => EQUAL,
-            Token::GreaterOrEqual(_) => GREATER_OR_EQUAL,
-            Token::Greater(_) => GREATER,
-            Token::Little(_) => LITTLE,
-            Token::LittleOrEqual(_) => LITTLE_OR_EQUAL,
-            Token::NotEqual(_) => NOT_EQUAL,
-            Token::And(_) => AND,
-            Token::Or(_) => OR,
-            Token::Whitespace(_, _) => WHITESPACE,
+            Token::Absolute(_) => match other {
+                Token::Absolute(_) => true,
+                _ => false
+            },
+            Token::Dot(_) => match other {
+                Token::Dot(_) => true,
+                _ => false
+            },
+            Token::At(_) => match other {
+                Token::At(_) => true,
+                _ => false
+            },
+            Token::OpenArray(_) => match other {
+                Token::OpenArray(_) => true,
+                _ => false
+            },
+            Token::CloseArray(_) => match other {
+                Token::CloseArray(_) => true,
+                _ => false
+            },
+            Token::Asterisk(_) => match other {
+                Token::Asterisk(_) => true,
+                _ => false
+            },
+            Token::Question(_) => match other {
+                Token::Question(_) => true,
+                _ => false
+            },
+            Token::Comma(_) => match other {
+                Token::Comma(_) => true,
+                _ => false
+            },
+            Token::Split(_) => match other {
+                Token::Split(_) => true,
+                _ => false
+            },
+            Token::OpenParenthesis(_) => match other {
+                Token::OpenParenthesis(_) => true,
+                _ => false
+            },
+            Token::CloseParenthesis(_) => match other {
+                Token::CloseParenthesis(_) => true,
+                _ => false
+            },
+            Token::Key(_, _) => match other {
+                Token::Key(_, _) => true,
+                _ => false
+            },
+            Token::DoubleQuoted(_, _) => match other {
+                Token::DoubleQuoted(_, _) => true,
+                _ => false
+            },
+            Token::SingleQuoted(_, _) => match other {
+                Token::SingleQuoted(_, _) => true,
+                _ => false
+            },
+            Token::Equal(_) => match other {
+                Token::Equal(_) => true,
+                _ => false
+            },
+            Token::GreaterOrEqual(_) => match other {
+                Token::GreaterOrEqual(_) => true,
+                _ => false
+            },
+            Token::Greater(_) => match other {
+                Token::Greater(_) => true,
+                _ => false
+            },
+            Token::Little(_) => match other {
+                Token::Little(_) => true,
+                _ => false
+            },
+            Token::LittleOrEqual(_) => match other {
+                Token::LittleOrEqual(_) => true,
+                _ => false
+            },
+            Token::NotEqual(_) => match other {
+                Token::NotEqual(_) => true,
+                _ => false
+            },
+            Token::And(_) => match other {
+                Token::And(_) => true,
+                _ => false
+            },
+            Token::Or(_) => match other {
+                Token::Or(_) => true,
+                _ => false
+            },
+            Token::Whitespace(_, _) => match other {
+                Token::Whitespace(_, _) => true,
+                _ => false
+            },
         }
-    }
-}
-
-fn simple_matched_token(ch: char, pos: usize) -> Option<Token> {
-    match ch {
-        CH_DOLLA => Some(Token::Absolute(pos)),
-        CH_DOT => Some(Token::Dot(pos)),
-        CH_ASTERISK => Some(Token::Asterisk(pos)),
-        CH_LARRAY => Some(Token::OpenArray(pos)),
-        CH_RARRAY => Some(Token::CloseArray(pos)),
-        CH_LPAREN => Some(Token::OpenParenthesis(pos)),
-        CH_RPAREN => Some(Token::CloseParenthesis(pos)),
-        CH_AT => Some(Token::At(pos)),
-        CH_QUESTION => Some(Token::Question(pos)),
-        CH_COMMA => Some(Token::Comma(pos)),
-        CH_SEMICOLON => Some(Token::Split(pos)),
-        _ => None,
     }
 }
 
@@ -261,17 +280,25 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn other(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
-        let fun = |c: &char| match simple_matched_token(*c, pos) {
-            Some(_) => false,
-            _ if c == &CH_LITTLE
-                || c == &CH_GREATER
-                || c == &CH_EQUAL
-                || c == &CH_AMPERSAND
-                || c == &CH_PIPE
-                || c == &CH_EXCLAMATION =>
-            {
-                false
-            }
+        let fun = |c: &char| match c {
+            &CH_DOLLA
+            | &CH_DOT
+            | &CH_ASTERISK
+            | &CH_LARRAY
+            | &CH_RARRAY
+            | &CH_LPAREN
+            | &CH_RPAREN
+            | &CH_AT
+            | &CH_QUESTION
+            | &CH_COMMA
+            | &CH_SEMICOLON
+            | &CH_LITTLE
+            | &CH_GREATER
+            | &CH_EQUAL
+            | &CH_AMPERSAND
+            | &CH_PIPE
+            | &CH_EXCLAMATION
+            => false,
             _ => !c.is_whitespace(),
         };
         let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
@@ -281,20 +308,28 @@ impl<'a> Tokenizer<'a> {
 
     pub fn next_token(&mut self) -> Result<Token, TokenError> {
         let (pos, ch) = self.input.next_char().map_err(to_token_error)?;
-        match simple_matched_token(ch, pos) {
-            Some(t) => Ok(t),
-            None => match ch {
-                CH_SINGLE_QUOTE => self.single_quote(pos, ch),
-                CH_DOUBLE_QUOTE => self.double_quote(pos, ch),
-                CH_EQUAL => self.equal(pos, ch),
-                CH_GREATER => self.greater(pos, ch),
-                CH_LITTLE => self.little(pos, ch),
-                CH_AMPERSAND => self.and(pos, ch),
-                CH_PIPE => self.or(pos, ch),
-                CH_EXCLAMATION => self.not_equal(pos, ch),
-                _ if ch.is_whitespace() => self.whitespace(pos, ch),
-                _ => self.other(pos, ch),
-            },
+        match ch {
+            CH_DOLLA => Ok(Token::Absolute(pos)),
+            CH_DOT => Ok(Token::Dot(pos)),
+            CH_ASTERISK => Ok(Token::Asterisk(pos)),
+            CH_LARRAY => Ok(Token::OpenArray(pos)),
+            CH_RARRAY => Ok(Token::CloseArray(pos)),
+            CH_LPAREN => Ok(Token::OpenParenthesis(pos)),
+            CH_RPAREN => Ok(Token::CloseParenthesis(pos)),
+            CH_AT => Ok(Token::At(pos)),
+            CH_QUESTION => Ok(Token::Question(pos)),
+            CH_COMMA => Ok(Token::Comma(pos)),
+            CH_SEMICOLON => Ok(Token::Split(pos)),
+            CH_SINGLE_QUOTE => self.single_quote(pos, ch),
+            CH_DOUBLE_QUOTE => self.double_quote(pos, ch),
+            CH_EQUAL => self.equal(pos, ch),
+            CH_GREATER => self.greater(pos, ch),
+            CH_LITTLE => self.little(pos, ch),
+            CH_AMPERSAND => self.and(pos, ch),
+            CH_PIPE => self.or(pos, ch),
+            CH_EXCLAMATION => self.not_equal(pos, ch),
+            _ if ch.is_whitespace() => self.whitespace(pos, ch),
+            _ => self.other(pos, ch),
         }
     }
 
@@ -330,13 +365,6 @@ impl<'a> TokenReader<'a> {
                     };
                 }
             }
-        }
-    }
-
-    pub fn peek_is(&self, simple_token: &str) -> bool {
-        match self.peek_token() {
-            Ok(t) => t.simple_eq(simple_token),
-            _ => false,
         }
     }
 

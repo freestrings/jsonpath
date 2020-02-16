@@ -13,8 +13,8 @@ mod utils {
     use std::str::FromStr;
 
     pub fn string_to_num<F, S: FromStr>(string: &str, msg_handler: F) -> Result<S, String>
-    where
-        F: Fn() -> String,
+        where
+            F: Fn() -> String,
     {
         match string.parse() {
             Ok(n) => Ok(n),
@@ -209,7 +209,8 @@ impl Parser {
 
     fn array_keys(tokenizer: &mut TokenReader, first_key: String) -> ParseResult<Node> {
         let mut keys = vec![first_key];
-        while tokenizer.peek_is(COMMA) {
+
+        while let Ok(Token::Comma(_)) = tokenizer.peek_token() {
             Self::eat_token(tokenizer);
             Self::eat_whitespace(tokenizer);
 
@@ -230,7 +231,7 @@ impl Parser {
         debug!("#array_quote_value");
         match tokenizer.next_token() {
             Ok(Token::SingleQuoted(_, val)) | Ok(Token::DoubleQuoted(_, val)) => {
-                if tokenizer.peek_is(COMMA) {
+                if let Ok(Token::Comma(_)) = tokenizer.peek_token() {
                     Self::array_keys(tokenizer, val)
                 } else {
                     Ok(Self::node(ParseToken::Key(val)))
@@ -529,41 +530,35 @@ impl Parser {
     fn term(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term");
 
-        if tokenizer.peek_is(AT) {
-            Self::eat_token(tokenizer);
-            let node = Self::node(ParseToken::Relative);
+        return match tokenizer.peek_token() {
+            Ok(Token::At(_)) => {
+                Self::eat_token(tokenizer);
+                let node = Self::node(ParseToken::Relative);
 
-            return match tokenizer.peek_token() {
-                Ok(Token::Whitespace(_, _)) => {
-                    Self::eat_whitespace(tokenizer);
-                    Ok(node)
+                match tokenizer.peek_token() {
+                    Ok(Token::Whitespace(_, _)) => {
+                        Self::eat_whitespace(tokenizer);
+                        Ok(node)
+                    }
+                    _ => Self::paths(node, tokenizer),
                 }
-                _ => Self::paths(node, tokenizer),
-            };
-        }
-
-        if tokenizer.peek_is(ABSOLUTE) {
-            return Self::json_path(tokenizer);
-        }
-
-        if tokenizer.peek_is(DOUBLE_QUOTE) || tokenizer.peek_is(SINGLE_QUOTE) {
-            return Self::array_quote_value(tokenizer);
-        }
-
-        if tokenizer.peek_is(KEY) {
-            let key = if let Ok(Token::Key(_, k)) = tokenizer.peek_token() {
-                k.clone()
-            } else {
-                unreachable!()
-            };
-
-            return match key.as_bytes()[0] {
-                b'-' | b'0'..=b'9' => Self::term_num(tokenizer),
-                _ => Self::boolean(tokenizer),
-            };
-        }
-
-        Err(tokenizer.err_msg())
+            }
+            Ok(Token::Absolute(_)) => {
+                Self::json_path(tokenizer)
+            },
+            Ok(Token::DoubleQuoted(_, _)) | Ok(Token::SingleQuoted(_, _)) => {
+                Self::array_quote_value(tokenizer)
+            },
+            Ok(Token::Key(_, key)) => {
+                match key.as_bytes()[0] {
+                    b'-' | b'0'..=b'9' => Self::term_num(tokenizer),
+                    _ => Self::boolean(tokenizer),
+                }
+            }
+            _ => {
+                Err(tokenizer.err_msg())
+            }
+        };
     }
 
     fn op(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
@@ -610,7 +605,7 @@ impl Parser {
     fn close_token(ret: Node, token: Token, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#close_token");
         match tokenizer.next_token() {
-            Ok(ref t) if t.partial_eq(token) => Ok(ret),
+            Ok(ref t) if t.is_match_token_type(token) => Ok(ret),
             _ => Err(tokenizer.err_msg()),
         }
     }
