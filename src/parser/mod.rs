@@ -530,7 +530,7 @@ impl Parser {
     fn term(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term");
 
-        return match tokenizer.peek_token() {
+        match tokenizer.peek_token() {
             Ok(Token::At(_)) => {
                 Self::eat_token(tokenizer);
                 let node = Self::node(ParseToken::Relative);
@@ -558,7 +558,7 @@ impl Parser {
             _ => {
                 Err(tokenizer.err_msg())
             }
-        };
+        }
     }
 
     fn op(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
