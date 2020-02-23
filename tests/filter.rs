@@ -1,618 +1,9 @@
 #[macro_use]
 extern crate serde_json;
 
-use serde_json::Value;
-
 use common::{read_json, select_and_then_compare, setup};
 
 mod common;
-
-#[test]
-fn array() {
-    setup();
-
-    select_and_then_compare(
-        "$.school.friends[1, 2]",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            {"id": 1, "name": "Vincent Cannon" },
-            {"id": 2, "name": "Gray Berry"}
-        ]),
-    );
-
-    select_and_then_compare(
-        "$.school.friends[1: ]",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            {"id": 1, "name": "Vincent Cannon" },
-            {"id": 2, "name": "Gray Berry"}
-        ]),
-    );
-
-    select_and_then_compare(
-        "$.school.friends[:-2]",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            {"id": 0, "name": "Millicent Norman"}
-        ]),
-    );
-
-    select_and_then_compare(
-        "$..friends[2].name",
-        read_json("./benchmark/data_obj.json"),
-        json!(["Gray Berry", "Gray Berry"]),
-    );
-
-    select_and_then_compare(
-        "$..friends[*].name",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            "Vincent Cannon",
-            "Gray Berry",
-            "Millicent Norman",
-            "Vincent Cannon",
-            "Gray Berry"
-        ]),
-    );
-
-    select_and_then_compare(
-        "$['school']['friends'][*].['name']",
-        read_json("./benchmark/data_obj.json"),
-        json!(["Millicent Norman", "Vincent Cannon", "Gray Berry"]),
-    );
-
-    select_and_then_compare(
-        "$['school']['friends'][0].['name']",
-        read_json("./benchmark/data_obj.json"),
-        json!(["Millicent Norman"]),
-    );
-
-    select_and_then_compare(
-        r#"$.["eyeColor", "name"]"#,
-        read_json("./benchmark/data_obj.json"),
-        json!(["blue", "Leonor Herman"]),
-    );
-}
-
-#[test]
-fn return_type() {
-    setup();
-
-    select_and_then_compare(
-        "$.school",
-        read_json("./benchmark/data_obj.json"),
-        json!([{
-            "friends": [
-                {"id": 0, "name": "Millicent Norman"},
-                {"id": 1, "name": "Vincent Cannon" },
-                {"id": 2, "name": "Gray Berry"}
-            ]
-        }]),
-    );
-
-    select_and_then_compare(
-        "$.school[?(@.friends[0])]",
-        read_json("./benchmark/data_obj.json"),
-        json!([{
-            "friends": [
-                {"id": 0, "name": "Millicent Norman"},
-                {"id": 1, "name": "Vincent Cannon" },
-                {"id": 2, "name": "Gray Berry"}
-            ]
-        }]),
-    );
-
-    select_and_then_compare(
-        "$.school[?(@.friends[10])]",
-        read_json("./benchmark/data_obj.json"),
-        json!([{
-            "friends": [
-                {"id": 0, "name": "Millicent Norman"},
-                {"id": 1, "name": "Vincent Cannon" },
-                {"id": 2, "name": "Gray Berry"}
-            ]
-        }]),
-    );
-
-    select_and_then_compare(
-        "$.school[?(1==1)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([{
-            "friends": [
-                {"id": 0, "name": "Millicent Norman"},
-                {"id": 1, "name": "Vincent Cannon" },
-                {"id": 2, "name": "Gray Berry"}
-            ]
-        }]),
-    );
-
-    select_and_then_compare(
-        "$.school.friends[?(1==1)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([[
-            {"id": 0, "name": "Millicent Norman"},
-            {"id": 1, "name": "Vincent Cannon" },
-            {"id": 2, "name": "Gray Berry"}
-        ]]),
-    );
-}
-
-#[test]
-fn op_default() {
-    setup();
-
-    select_and_then_compare(
-        "$.school[?(@.friends == @.friends)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([{
-            "friends": [
-                {"id": 0, "name": "Millicent Norman"},
-                {"id": 1, "name": "Vincent Cannon" },
-                {"id": 2, "name": "Gray Berry"}
-            ]
-        }]),
-    );
-
-    select_and_then_compare(
-        "$.friends[?(@.name)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            { "id" : 1, "name" : "Vincent Cannon" },
-            { "id" : 2, "name" : "Gray Berry" }
-        ]),
-    );
-
-    select_and_then_compare(
-        "$.friends[?(@.id >= 2)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            { "id" : 2, "name" : "Gray Berry" }
-        ]),
-    );
-
-    select_and_then_compare(
-        "$.friends[?(@.id >= 2 || @.id == 1)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([
-            { "id" : 2, "name" : "Gray Berry" },
-            { "id" : 1, "name" : "Vincent Cannon" }
-        ]),
-    );
-
-    select_and_then_compare(
-        "$.friends[?( (@.id >= 2 || @.id == 1) && @.id == 0)]",
-        read_json("./benchmark/data_obj.json"),
-        json!([Value::Null]),
-    );
-
-    select_and_then_compare(
-        "$..friends[?(@.id == $.index)].id",
-        read_json("./benchmark/data_obj.json"),
-        json!([0, 0]),
-    );
-
-    select_and_then_compare(
-        "$..book[?($.store.bicycle.price < @.price)].price",
-        read_json("./benchmark/example.json"),
-        json!([22.99]),
-    );
-
-    select_and_then_compare(
-        "$..book[?( (@.price == 12.99 || @.category == 'reference') && @.price > 10)].price",
-        read_json("./benchmark/example.json"),
-        json!([12.99]),
-    );
-
-    select_and_then_compare(
-        "$..[?(@.age > 40)]",
-        json!([
-            { "name": "이름1", "age": 40, "phone": "+33 12341234" },
-            { "name": "이름2", "age": 42, "phone": "++44 12341234" }
-        ]),
-        json!([
-            { "name" : "이름2", "age" : 42, "phone" : "++44 12341234" }
-        ]),
-    );
-
-    select_and_then_compare(
-        "$..[?(@.age >= 30)]",
-        json!({
-            "school": {
-                "friends": [
-                    {"name": "친구1", "age": 20},
-                    {"name": "친구2", "age": 20}
-                ]
-            },
-            "friends": [
-                {"name": "친구3", "age": 30},
-                {"name": "친구4"}
-        ]}),
-        json!([
-            { "name" : "친구3", "age" : 30 }
-        ]),
-    );
-}
-
-#[test]
-fn op_number() {
-    setup();
-
-    select_and_then_compare("$.[?(@.a == 1)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
-    select_and_then_compare("$.[?(@.a != 2)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
-    select_and_then_compare("$.[?(@.a < 2)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
-    select_and_then_compare("$.[?(@.a <= 1)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
-    select_and_then_compare("$.[?(@.a > 0)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
-    select_and_then_compare("$.[?(@.a >= 0)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
-}
-
-#[test]
-fn op_string() {
-    setup();
-
-    select_and_then_compare(
-        r#"$.[?(@.a == "b")]"#,
-        json!({ "a": "b" }),
-        json!([{ "a": "b" }]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a != "c")]"#,
-        json!({ "a": "b" }),
-        json!([{ "a": "b" }]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a < "b")]"#,
-        json!({ "a": "b" }),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a <= "b")]"#,
-        json!({ "a": "b" }),
-        json!([{ "a": "b" }]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a > "b")]"#,
-        json!({ "a": "b" }),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a >= "b")]"#,
-        json!({ "a": "b" }),
-        json!([{ "a": "b" }]),
-    );
-}
-
-#[test]
-fn op_object() {
-    setup();
-
-    select_and_then_compare(
-        r#"$.[?(@.a == @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([{"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a != @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a < @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a <= @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a > @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a >= @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([Value::Null]),
-    );
-}
-
-#[test]
-fn op_complex() {
-    setup();
-
-    select_and_then_compare(
-        r#"$.[?(1 == @.a)]"#,
-        json!({ "a": { "b": 1 } }),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?("1" != @.a)]"#,
-        json!({ "a": { "b": 1 } }),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a <= 1)]"#,
-        json!({ "a": { "b": 1 } }),
-        json!([Value::Null]),
-    );
-    select_and_then_compare(
-        r#"$.[?(@.a > "1")]"#,
-        json!({ "a": { "b": 1 } }),
-        json!([Value::Null]),
-    );
-}
-
-#[test]
-fn op_compare() {
-    setup();
-
-    for path in [
-        r#"$[?("1" == 1)]"#,
-        r#"$[?(1 == "1")]"#,
-        r#"$[?(true == 1)]"#,
-        r#"$[?(@ == 1)]"#,
-    ]
-        .iter()
-    {
-        select_and_then_compare(path, json!({}), json!([Value::Null]));
-    }
-}
-
-#[test]
-fn example() {
-    setup();
-
-    select_and_then_compare(
-        r#"$.store.book[*].author"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            "Nigel Rees",
-            "Evelyn Waugh",
-            "Herman Melville",
-            "J. R. R. Tolkien"
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..author"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            "Nigel Rees",
-            "Evelyn Waugh",
-            "Herman Melville",
-            "J. R. R. Tolkien"
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$.store.*"#,
-        read_json("./benchmark/example.json"),
-        json!([
-             [
-                {"category" : "reference", "author" : "Nigel Rees","title" : "Sayings of the Century", "price" : 8.95},
-                {"category" : "fiction", "author" : "Evelyn Waugh","title" : "Sword of Honour","price" : 12.99},
-                {"category" : "fiction", "author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99},
-                {"category" : "fiction", "author" : "J. R. R. Tolkien","title" : "The Lord of the Rings","isbn" : "0-395-19395-8","price" : 22.99}
-            ],
-            {"color" : "red","price" : 19.95},
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$.store..price"#,
-        read_json("./benchmark/example.json"),
-        json!([8.95, 12.99, 8.99, 22.99, 19.95]),
-    );
-
-    select_and_then_compare(
-        r#"$..book[2]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-            "category" : "fiction",
-            "author" : "Herman Melville",
-            "title" : "Moby Dick",
-            "isbn" : "0-553-21311-3",
-            "price" : 8.99
-            }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..book[-2]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-                "category" : "fiction",
-                "author" : "Herman Melville",
-                "title" : "Moby Dick",
-                "isbn" : "0-553-21311-3",
-                "price" : 8.99
-            }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..book[0, 1]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-                "category" : "reference",
-                "author" : "Nigel Rees",
-                "title" : "Sayings of the Century",
-                "price" : 8.95
-            },
-            {
-                "category" : "fiction",
-                "author" : "Evelyn Waugh",
-                "title" : "Sword of Honour",
-                "price" : 12.99
-            }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..book[:2]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-                "category" : "reference",
-                "author" : "Nigel Rees",
-                "title" : "Sayings of the Century",
-                "price" : 8.95
-            },
-            {
-                "category" : "fiction",
-                "author" : "Evelyn Waugh",
-                "title" : "Sword of Honour",
-                "price" : 12.99
-            }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..book[2:]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-                "category" : "fiction",
-                "author" : "Herman Melville",
-                "title" : "Moby Dick",
-                "isbn" : "0-553-21311-3",
-                "price" : 8.99
-           },
-           {
-                "category" : "fiction",
-                "author" : "J. R. R. Tolkien",
-                "title" : "The Lord of the Rings",
-                "isbn" : "0-395-19395-8",
-                "price" : 22.99
-           }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..book[?(@.isbn)]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-                "category" : "fiction",
-                "author" : "Herman Melville",
-                "title" : "Moby Dick",
-                "isbn" : "0-553-21311-3",
-                "price" : 8.99
-           },
-           {
-                "category" : "fiction",
-                "author" : "J. R. R. Tolkien",
-                "title" : "The Lord of the Rings",
-                "isbn" : "0-395-19395-8",
-                "price" : 22.99
-           }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$.store.book[?(@.price < 10)]"#,
-        read_json("./benchmark/example.json"),
-        json!([
-            {
-                "category" : "reference",
-                "author" : "Nigel Rees",
-                "title" : "Sayings of the Century",
-                "price" : 8.95
-           },
-           {
-                "category" : "fiction",
-                "author" : "Herman Melville",
-                "title" : "Moby Dick",
-                "isbn" : "0-553-21311-3",
-                "price" : 8.99
-           }
-        ]),
-    );
-
-    select_and_then_compare(
-        r#"$..*"#,
-        read_json("./benchmark/example.json"),
-        read_json("./benchmark/giveme_every_thing_result.json"),
-    );
-}
-
-#[test]
-fn filer_same_obj() {
-    setup();
-
-    select_and_then_compare(
-        r#"$..[?(@.a == 1)]"#,
-        json!({
-            "a": 1,
-            "b" : {"a": 1},
-            "c" : {"a": 1}
-        }),
-        json!([
-            {"a": 1},
-            {"a": 1}
-        ]),
-    );
-}
-
-#[test]
-fn range() {
-    setup();
-
-    select_and_then_compare(
-        "$[ : ]",
-        json!(["first", "second"]),
-        json!(["first", "second"]),
-    );
-    select_and_then_compare(
-        "$[::]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["first", "second", "third", "forth", "fifth"]),
-    );
-    select_and_then_compare(
-        "$[::2]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["first", "third", "fifth"]),
-    );
-    select_and_then_compare(
-        "$[1::]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["second", "third", "forth", "fifth"]),
-    );
-    select_and_then_compare(
-        "$[1:2:]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["second"]),
-    );
-    select_and_then_compare(
-        "$[1::2]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["second", "forth"]),
-    );
-    select_and_then_compare(
-        "$[0:3:1]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["first", "second", "third"]),
-    );
-    select_and_then_compare(
-        "$[0:3:2]",
-        json!(["first", "second", "third", "forth", "fifth"]),
-        json!(["first", "third"]),
-    );
-    select_and_then_compare(
-        "$[-4:]",
-        json!(["first", "second", "third"]),
-        json!(["first", "second", "third"]),
-    );
-    select_and_then_compare(
-        "$[:4]",
-        json!(["first", "second", "third"]),
-        json!(["first", "second", "third"]),
-    );
-}
 
 #[test]
 fn quote() {
@@ -631,7 +22,7 @@ fn quote() {
 }
 
 #[test]
-fn all_filter() {
+fn filter_next_all() {
     setup();
 
     for path in &[r#"$.*"#, r#"$[*]"#] {
@@ -641,6 +32,11 @@ fn all_filter() {
             json!(["string", 42, { "key": "value" }, [0, 1]]),
         );
     }
+}
+
+#[test]
+fn filter_all() {
+    setup();
 
     for path in &[r#"$..*"#, r#"$..[*]"#] {
         select_and_then_compare(
@@ -649,6 +45,11 @@ fn all_filter() {
             json!([ "string", 42, { "key" : "value" }, [ 0, 1 ], "value", 0, 1 ]),
         );
     }
+}
+
+#[test]
+fn filter_array_next_all() {
+    setup();
 
     for path in &[r#"$.*.*"#, r#"$[*].*"#, r#"$.*[*]"#, r#"$[*][*]"#] {
         select_and_then_compare(
@@ -657,6 +58,11 @@ fn all_filter() {
             json!(["value", 0, 1]),
         );
     }
+}
+
+#[test]
+fn filter_all_complex() {
+    setup();
 
     for path in &[r#"$..friends.*"#, r#"$[*].friends.*"#] {
         select_and_then_compare(
@@ -675,8 +81,9 @@ fn all_filter() {
 }
 
 #[test]
-fn current_path() {
+fn filter_parent_with_matched_child() {
     setup();
+
     select_and_then_compare(
         "$.a[?(@.b.c == 1)]",
         json!({
@@ -694,6 +101,11 @@ fn current_path() {
            }
         ]),
     );
+}
+
+#[test]
+fn filter_parent_exist_child() {
+    setup();
 
     select_and_then_compare(
         "$.a[?(@.b.c)]",
@@ -715,7 +127,7 @@ fn current_path() {
 }
 
 #[test]
-fn bugs33() {
+fn bugs33_exist_in_all() {
     setup();
 
     select_and_then_compare(
@@ -738,6 +150,11 @@ fn bugs33() {
             }
         ]),
     );
+}
+
+#[test]
+fn bugs33_exist_left_in_all_with_and_condition() {
+    setup();
 
     select_and_then_compare(
         "$..[?(@.first && @.first.second)]",
@@ -759,6 +176,11 @@ fn bugs33() {
             }
         ]),
     );
+}
+
+#[test]
+fn bugs33_exist_right_in_all_with_and_condition() {
+    setup();
 
     select_and_then_compare(
         "$..[?(@.b.c.d && @.b)]",
