@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate serde_json;
 
+use serde_json::Value;
+
 use common::{read_json, select_and_then_compare, setup};
 
 mod common;
@@ -53,14 +55,14 @@ fn return_type_for_child_object_matched() {
     );
 }
 
-// #[test]
+#[test]
 fn return_type_for_child_object_not_matched() {
     setup();
 
     select_and_then_compare(
         "$.school[?(@.friends[10])]",
         read_json("./benchmark/data_obj.json"),
-        json!([]),
+        json!([Value::Null]),
     );
 }
 

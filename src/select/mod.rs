@@ -710,43 +710,42 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn next_from_current_with_num(&mut self, index: f64) {
+        fn _collect<'a>(tmp: &mut Vec<&'a Value>, vec: &'a [Value], index: f64) {
+            let index = abs_index(index as isize, vec.len());
+            if let Some(v) = vec.get(index) {
+                tmp.push(v);
+            }
+        }
+
         if let Some(current) = self.current.take() {
             let mut tmp = Vec::new();
             for c in current {
-                if let Value::Array(vec) = c {
-                    let index = abs_index(index as isize, vec.len());
-                    if let Some(v) = c.get(index) {
-                        tmp.push(v);
+                match c {
+                    Value::Object(map) => {
+                        for k in map.keys() {
+                            if let Some(Value::Array(vec)) = map.get(k) {
+                                _collect(&mut tmp, vec, index);
+                            }
+                        }
                     }
+                    Value::Array(vec) => {
+                        _collect(&mut tmp, vec, index);
+                    }
+                    _ => {}
                 }
             }
-            self.current = Some(tmp);
+
+            if tmp.is_empty() {
+                self.terms.pop();
+                self.current = Some(vec![&Value::Null]);
+            } else {
+                self.current = Some(tmp);
+            }
         }
 
         debug!(
             "next_from_current_with_num : {:?}, {:?}",
             &index, self.current
-        );
-    }
-
-    fn next_from_current_with_str(&mut self, keys: &[String]) {
-        if let Some(current) = self.current.take() {
-            let mut tmp = Vec::new();
-            for c in current {
-                if let Value::Object(map) = c {
-                    for key in keys {
-                        if let Some(v) = map.get(key) {
-                            tmp.push(v)
-                        }
-                    }
-                }
-            }
-            self.current = Some(tmp);
-        }
-
-        debug!(
-            "next_from_current_with_str : {:?}, {:?}",
-            keys, self.current
         );
     }
 
@@ -772,6 +771,32 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
 
         debug!("next_all_from_current : {:?}", self.current);
+    }
+
+    fn next_from_current_with_str(&mut self, keys: &[String]) {
+        if let Some(current) = self.current.take() {
+            let mut tmp = Vec::new();
+            for c in current {
+                if let Value::Object(map) = c {
+                    for key in keys {
+                        if let Some(v) = map.get(key) {
+                            tmp.push(v)
+                        }
+                    }
+                }
+            }
+
+            if tmp.is_empty() {
+                self.current = Some(vec![&Value::Null]);
+            } else {
+                self.current = Some(tmp);
+            }
+        }
+
+        debug!(
+            "next_from_current_with_str : {:?}, {:?}",
+            keys, self.current
+        );
     }
 
     fn all_from_current(&mut self) {

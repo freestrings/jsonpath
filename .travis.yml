@@ -24,15 +24,9 @@ matrix:
       before_script:
         - rustup component add clippy
       script:
-        - cargo clean
-        - cargo clippy -- -D warnings
-        - cargo build --verbose --all
-        - cargo clippy --all-targets --all-features -- -D warnings -A clippy::cognitive_complexity
-        - cargo test --verbose --all
-        - cd wasm && cargo clippy -- -D warnings -A clippy::suspicious_else_formatting
-        - cd ../../
+        - ./clippy.sh
       after_success: |
-        cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs --out Xml
+        cargo tarpaulin --exclude-files wasm parser/mod.rs --out Xml
         bash <(curl -s https://codecov.io/bash)
     - rust: stable
       os: osx
