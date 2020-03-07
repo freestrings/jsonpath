@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::fmt;
 
 use array_tool::vec::{Intersect, Union};
-use serde_json::map::Entry;
 use serde_json::{Number, Value};
+use serde_json::map::Entry;
 
 use parser::*;
 
@@ -25,6 +25,14 @@ trait Cmp {
     fn cmp_string(&self, v1: &str, v2: &str) -> bool;
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value>;
+
+    fn default(&self) -> bool {
+        false
+    }
+}
+
+trait CmpRight {
+    fn cmp<'a>(&self, v1: &[&'a Value], v2: &[String]) -> Vec<&'a Value>;
 
     fn default(&self) -> bool {
         false
@@ -191,11 +199,40 @@ impl Cmp for CmpOr {
     }
 }
 
+struct CmpIn;
+
+impl CmpRight for CmpIn {
+    fn cmp<'a>(&self, v1: &[&'a Value], v2: &[String]) -> Vec<&'a Value> {
+        v1.iter()
+            .filter(|v| match v {
+                Value::Object(map) => {
+                    for value in map.values() {
+                        if match value {
+                            Value::String(s) => v2.contains(&s),
+                            _ => false
+                        } {
+                            return true;
+                        }
+                    }
+
+                    false
+                }
+                Value::String(s) => {
+                    v2.contains(s)
+                }
+                _ => false
+            })
+            .map(|v| *v)
+            .collect()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 enum ExprTerm<'a> {
     String(String),
     Number(Number),
     Bool(bool),
+    Array(Vec<String>),
     Json(Option<Vec<&'a Value>>, Option<FilterKey>, Vec<&'a Value>),
 }
 
@@ -222,6 +259,9 @@ impl<'a> ExprTerm<'a> {
                 ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
+            ExprTerm::Array(_) => {
+                unreachable!("#ExprTerm::Array, - unreachable!!");
+            }
             ExprTerm::Json(rel, fk1, vec1) => {
                 let ret: Vec<&Value> = match &other {
                     ExprTerm::String(s2) => vec1
@@ -272,6 +312,9 @@ impl<'a> ExprTerm<'a> {
                         })
                         .cloned()
                         .collect(),
+                    ExprTerm::Array(_) => {
+                        unreachable!("#ExprTerm::Json, ExprTerm::Array unreachable!!");
+                    }
                     ExprTerm::Json(parent, _, vec2) => {
                         if let Some(vec1) = rel {
                             cmp_fn.cmp_json(vec1, vec2)
@@ -291,6 +334,23 @@ impl<'a> ExprTerm<'a> {
                     ExprTerm::Json(None, None, ret)
                 }
             }
+        }
+    }
+
+    fn cmp_right<C: CmpRight>(&self, other: &Self, cmp_fn: &C) -> ExprTerm<'a> {
+        match &self {
+            ExprTerm::Json(rel, _, vec) => {
+                if let ExprTerm::Array(keys) = &other {
+                    if let Some(parent) = rel {
+                        ExprTerm::Json(Some(parent.to_vec()), None, cmp_fn.cmp(&vec, keys))
+                    } else {
+                        ExprTerm::Json(None, None, cmp_fn.cmp(&vec, keys))
+                    }
+                } else {
+                    unreachable!("#cmp_right")
+                }
+            }
+            _ => ExprTerm::Bool(cmp_fn.default())
         }
     }
 
@@ -339,6 +399,14 @@ impl<'a> ExprTerm<'a> {
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpLe, &CmpGe);
         debug!("le = {:?}", tmp);
+        *ret = Some(tmp);
+    }
+
+    fn inn(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+        debug!("in - {:?} : {:?}", &self, &other);
+        let _ = ret.take();
+        let tmp = self.cmp_right(other, &CmpIn);
+        debug!("in = {:?}", tmp);
         *ret = Some(tmp);
     }
 
@@ -529,7 +597,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     fn _select(&mut self) -> Result<(), JsonPathError> {
         if self.node_ref.is_some() {
             let node_ref = self.node_ref.take().unwrap();
-            self.visit(node_ref);
+            self.visit(node_ref, 0, "-");
             return Ok(());
         }
 
@@ -538,7 +606,7 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
 
         let node = self.node.take().unwrap();
-        self.visit(&node);
+        self.visit(&node, 0, "-");
         self.node = Some(node);
 
         Ok(())
@@ -954,7 +1022,9 @@ impl<'a, 'b> Selector<'a, 'b> {
 
     fn visit_keys(&mut self, keys: &[String]) {
         if !self.terms.is_empty() {
-            unimplemented!("keys in filter");
+            debug!("\t - array in key {:?}", self.tokens);
+            self.terms.push(Some(ExprTerm::Array(keys.to_vec())));
+            return;
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
@@ -964,7 +1034,7 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
     }
 
-    fn visit_filter(&mut self, ft: &FilterToken) {
+    fn visit_filter(&mut self, filter_token: &FilterToken) {
         let right = match self.terms.pop() {
             Some(Some(right)) => right,
             Some(None) => ExprTerm::Json(
@@ -992,13 +1062,14 @@ impl<'a, 'b> Selector<'a, 'b> {
         };
 
         let mut ret = None;
-        match ft {
+        match filter_token {
             FilterToken::Equal => left.eq(&right, &mut ret),
             FilterToken::NotEqual => left.ne(&right, &mut ret),
             FilterToken::Greater => left.gt(&right, &mut ret),
             FilterToken::GreaterOrEqual => left.ge(&right, &mut ret),
             FilterToken::Little => left.lt(&right, &mut ret),
             FilterToken::LittleOrEqual => left.le(&right, &mut ret),
+            FilterToken::In => left.inn(&right, &mut ret),
             FilterToken::And => left.and(&right, &mut ret),
             FilterToken::Or => left.or(&right, &mut ret),
         };
@@ -1095,8 +1166,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
             ParseToken::Key(key) => self.visit_key(key),
             ParseToken::Keys(keys) => self.visit_keys(keys),
             ParseToken::Number(v) => {
-                self.terms
-                    .push(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
+                self.terms.push(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
             }
             ParseToken::Filter(ref ft) => self.visit_filter(ft),
             ParseToken::Range(from, to, step) => self.visit_range(from, to, step),

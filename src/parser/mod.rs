@@ -64,6 +64,7 @@ pub enum FilterToken {
     LittleOrEqual,
     Greater,
     GreaterOrEqual,
+    In,
     And,
     Or,
 }
@@ -487,6 +488,9 @@ impl Parser {
             | Ok(Token::LittleOrEqual(_))
             | Ok(Token::Greater(_))
             | Ok(Token::GreaterOrEqual(_)) => true,
+            Ok(Token::Key(_, key)) => {
+                Self::get_filter_token(key).is_some()
+            }
             _ => false,
         } {
             Self::op(node, tokenizer)
@@ -527,6 +531,41 @@ impl Parser {
         }
     }
 
+    fn term_array(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+        debug!("#term_array");
+
+        Self::eat_token(tokenizer);
+        Self::eat_whitespace(tokenizer);
+
+        let mut keys = vec![];
+        loop {
+            match tokenizer.next_token() {
+                Ok(Token::SingleQuoted(_, val)) | Ok(Token::DoubleQuoted(_, val)) => {
+                    keys.push(val);
+                }
+                Ok(Token::Key(_, val)) => {
+                    keys.push(val);
+                }
+                _ => return Err(tokenizer.err_msg()),
+            }
+
+            Self::eat_whitespace(tokenizer);
+
+            match tokenizer.peek_token() {
+                Ok(Token::Comma(_)) => {
+                    Self::eat_token(tokenizer);
+                    Self::eat_whitespace(tokenizer);
+                }
+                Ok(Token::CloseArray(_)) => break,
+                _ => {}
+            }
+        }
+
+        Self::eat_whitespace(tokenizer);
+
+        Self::close_token(Self::node(ParseToken::Keys(keys)), Token::CloseArray(DUMMY), tokenizer)
+    }
+
     fn term(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#term");
 
@@ -545,15 +584,18 @@ impl Parser {
             }
             Ok(Token::Absolute(_)) => {
                 Self::json_path(tokenizer)
-            },
+            }
             Ok(Token::DoubleQuoted(_, _)) | Ok(Token::SingleQuoted(_, _)) => {
                 Self::array_quote_value(tokenizer)
-            },
+            }
             Ok(Token::Key(_, key)) => {
                 match key.as_bytes()[0] {
                     b'-' | b'0'..=b'9' => Self::term_num(tokenizer),
                     _ => Self::boolean(tokenizer),
                 }
+            }
+            Ok(Token::OpenArray(_)) => {
+                Self::term_array(tokenizer)
             }
             _ => {
                 Err(tokenizer.err_msg())
@@ -570,6 +612,10 @@ impl Parser {
             Ok(Token::LittleOrEqual(_)) => ParseToken::Filter(FilterToken::LittleOrEqual),
             Ok(Token::Greater(_)) => ParseToken::Filter(FilterToken::Greater),
             Ok(Token::GreaterOrEqual(_)) => ParseToken::Filter(FilterToken::GreaterOrEqual),
+            Ok(Token::Key(_, key)) => match Self::get_filter_token(&key) {
+                Some(filter_token) => ParseToken::Filter(filter_token),
+                _ => return Err(tokenizer.err_msg())
+            }
             _ => {
                 return Err(tokenizer.err_msg());
             }
@@ -609,10 +655,19 @@ impl Parser {
             _ => Err(tokenizer.err_msg()),
         }
     }
+
+    fn get_filter_token(op_candidate: &str) -> Option<FilterToken> {
+        match op_candidate {
+            "in" | "In" | "iN" | "IN" => Some(FilterToken::In),
+            _ => None
+        }
+    }
 }
 
 pub trait NodeVisitor {
-    fn visit(&mut self, node: &Node) {
+    fn visit(&mut self, node: &Node, indent: usize, prefix: &str) {
+        debug!("{:indent$}{} {:?}", "", prefix, node.token, indent = indent);
+
         match &node.token {
             ParseToken::Absolute
             | ParseToken::Relative
@@ -627,48 +682,48 @@ pub trait NodeVisitor {
             }
             ParseToken::In | ParseToken::Leaves => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "1.LEFT");
                 }
 
                 self.visit_token(&node.token);
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "1.RIGHT");
                 }
             }
             ParseToken::Array => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "2.LEFT");
                 }
 
                 self.visit_token(&node.token);
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "2.RIGHT");
                 }
 
                 self.visit_token(&ParseToken::ArrayEof);
             }
             ParseToken::Filter(FilterToken::And) | ParseToken::Filter(FilterToken::Or) => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "3.LEFT");
                 }
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "3.RIGTH");
                 }
 
                 self.visit_token(&node.token);
             }
             ParseToken::Filter(_) => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "4.LEFT");
                 }
 
                 self.end_term();
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(&*n, indent + 1, "4.RIGTH");
                 }
 
                 self.end_term();
@@ -702,7 +757,7 @@ mod parser_tests {
 
         fn start(&mut self) -> Result<Vec<ParseToken>, String> {
             let node = Parser::compile(self.input)?;
-            self.visit(&node);
+            self.visit(&node, 0, "-");
             Ok(self.stack.split_off(0))
         }
     }

@@ -371,11 +371,11 @@ impl<'a> TokenReader<'a> {
     pub fn peek_token(&self) -> Result<&Token, TokenError> {
         match self.tokens.last() {
             Some((_, t)) => {
-                trace!("%{:?}", t);
+                // trace!("[PEEK].{:?}", t);
                 Ok(t)
             }
             _ => {
-                trace!("%{:?}", self.err);
+                // trace!("[PEEK]!{:?}", self.err);
                 Err(self.err.clone())
             }
         }
@@ -385,11 +385,11 @@ impl<'a> TokenReader<'a> {
         match self.tokens.pop() {
             Some((pos, t)) => {
                 self.curr_pos = Some(pos);
-                trace!("@{:?}", t);
+                trace!("[NEXT].{:?}", t);
                 Ok(t)
             }
             _ => {
-                trace!("@{:?}", self.err);
+                trace!("[NEXT]!{:?}", self.err);
                 Err(self.err.clone())
             }
         }
