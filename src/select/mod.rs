@@ -884,6 +884,7 @@ impl<'a, 'b> Selector<'a, 'b> {
             self.current = Some(vec![v]);
         }
     }
+
     fn visit_relative(&mut self) {
         if let Some(ParseToken::Array) = self.tokens.last() {
             let array_token = self.tokens.pop();
@@ -897,6 +898,18 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn visit_array_eof(&mut self) {
+        if self.is_nested_array() {
+            if let Some(Some(e)) = self.terms.pop() {
+                if let ExprTerm::String(key) = e {
+                    self.next_in_filter_with_str(&key);
+                    self.tokens.pop();
+                    return;
+                }
+
+                self.terms.push(Some(e));
+            }
+        }
+
         if let Some(Some(e)) = self.terms.pop() {
             match e {
                 ExprTerm::Number(n) => {
@@ -942,6 +955,21 @@ impl<'a, 'b> Selector<'a, 'b> {
                 self.next_all_from_current();
             }
         }
+    }
+
+    fn is_nested_array(&mut self) -> bool {
+        let mut is_nested_array = false;
+
+        if let Some(t) = self.tokens.pop() {
+            if let ParseToken::Array = t {
+                if let Some(ParseToken::Array) = self.tokens.last() {
+                    is_nested_array = true;
+                }
+            }
+            self.tokens.push(t);
+        }
+
+        is_nested_array
     }
 
     fn visit_key(&mut self, key: &str) {

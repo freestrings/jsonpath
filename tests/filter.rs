@@ -224,3 +224,24 @@ fn bugs33_exist_right_in_all_with_and_condition() {
         ]),
     );
 }
+
+#[test]
+fn bugs38_array_notation_in_filter() {
+    setup();
+
+    select_and_then_compare(
+        "$[?(@['key']==42)]",
+        json!([
+            {"key": 0},
+            {"key": 42},
+            {"key": -1},
+            {"key": 41},
+            {"key": 43},
+            {"key": 42.0001},
+            {"key": 41.9999},
+            {"key": 100},
+            {"some": "value"}
+         ]),
+        json!([{"key": 42}]),
+    );
+}
