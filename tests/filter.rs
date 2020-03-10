@@ -127,6 +127,22 @@ fn filter_parent_exist_child() {
 }
 
 #[test]
+fn filter_parent_paths() {
+    setup();
+
+    select_and_then_compare(
+        "$[?(@.key.subKey == 'subKey2')]",
+        json!([
+            {"key": {"seq": 1, "subKey": "subKey1"}},
+            {"key": {"seq": 2, "subKey": "subKey2"}},
+            {"key": 42},
+            {"some": "value"}
+         ]),
+        json!([{"key": {"seq": 2, "subKey": "subKey2"}}]),
+    );
+}
+
+#[test]
 fn bugs33_exist_in_all() {
     setup();
 

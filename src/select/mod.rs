@@ -286,7 +286,26 @@ impl<'a> ExprTerm<'a> {
                 if ret.is_empty() {
                     ExprTerm::Bool(cmp_fn.default())
                 } else if let Some(rel) = rel {
-                    ExprTerm::Json(Some(rel.to_vec()), None, ret)
+                    if let ExprTerm::Json(_, _, _) = &other {
+                        ExprTerm::Json(Some(rel.to_vec()), None, ret)
+                    } else {
+                        let mut tmp = Vec::new();
+                        for rel_value in rel {
+                            match rel_value {
+                                Value::Object(map) => {
+                                    for map_value in map.values() {
+                                        for result_value in &ret {
+                                            if map_value.eq(*result_value) {
+                                                tmp.push(*rel_value);
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        ExprTerm::Json(Some(tmp), None, ret)
+                    }
                 } else {
                     ExprTerm::Json(None, None, ret)
                 }
