@@ -291,17 +291,14 @@ impl<'a> ExprTerm<'a> {
                     } else {
                         let mut tmp = Vec::new();
                         for rel_value in rel {
-                            match rel_value {
-                                Value::Object(map) => {
-                                    for map_value in map.values() {
-                                        for result_value in &ret {
-                                            if map_value.eq(*result_value) {
-                                                tmp.push(*rel_value);
-                                            }
+                            if let Value::Object(map) = rel_value {
+                                for map_value in map.values() {
+                                    for result_value in &ret {
+                                        if map_value.eq(*result_value) {
+                                            tmp.push(*rel_value);
                                         }
                                     }
                                 }
-                                _ => {}
                             }
                         }
                         ExprTerm::Json(Some(tmp), None, ret)
