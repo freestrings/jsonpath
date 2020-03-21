@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::fmt;
 
 use array_tool::vec::{Intersect, Union};
-use serde_json::map::Entry;
 use serde_json::{Number, Value};
+use serde_json::map::Entry;
 
 use parser::*;
 
@@ -388,6 +388,18 @@ impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
 
         ExprTerm::Json(None, None, self.to_vec())
     }
+}
+
+fn walk_all_with_num<'a>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, index: f64) {
+    walk(vec, tmp, &|v| if v.is_array() {
+        if let Some(item) = v.get(index as usize) {
+            Some(vec![item])
+        } else {
+            None
+        }
+    } else {
+        None
+    });
 }
 
 fn walk_all_with_str<'a>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, key: &str, is_filter: bool) {
@@ -833,6 +845,16 @@ impl<'a, 'b> Selector<'a, 'b> {
         debug!("all_from_current_with_str: {}, {:?}", key, self.current);
     }
 
+    fn all_from_current_with_num(&mut self, index: f64) {
+        if let Some(current) = self.current.take() {
+            let mut tmp = Vec::new();
+
+            walk_all_with_num(&current, &mut tmp, index);
+            self.current = Some(tmp);
+        }
+        debug!("all_from_current_with_num: {}, {:?}", index, self.current);
+    }
+
     fn compute_absolute_path_filter(&mut self, token: &ParseToken) -> bool {
         if !self.selectors.is_empty() {
             match token {
@@ -895,11 +917,25 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 
     fn visit_array_eof(&mut self) {
-        if self.is_nested_array() {
+        if self.is_last_before_token_match(ParseToken::Array) {
             if let Some(Some(e)) = self.terms.pop() {
                 if let ExprTerm::String(key) = e {
                     self.next_in_filter_with_str(&key);
                     self.tokens.pop();
+                    return;
+                }
+
+                self.terms.push(Some(e));
+            }
+        }
+
+        if self.is_last_before_token_match(ParseToken::Leaves) {
+            self.tokens.pop();
+            self.tokens.pop();
+            if let Some(Some(e)) = self.terms.pop() {
+                if let ExprTerm::Number(n) = &e {
+                    self.all_from_current_with_num(to_f64(n));
+                    self.terms.pop();
                     return;
                 }
 
@@ -934,6 +970,14 @@ impl<'a, 'b> Selector<'a, 'b> {
         self.tokens.pop();
     }
 
+    fn is_last_before_token_match(&mut self, token: ParseToken) -> bool {
+        if self.tokens.len() > 1 {
+            return &token == &self.tokens[self.tokens.len() - 2];
+        }
+
+        return false;
+    }
+
     fn visit_all(&mut self) {
         if let Some(ParseToken::Array) = self.tokens.last() {
             self.tokens.pop();
@@ -952,21 +996,6 @@ impl<'a, 'b> Selector<'a, 'b> {
                 self.next_all_from_current();
             }
         }
-    }
-
-    fn is_nested_array(&mut self) -> bool {
-        let mut is_nested_array = false;
-
-        if let Some(t) = self.tokens.pop() {
-            if let ParseToken::Array = t {
-                if let Some(ParseToken::Array) = self.tokens.last() {
-                    is_nested_array = true;
-                }
-            }
-            self.tokens.push(t);
-        }
-
-        is_nested_array
     }
 
     fn visit_key(&mut self, key: &str) {
