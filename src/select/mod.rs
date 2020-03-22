@@ -1,3 +1,5 @@
+mod value_walker;
+
 use std::collections::HashSet;
 use std::fmt;
 
@@ -6,6 +8,7 @@ use serde_json::{Number, Value};
 use serde_json::map::Entry;
 
 use parser::*;
+use self::value_walker::ValueWalker;
 
 fn to_f64(n: &Number) -> f64 {
     if n.is_i64() {
@@ -14,6 +17,14 @@ fn to_f64(n: &Number) -> f64 {
         n.as_f64().unwrap()
     } else {
         n.as_u64().unwrap() as f64
+    }
+}
+
+fn abs_index(n: isize, len: usize) -> usize {
+    if n < 0_isize {
+        (n + len as isize).max(0) as usize
+    } else {
+        n.min(len as isize) as usize
     }
 }
 
@@ -390,89 +401,6 @@ impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
     }
 }
 
-fn walk_all_with_num<'a>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, index: f64) {
-    walk(vec, tmp, &|v| if v.is_array() {
-        if let Some(item) = v.get(index as usize) {
-            Some(vec![item])
-        } else {
-            None
-        }
-    } else {
-        None
-    });
-}
-
-fn walk_all_with_str<'a>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, key: &str, is_filter: bool) {
-    if is_filter {
-        walk(vec, tmp, &|v| match v {
-            Value::Object(map) if map.contains_key(key) => Some(vec![v]),
-            _ => None,
-        });
-    } else {
-        walk(vec, tmp, &|v| match v {
-            Value::Object(map) => match map.get(key) {
-                Some(v) => Some(vec![v]),
-                _ => None,
-            },
-            _ => None,
-        });
-    }
-}
-
-fn walk_all<'a>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>) {
-    walk(vec, tmp, &|v| match v {
-        Value::Array(vec) => Some(vec.iter().collect()),
-        Value::Object(map) => {
-            let mut tmp = Vec::new();
-            for (_, v) in map {
-                tmp.push(v);
-            }
-            Some(tmp)
-        }
-        _ => None,
-    });
-}
-
-fn walk<'a, F>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, fun: &F)
-    where
-        F: Fn(&Value) -> Option<Vec<&Value>>,
-{
-    fn _walk<'a, F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
-        where
-            F: Fn(&Value) -> Option<Vec<&Value>>,
-    {
-        if let Some(mut ret) = fun(v) {
-            tmp.append(&mut ret);
-        }
-
-        match v {
-            Value::Array(vec) => {
-                for v in vec {
-                    _walk(v, tmp, fun);
-                }
-            }
-            Value::Object(map) => {
-                for (_, v) in map {
-                    _walk(&v, tmp, fun);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    for v in vec {
-        _walk(v, tmp, fun);
-    }
-}
-
-fn abs_index(n: isize, len: usize) -> usize {
-    if n < 0_isize {
-        (n + len as isize).max(0) as usize
-    } else {
-        n.min(len as isize) as usize
-    }
-}
-
 #[derive(Debug, PartialEq)]
 enum FilterKey {
     String(String),
@@ -670,7 +598,7 @@ impl<'a, 'b> Selector<'a, 'b> {
 
     fn all_in_filter_with_str(&mut self, key: &str) {
         self.in_filter(|vec, tmp, _| {
-            walk_all_with_str(&vec, tmp, key, true);
+            ValueWalker::all_with_str(&vec, tmp, key, true);
             FilterKey::All
         });
 
@@ -830,7 +758,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     fn all_from_current(&mut self) {
         if let Some(current) = self.current.take() {
             let mut tmp = Vec::new();
-            walk_all(&current, &mut tmp);
+            ValueWalker::all(&current, &mut tmp);
             self.current = Some(tmp);
         }
         debug!("all_from_current: {:?}", self.current);
@@ -839,7 +767,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     fn all_from_current_with_str(&mut self, key: &str) {
         if let Some(current) = self.current.take() {
             let mut tmp = Vec::new();
-            walk_all_with_str(&current, &mut tmp, key, false);
+            ValueWalker::all_with_str(&current, &mut tmp, key, false);
             self.current = Some(tmp);
         }
         debug!("all_from_current_with_str: {}, {:?}", key, self.current);
@@ -848,8 +776,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     fn all_from_current_with_num(&mut self, index: f64) {
         if let Some(current) = self.current.take() {
             let mut tmp = Vec::new();
-
-            walk_all_with_num(&current, &mut tmp, index);
+            ValueWalker::all_with_num(&current, &mut tmp, index);
             self.current = Some(tmp);
         }
         debug!("all_from_current_with_num: {}, {:?}", index, self.current);
