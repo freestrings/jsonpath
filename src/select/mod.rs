@@ -972,10 +972,10 @@ impl<'a, 'b> Selector<'a, 'b> {
 
     fn is_last_before_token_match(&mut self, token: ParseToken) -> bool {
         if self.tokens.len() > 1 {
-            return &token == &self.tokens[self.tokens.len() - 2];
+            return token == self.tokens[self.tokens.len() - 2];
         }
 
-        return false;
+        false
     }
 
     fn visit_all(&mut self) {
