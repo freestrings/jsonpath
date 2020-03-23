@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::collections::HashSet;
 
 pub(super) struct ValueWalker;
 
@@ -46,19 +47,13 @@ impl<'a> ValueWalker {
         });
     }
 
-    fn walk<F>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, fun: &F)
-        where
-            F: Fn(&Value) -> Option<Vec<&Value>>,
-    {
+    fn walk<F>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, fun: &F) where F: Fn(&Value) -> Option<Vec<&Value>> {
         for v in vec {
             Self::_walk(v, tmp, fun);
         }
     }
 
-    fn _walk<F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F)
-        where
-            F: Fn(&Value) -> Option<Vec<&Value>>,
-    {
+    fn _walk<F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F) where F: Fn(&Value) -> Option<Vec<&Value>> {
         if let Some(mut ret) = fun(v) {
             tmp.append(&mut ret);
         }
@@ -72,6 +67,29 @@ impl<'a> ValueWalker {
             Value::Object(map) => {
                 for (_, v) in map {
                     Self::_walk(&v, tmp, fun);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn walk_dedup(v: &'a Value,
+                      tmp: &mut Vec<&'a Value>,
+                      key: &str,
+                      visited: &mut HashSet<*const Value>, ) {
+        match v {
+            Value::Object(map) => {
+                if map.contains_key(key) {
+                    let ptr = v as *const Value;
+                    if !visited.contains(&ptr) {
+                        visited.insert(ptr);
+                        tmp.push(v)
+                    }
+                }
+            }
+            Value::Array(vec) => {
+                for v in vec {
+                    Self::walk_dedup(v, tmp, key, visited);
                 }
             }
             _ => {}
