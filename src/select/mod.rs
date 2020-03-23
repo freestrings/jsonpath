@@ -61,7 +61,7 @@ impl fmt::Display for JsonPathError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct FilterTerms<'a>(Vec<Option<ExprTerm<'a>>>);
 
 impl<'a> FilterTerms<'a> {
@@ -78,6 +78,7 @@ impl<'a> FilterTerms<'a> {
         self.0.push(term);
     }
 
+    #[allow(clippy::option_option)]
     fn pop_term(&mut self) -> Option<Option<ExprTerm<'a>>> {
         self.0.pop()
     }
@@ -324,7 +325,7 @@ impl<'a> FilterTerms<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Selector<'a, 'b> {
     node: Option<Node>,
     node_ref: Option<&'b Node>,
@@ -336,20 +337,8 @@ pub struct Selector<'a, 'b> {
 }
 
 impl<'a, 'b> Selector<'a, 'b> {
-    pub fn default() -> Self {
-        Self::new()
-    }
-
     pub fn new() -> Self {
-        Self {
-            node: None,
-            node_ref: None,
-            value: None,
-            tokens: Vec::new(),
-            current: None,
-            selectors: Vec::new(),
-            selector_filter: FilterTerms(Vec::new()),
-        }
+        Self::default()
     }
 
     pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
