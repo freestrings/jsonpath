@@ -220,7 +220,7 @@ impl<'a> FilterTerms<'a> {
 
             if tmp.is_empty() {
                 self.0.pop();
-                return Some(vec![&Value::Null]);
+                return Some(vec![]);
             } else {
                 return Some(tmp);
             }
@@ -275,7 +275,7 @@ impl<'a> FilterTerms<'a> {
 
             if tmp.is_empty() {
                 self.0.pop();
-                return Some(vec![&Value::Null]);
+                return Some(vec![]);
             } else {
                 return Some(tmp);
             }
@@ -530,7 +530,7 @@ impl<'a, 'b> Selector<'a, 'b> {
                 }
                 ExprTerm::Json(rel, _, v) => {
                     if v.is_empty() {
-                        self.current = Some(vec![&Value::Null]);
+                        self.current = Some(vec![]);
                     } else if let Some(vec) = rel {
                         self.current = Some(vec);
                     } else {
@@ -538,7 +538,7 @@ impl<'a, 'b> Selector<'a, 'b> {
                     }
                 }
                 ExprTerm::Bool(false) => {
-                    self.current = Some(vec![&Value::Null]);
+                    self.current = Some(vec![]);
                 }
                 _ => {}
             }
