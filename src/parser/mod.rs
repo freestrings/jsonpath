@@ -812,6 +812,25 @@ mod parser_tests {
             ])
         );
 
+        assert_eq!(
+            run("$.$a"),
+            Ok(vec![
+                ParseToken::Absolute,
+                ParseToken::In,
+                ParseToken::Key("$a".to_owned())
+            ])
+        );
+
+        assert_eq!(
+            run("$.['$a']"),
+            Ok(vec![
+                ParseToken::Absolute,
+                ParseToken::Array,
+                ParseToken::Key("$a".to_owned()),
+                ParseToken::ArrayEof,
+            ])
+        );
+
         if run("$.").is_ok() {
             panic!();
         }
