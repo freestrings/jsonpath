@@ -5,7 +5,7 @@
 ![npm](https://img.shields.io/npm/v/jsonpath-wasm.svg?label=npm%20%60jsonpath-wasm%60)
 ![Codecov](https://img.shields.io/codecov/c/github/freestrings/jsonpath.svg?token=92c41b4e7cf04a9cbebc08f68c5da615)
 
-`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현이다. `Webassembly`와 `Javascript`에서도 유사한 API 인터페이스를 제공 한다.
+`Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현으로 `Webassembly`와 `Javascript`에서도 유사한 API 인터페이스를 제공 한다.
 
 It is JsonPath [JsonPath](https://goessner.net/articles/JsonPath/) engine written in `Rust`. it provide a similar API interface in `Webassembly` and` Javascript` too.
 
