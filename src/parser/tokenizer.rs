@@ -172,6 +172,37 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    fn dolla(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+        let fun = |c: &char| match c {
+            &CH_DOT
+            | &CH_ASTERISK
+            | &CH_LARRAY
+            | &CH_RARRAY
+            | &CH_LPAREN
+            | &CH_RPAREN
+            | &CH_AT
+            | &CH_QUESTION
+            | &CH_COMMA
+            | &CH_SEMICOLON
+            | &CH_LITTLE
+            | &CH_GREATER
+            | &CH_EQUAL
+            | &CH_AMPERSAND
+            | &CH_PIPE
+            | &CH_EXCLAMATION
+            => false,
+            _ => !c.is_whitespace(),
+        };
+        let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
+        vec.insert(0, ch);
+
+        if vec.len() == 1 {
+            Ok(Token::Absolute(pos))
+        } else {
+            Ok(Token::Key(pos, vec))
+        }
+    }
+
     fn quote(&mut self, ch: char) -> Result<String, TokenError> {
         let (_, mut val) = self
             .input
@@ -309,7 +340,7 @@ impl<'a> Tokenizer<'a> {
     pub fn next_token(&mut self) -> Result<Token, TokenError> {
         let (pos, ch) = self.input.next_char().map_err(to_token_error)?;
         match ch {
-            CH_DOLLA => Ok(Token::Absolute(pos)),
+            CH_DOLLA => self.dolla(pos, ch),
             CH_DOT => Ok(Token::Dot(pos)),
             CH_ASTERISK => Ok(Token::Asterisk(pos)),
             CH_LARRAY => Ok(Token::OpenArray(pos)),

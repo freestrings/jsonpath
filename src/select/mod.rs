@@ -510,13 +510,26 @@ impl<'a, 'b> Selector<'a, 'b> {
             self.tokens.pop();
             self.tokens.pop();
             if let Some(Some(e)) = self.selector_filter.pop_term() {
-                if let ExprTerm::Number(n) = &e {
-                    self.current = self.selector_filter.collect_all_with_num(&self.current, to_f64(n));
-                    self.selector_filter.pop_term();
+                let selector_filter_consumed = match &e {
+                    ExprTerm::Number(n) => {
+                        self.current = self.selector_filter.collect_all_with_num(&self.current, to_f64(n));
+                        self.selector_filter.pop_term();
+                        true
+                    }
+                    ExprTerm::String(key) => {
+                        self.current = self.selector_filter.collect_all_with_str(&self.current, key);
+                        self.selector_filter.pop_term();
+                        true
+                    }
+                    _ => {
+                        self.selector_filter.push_term(Some(e));
+                        false
+                    }
+                };
+
+                if selector_filter_consumed {
                     return;
                 }
-
-                self.selector_filter.push_term(Some(e));
             }
         }
 
