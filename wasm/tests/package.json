@@ -8,7 +8,7 @@
     "test": "mocha"
   },
   "devDependencies": {
-    "jsonpath-wasm": "*",
+    "jsonpath-wasm": "file:../nodejs_pkg",
     "mocha": "^6.1.4"
   }
 }
