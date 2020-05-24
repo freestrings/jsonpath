@@ -53,9 +53,16 @@ function initEvent() {
     }
 }
 
+function readPath() {
+    let query = location.href.substring(location.href.indexOf('#') + 1);
+    let path = decodeURIComponent(query);
+    getJsonpathInput().value = path;
+    forceClick(getReadBtn());
+}
+
 function readPathParam() {
     if(location.href.indexOf('#') > -1) {
-        readPath()
+        readPath();
     }
 }
 
@@ -65,13 +72,6 @@ function forceClick(ctrl) {
     event.initEvent('click', true, true);
     event.synthetic = true;
     ctrl.dispatchEvent(event, true);
-}
-
-function readPath() {
-    let query = location.href.substring(location.href.indexOf('#') + 1);
-    let path = decodeURIComponent(query);
-    getJsonpathInput().value = path;
-    forceClick(getReadBtn());
 }
 
 window.onpopstate = readPath;
