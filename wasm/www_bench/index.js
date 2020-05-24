@@ -1,6 +1,13 @@
 import * as jpw from "jsonpath-wasm";
 import * as jp from "jsonpath/jsonpath.js";
 
+function msg(msg) {
+    console.log(msg);
+    let div = document.createElement("div");
+    div.innerText = msg;
+    document.body.appendChild(div);
+}
+
 function run(message, iter, cb) {
     return new Promise(function(resolve, _reject) {
         let d = Date.now();
@@ -9,14 +16,7 @@ function run(message, iter, cb) {
         }
         msg([message, Date.now() - d].join(", "));
         setTimeout(resolve, 0);
-    })
-}
-
-function msg(msg) {
-    console.log(msg);
-    let div = document.createElement("div");
-    div.innerText = msg;
-    document.body.appendChild(div);
+    });
 }
 
 let json = {
@@ -65,12 +65,12 @@ let iterCount = 2000;
 
 run('jsonpath', iterCount, function() { jp.query(json, path) })
      .then(function() {
-         return run('jsonpath-wasm- selector', iterCount, function() { selector(path) });
+         return run('jsonpath-wasm- selector', iterCount, function() { selector(path); });
      })
     .then(function() {
-        return run('jsonpath-wasm- compile', iterCount, function() { template(json) });
+        return run('jsonpath-wasm- compile', iterCount, function() { template(json); });
     })
     .then(function() {
-        return run('jsonpath-wasm- select', iterCount, function() { jpw.select(json, path) });
+        return run('jsonpath-wasm- select', iterCount, function() { jpw.select(json, path); });
     })
     .finally(function() {});
