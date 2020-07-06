@@ -44,6 +44,8 @@ pub enum JsonPathError {
     Serde(String),
 }
 
+impl std::error::Error for JsonPathError {}
+
 impl fmt::Debug for JsonPathError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
