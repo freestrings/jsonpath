@@ -135,6 +135,7 @@ use serde_json::Value;
 pub use parser::Parser; // TODO private
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
+use parser::Node;
 
 #[doc(hidden)]
 mod ffi;
@@ -170,6 +171,10 @@ mod select;
 ///     &json!({"name": "친구1", "age": 20})
 /// ]);
 /// ```
+/// #[deprecated(
+//     since = "0.2.5",
+//     note = "Please use the Compiled::compile function instead"
+// )]
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
     let node = parser::Parser::compile(path);
     move |json| match &node {
@@ -467,4 +472,69 @@ where
     let mut selector = SelectorMut::default();
     let value = selector.str_path(path)?.value(value).replace_with(fun)?;
     Ok(value.take().unwrap_or(Value::Null))
+}
+
+/// A pre-compiled expression.
+///
+/// Calling the select function of this struct will re-use the existing, compiled expression.
+///
+/// ## Example
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// let mut first_friend = jsonpath::Compiled::compile("$..friends[0]").unwrap();
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// // call a first time
+///
+/// let json = first_friend.select(&json_obj).unwrap();
+///
+/// assert_eq!(json, vec![
+///     &json!({"name": "친구3", "age": 30}),
+///     &json!({"name": "친구1", "age": 20})
+/// ]);
+///
+/// // call a second time
+///
+/// let json = first_friend.select(&json_obj).unwrap();
+///
+/// assert_eq!(json, vec![
+///     &json!({"name": "친구3", "age": 30}),
+///     &json!({"name": "친구1", "age": 20})
+/// ]);
+/// ```
+#[derive(Clone, Debug)]
+pub struct Compiled {
+    node: Node,
+}
+
+impl Compiled {
+    /// Compile a path expression and return a compiled instance.
+    ///
+    /// If parsing the path fails, it will return an error.
+    pub fn compile(path: &str) -> Result<Compiled, String> {
+        let node = parser::Parser::compile(path)?;
+        Ok(Compiled{
+            node
+        })
+    }
+
+    /// Execute the select operation on the pre-compiled path.
+    pub fn select<'a>(&self, value: &'a Value) -> Result<Vec<&'a Value>, JsonPathError> {
+        let mut selector = Selector::default();
+        selector.compiled_path(&self.node).value(value).select()
+    }
 }
