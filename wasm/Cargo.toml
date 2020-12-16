@@ -1,6 +1,6 @@
 [package]
 name = "jsonpath-wasm"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["Changseok Han <freestrings@gmail.com>"]
 description = "It is Webassembly version of jsonpath_lib that is JsonPath engine written in Rust - Demo: https://freestrings.github.io/jsonpath"
 keywords = ["jsonpath", "json", "webassembly", "parsing", "rust"]
@@ -22,7 +22,7 @@ wee_alloc = { version = "0.4", optional = true }
 jsonpath_lib = { path = "../" }
 serde = "1.0"
 serde_json = { version = "1.0", features = ["preserve_order"] }
-lazy_static = "1.3.0"
+lazy_static = "1.4.0"
 web-sys = { version = "0.3", features = ['console'] }
 js-sys = "0.3"
 

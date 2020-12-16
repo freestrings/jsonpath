@@ -1,3 +1,7 @@
+/**
+ * 실행 : `wasm-pack test`
+ * 그러나,, 잘안돼서 안씀
+ */
 #![cfg(target_arch = "wasm32")]
 
 extern crate core;

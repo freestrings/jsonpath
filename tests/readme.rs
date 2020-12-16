@@ -334,7 +334,7 @@ fn readme_select_as() {
 
 #[test]
 fn readme_compile() {
-    let mut first_firend = jsonpath::compile("$..friends[0]");
+    let first_firend = jsonpath::Compiled::compile("$..friends[0]").unwrap();
 
     let json_obj = json!({
         "school": {
@@ -348,7 +348,7 @@ fn readme_compile() {
             {"name": "친구4"}
     ]});
 
-    let json = first_firend(&json_obj).unwrap();
+    let json = first_firend.select(&json_obj).unwrap();
 
     assert_eq!(
         json,

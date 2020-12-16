@@ -314,10 +314,7 @@ impl Parser {
     fn union(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#union");
         let mut values = vec![num];
-        while match tokenizer.peek_token() {
-            Ok(Token::Comma(_)) => true,
-            _ => false,
-        } {
+        while matches!(tokenizer.peek_token(), Ok(Token::Comma(_))) {
             Self::eat_token(tokenizer);
             Self::eat_whitespace(tokenizer);
             match tokenizer.next_token() {
@@ -472,23 +469,19 @@ impl Parser {
     fn expr(tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#expr");
 
-        let has_prop_candidate = match tokenizer.peek_token() {
-            Ok(Token::At(_)) => true,
-            _ => false,
-        };
+        let has_prop_candidate = matches!(tokenizer.peek_token(), Ok(Token::At(_)));
 
         let node = Self::term(tokenizer)?;
         Self::eat_whitespace(tokenizer);
 
-        if match tokenizer.peek_token() {
+        if matches!(tokenizer.peek_token(),
             Ok(Token::Equal(_))
             | Ok(Token::NotEqual(_))
             | Ok(Token::Little(_))
             | Ok(Token::LittleOrEqual(_))
             | Ok(Token::Greater(_))
-            | Ok(Token::GreaterOrEqual(_)) => true,
-            _ => false,
-        } {
+            | Ok(Token::GreaterOrEqual(_)))
+        {
             Self::op(node, tokenizer)
         } else if has_prop_candidate {
             Ok(node)
@@ -545,10 +538,10 @@ impl Parser {
             }
             Ok(Token::Absolute(_)) => {
                 Self::json_path(tokenizer)
-            },
+            }
             Ok(Token::DoubleQuoted(_, _)) | Ok(Token::SingleQuoted(_, _)) => {
                 Self::array_quote_value(tokenizer)
-            },
+            }
             Ok(Token::Key(_, key)) => {
                 match key.as_bytes()[0] {
                     b'-' | b'0'..=b'9' => Self::term_num(tokenizer),

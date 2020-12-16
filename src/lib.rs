@@ -171,10 +171,10 @@ mod select;
 ///     &json!({"name": "친구1", "age": 20})
 /// ]);
 /// ```
-/// #[deprecated(
-//     since = "0.2.5",
-//     note = "Please use the Compiled::compile function instead"
-// )]
+#[deprecated(
+    since = "0.2.5",
+    note = "Please use the Compiled::compile function instead"
+)]
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
     let node = parser::Parser::compile(path);
     move |json| match &node {
