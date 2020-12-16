@@ -79,10 +79,10 @@ fn bench_select_as_str(b: &mut Bencher) {
 #[bench]
 fn bench_compile(b: &mut Bencher) {
     let json = get_json();
-    let mut template = jsonpath::compile(get_path());
+    let template = jsonpath::Compiled::compile(get_path()).unwrap();
     b.iter(move || {
         for _ in 1..100 {
-            let _ = template(&json).unwrap();
+            let _ = template.select(&json).unwrap();
         }
     });
 }

@@ -157,6 +157,9 @@ console.log(
 <details><summary><b>Javascript - jsonpath.compile(jsonpath: string)</b></summary>
 
 ```javascript
+let error = jsonpath.compile('');
+console.log(typeof error, error); //string 'path error'
+
 let template = jsonpath.compile('$..friends[0]');
 
 let jsonObj = {

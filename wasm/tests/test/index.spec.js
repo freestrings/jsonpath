@@ -1,4 +1,5 @@
 const jsonpath = require('jsonpath-wasm');
+const assert = require('assert');
 
 let jsonObj = {
     'store': {
@@ -362,6 +363,14 @@ describe('compile test', () => {
         if (result[0] === 1) {
             done();
         }
+    });
+
+});
+
+describe('compatible behavior with Compiled::compile test', () => {
+    it('basic', (done) => {
+        assert.ok(jsonpath.compile('').includes('path error'), 'Error thrown')
+        done()
     });
 });
 

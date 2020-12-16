@@ -82,6 +82,10 @@ fn replace_fun(v: Value, fun: &js_sys::Function) -> Option<Value> {
 pub fn compile(path: &str) -> JsValue {
     let node = Parser::compile(path);
 
+    if let Err(e) = &node {
+        return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone())));
+    };
+
     let cb = Closure::wrap(Box::new(move |js_value: JsValue| {
         let json = match into_serde_json(&js_value) {
             Ok(json) => json,

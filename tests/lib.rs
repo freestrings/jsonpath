@@ -14,9 +14,9 @@ mod common;
 #[test]
 fn compile() {
     let compile_object = |path| {
-        let mut template = jsonpath::compile(path);
+        let template = jsonpath::Compiled::compile(path).unwrap();
         let json_obj = read_json("./benchmark/data_obj.json");
-        let json = template(&json_obj).unwrap();
+        let json = template.select(&json_obj).unwrap();
         let ret = json!([
             {"id": 2,"name": "Gray Berry"},
             {"id": 2,"name": "Gray Berry"}
@@ -25,9 +25,9 @@ fn compile() {
     };
 
     let compile_array = |path| {
-        let mut template = jsonpath::compile(path);
+        let template = jsonpath::Compiled::compile(path).unwrap();
         let json_obj = read_json("./benchmark/data_array.json");
-        let json = template(&json_obj).unwrap();
+        let json = template.select(&json_obj).unwrap();
         let ret = json!([
             {"id": 2,"name": "Gray Berry"},
             {"id": 2,"name": "Rosetta Erickson"}
@@ -36,8 +36,8 @@ fn compile() {
     };
 
     fn compile_error() {
-        let mut template = jsonpath::compile("$[");
-        assert!(template(&Value::Null).is_err());
+        let template = jsonpath::Compiled::compile("$[");
+        assert!(template.is_err());
     }
 
     setup();

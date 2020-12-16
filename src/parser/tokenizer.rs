@@ -64,98 +64,29 @@ pub enum Token {
 impl Token {
     pub fn is_match_token_type(&self, other: Token) -> bool {
         match self {
-            Token::Absolute(_) => match other {
-                Token::Absolute(_) => true,
-                _ => false
-            },
-            Token::Dot(_) => match other {
-                Token::Dot(_) => true,
-                _ => false
-            },
-            Token::At(_) => match other {
-                Token::At(_) => true,
-                _ => false
-            },
-            Token::OpenArray(_) => match other {
-                Token::OpenArray(_) => true,
-                _ => false
-            },
-            Token::CloseArray(_) => match other {
-                Token::CloseArray(_) => true,
-                _ => false
-            },
-            Token::Asterisk(_) => match other {
-                Token::Asterisk(_) => true,
-                _ => false
-            },
-            Token::Question(_) => match other {
-                Token::Question(_) => true,
-                _ => false
-            },
-            Token::Comma(_) => match other {
-                Token::Comma(_) => true,
-                _ => false
-            },
-            Token::Split(_) => match other {
-                Token::Split(_) => true,
-                _ => false
-            },
-            Token::OpenParenthesis(_) => match other {
-                Token::OpenParenthesis(_) => true,
-                _ => false
-            },
-            Token::CloseParenthesis(_) => match other {
-                Token::CloseParenthesis(_) => true,
-                _ => false
-            },
-            Token::Key(_, _) => match other {
-                Token::Key(_, _) => true,
-                _ => false
-            },
-            Token::DoubleQuoted(_, _) => match other {
-                Token::DoubleQuoted(_, _) => true,
-                _ => false
-            },
-            Token::SingleQuoted(_, _) => match other {
-                Token::SingleQuoted(_, _) => true,
-                _ => false
-            },
-            Token::Equal(_) => match other {
-                Token::Equal(_) => true,
-                _ => false
-            },
-            Token::GreaterOrEqual(_) => match other {
-                Token::GreaterOrEqual(_) => true,
-                _ => false
-            },
-            Token::Greater(_) => match other {
-                Token::Greater(_) => true,
-                _ => false
-            },
-            Token::Little(_) => match other {
-                Token::Little(_) => true,
-                _ => false
-            },
-            Token::LittleOrEqual(_) => match other {
-                Token::LittleOrEqual(_) => true,
-                _ => false
-            },
-            Token::NotEqual(_) => match other {
-                Token::NotEqual(_) => true,
-                _ => false
-            },
-            Token::And(_) => match other {
-                Token::And(_) => true,
-                _ => false
-            },
-            Token::Or(_) => match other {
-                Token::Or(_) => true,
-                _ => false
-            },
-            Token::Whitespace(_, _) => match other {
-                Token::Whitespace(_, _) => true,
-                _ => false
-            },
+            Token::Absolute(_) => matches!(other, Token::Absolute(_)),
+            Token::Dot(_) => matches!(other, Token::Dot(_)),
+            Token::At(_) => matches!(other, Token::At(_)),
+            Token::OpenArray(_) => matches!(other, Token::OpenArray(_)),
+            Token::CloseArray(_) => matches!(other, Token::CloseArray(_)),
+            Token::Asterisk(_) => matches!(other, Token::Asterisk(_)),
+            Token::Question(_) => matches!(other, Token::Question(_)),
+            Token::Comma(_) => matches!(other, Token::Comma(_)),
+            Token::Split(_) => matches!(other, Token::Split(_)),
+            Token::OpenParenthesis(_) => matches!(other, Token::OpenParenthesis(_)),
+            Token::CloseParenthesis(_) => matches!(other, Token::CloseParenthesis(_)),
+            Token::Key(_, _) => matches!(other, Token::Key(_, _)),
+            Token::DoubleQuoted(_, _) => matches!(other, Token::DoubleQuoted(_, _)),
+            Token::SingleQuoted(_, _) => matches!(other, Token::SingleQuoted(_, _)),
+            Token::Equal(_) => matches!(other, Token::Equal(_)),
+            Token::GreaterOrEqual(_) => matches!(other, Token::GreaterOrEqual(_)),
+            Token::Greater(_) => matches!(other, Token::Greater(_)),
+            Token::Little(_) => matches!(other, Token::Little(_)),
+            Token::LittleOrEqual(_) => matches!(other, Token::LittleOrEqual(_)),
+            Token::NotEqual(_) => matches!(other, Token::NotEqual(_)),
+            Token::And(_) => matches!(other, Token::And(_)),
+            Token::Or(_) => matches!(other, Token::Or(_)),
+            Token::Whitespace(_, _) => matches!(other, Token::Whitespace(_, _)),
         }
     }
 }
