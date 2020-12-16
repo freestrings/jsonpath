@@ -193,10 +193,10 @@ assert_eq!(ret[0], person);
 
 </details>
 
-<details><summary><b>Rust - jsonpath::compile(jsonpath: &str)</b></summary>
+<details><summary><b>Rust - jsonpath::Compiled::compile(jsonpath: &str)</b></summary>
 
 ```rust
-let mut template = jsonpath::compile("$..friends[0]");
+let template = jsonpath::Compiled::compile("$..friends[0]").unwrap();
 
 let json_obj = json!({
     "school": {
@@ -210,7 +210,7 @@ let json_obj = json!({
         {"name": "친구4"}
 ]});
 
-let json = template(&json_obj).unwrap();
+let json = template.select(&json_obj).unwrap();
 
 assert_eq!(json, vec![
     &json!({"name": "친구3", "age": 30}),
