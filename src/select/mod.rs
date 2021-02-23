@@ -31,7 +31,7 @@ fn abs_index(n: isize, len: usize) -> usize {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum FilterKey {
     String(String),
     All,
@@ -61,7 +61,7 @@ impl fmt::Display for JsonPathError {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct FilterTerms<'a>(Vec<Option<ExprTerm<'a>>>);
 
 impl<'a> FilterTerms<'a> {
@@ -325,7 +325,7 @@ impl<'a> FilterTerms<'a> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Selector<'a, 'b> {
     node: Option<Node>,
     node_ref: Option<&'b Node>,
@@ -774,7 +774,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SelectorMut {
     path: Option<Node>,
     value: Option<Value>,
