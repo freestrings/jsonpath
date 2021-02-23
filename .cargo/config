@@ -1,0 +1,2 @@
+[registries]
+evervault-jsonpath = { index = "https://dl.cloudsmith.io/basic/evervault/jsonpath/cargo/index.git" }
