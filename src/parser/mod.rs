@@ -145,6 +145,7 @@ impl Parser {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn path_leaves_key(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_leaves_key");
         Ok(Node {
@@ -154,6 +155,7 @@ impl Parser {
         })
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn path_leaves_all(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_leaves_all");
         Self::eat_token(tokenizer);
@@ -164,6 +166,7 @@ impl Parser {
         })
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn path_in_all(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_in_all");
         Self::eat_token(tokenizer);
@@ -174,6 +177,7 @@ impl Parser {
         })
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn path_in_key(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
         debug!("#path_in_key");
         Ok(Node {

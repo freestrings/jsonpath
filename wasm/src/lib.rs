@@ -56,6 +56,7 @@ where
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn replace_fun(v: Value, fun: &js_sys::Function) -> Option<Value> {
     match JsValue::from_serde(&v) {
         Ok(js_v) => match fun.call1(&JsValue::NULL, &js_v) {
