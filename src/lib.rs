@@ -124,7 +124,6 @@
 //! ```
 extern crate array_tool;
 extern crate core;
-extern crate env_logger;
 #[macro_use]
 extern crate log;
 extern crate serde;
