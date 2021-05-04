@@ -134,10 +134,11 @@ use serde_json::Value;
 pub use parser::Parser; // TODO private
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
+pub use select::json_node::JsonValueUpdater;
 use parser::Node;
 
-#[doc(hidden)]
-mod ffi;
+// #[doc(hidden)]
+// mod ffi;
 #[doc(hidden)]
 mod parser;
 #[doc(hidden)]
@@ -277,7 +278,22 @@ pub fn selector_as<T: serde::de::DeserializeOwned>(
 ) -> impl FnMut(&str) -> Result<Vec<T>, JsonPathError> + '_ {
     let mut selector = Selector::default();
     let _ = selector.value(json);
-    move |path: &str| selector.str_path(path)?.reset_value().select_as()
+    move |path: &str| {
+        let res = selector.str_path(path)?.reset_value().select();
+        match res {
+            Ok(vec) => {
+                let mut ret = Vec::new();
+                for v in vec {
+                    match T::deserialize(v) {
+                        Ok(v) => ret.push(v),
+                        Err(e) => return Err(JsonPathError::Serde(e.to_string())),
+                    }
+                }
+                Ok(ret)
+            }
+            _ => Err(JsonPathError::EmptyValue),
+        }
+    }
 }
 
 /// It is a simple select function. but it compile the jsonpath argument every time.
@@ -333,56 +349,56 @@ pub fn select<'a>(json: &'a Value, path: &str) -> Result<Vec<&'a Value>, JsonPat
 /// assert_eq!(ret, r#"[{"name":"친구3","age":30},{"name":"친구1","age":20}]"#);
 /// ```
 pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError> {
-    let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
+    let json: Value = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
     let ret = Selector::default().str_path(path)?.value(&json).select()?;
     serde_json::to_string(&ret).map_err(|e| JsonPathError::Serde(e.to_string()))
 }
 
-/// It is the same to `select` function but it deserialize the the result as given type `T`.
-///
-/// ```rust
-/// extern crate jsonpath_lib as jsonpath;
-/// extern crate serde;
-/// #[macro_use] extern crate serde_json;
-///
-/// use serde::{Deserialize, Serialize};
-///
-/// #[derive(Deserialize, PartialEq, Debug)]
-/// struct Person {
-///     name: String,
-///     age: u8,
-///     phones: Vec<String>,
-/// }
-///
-/// let ret: Vec<Person> = jsonpath::select_as(r#"
-/// {
-///     "person":
-///         {
-///             "name": "Doe John",
-///             "age": 44,
-///             "phones": [
-///                 "+44 1234567",
-///                 "+44 2345678"
-///             ]
-///         }
-/// }
-/// "#, "$.person").unwrap();
-///
-/// let person = Person {
-///     name: "Doe John".to_string(),
-///     age: 44,
-///     phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
-/// };
-///
-/// assert_eq!(ret[0], person);
-/// ```
-pub fn select_as<T: serde::de::DeserializeOwned>(
-    json_str: &str,
-    path: &str,
-) -> Result<Vec<T>, JsonPathError> {
-    let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    Selector::default().str_path(path)?.value(&json).select_as()
-}
+// /// It is the same to `select` function but it deserialize the the result as given type `T`.
+// ///
+// /// ```rust
+// /// extern crate jsonpath_lib as jsonpath;
+// /// extern crate serde;
+// /// #[macro_use] extern crate serde_json;
+// ///
+// /// use serde::{Deserialize, Serialize};
+// ///
+// /// #[derive(Deserialize, PartialEq, Debug)]
+// /// struct Person {
+// ///     name: String,
+// ///     age: u8,
+// ///     phones: Vec<String>,
+// /// }
+// ///
+// /// let ret: Vec<Person> = jsonpath::select_as(r#"
+// /// {
+// ///     "person":
+// ///         {
+// ///             "name": "Doe John",
+// ///             "age": 44,
+// ///             "phones": [
+// ///                 "+44 1234567",
+// ///                 "+44 2345678"
+// ///             ]
+// ///         }
+// /// }
+// /// "#, "$.person").unwrap();
+// ///
+// /// let person = Person {
+// ///     name: "Doe John".to_string(),
+// ///     age: 44,
+// ///     phones: vec!["+44 1234567".to_string(), "+44 2345678".to_string()],
+// /// };
+// ///
+// /// assert_eq!(ret[0], person);
+// /// ```
+// pub fn select_as<T: serde::de::DeserializeOwned>(
+//     json_str: &str,
+//     path: &str,
+// ) -> Result<Vec<T>, JsonPathError> {
+//     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
+//     (selector_as(&json))(path)
+// }
 
 /// Delete(= replace with null) the JSON property using the jsonpath.
 ///
@@ -416,10 +432,11 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
 ///         {"name": "친구4"}
 /// ]}));
 /// ```
-pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
+pub fn delete(mut value: Value, path: &str) -> Result<Value, JsonPathError> {
     let mut selector = SelectorMut::default();
-    let value = selector.str_path(path)?.value(value).delete()?;
-    Ok(value.take().unwrap_or(Value::Null))
+    let mut updater = JsonValueUpdater::new(|_| Some(Value::Null));
+    selector.str_path(path)?.value(&mut value).replace_with(&mut updater)?;
+    Ok(value)
 }
 
 /// Select JSON properties using a jsonpath and transform the result and then replace it. via closure that implements `FnMut` you can transform the selected results.
@@ -464,13 +481,18 @@ pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
 ///         {"name": "친구4"}
 /// ]}));
 /// ```
-pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
+pub fn replace_with<'a, F>(mut value: Value, path: &str, fun: F) -> Result<Value, JsonPathError>
 where
     F: FnMut(Value) -> Option<Value>,
 {
     let mut selector = SelectorMut::default();
-    let value = selector.str_path(path)?.value(value).replace_with(fun)?;
-    Ok(value.take().unwrap_or(Value::Null))
+    let mut updater = JsonValueUpdater::new(fun);
+    selector.str_path(path)?.value(&mut value).replace_with(&mut updater)?;
+    Ok(value)
+
+    // let mut selector = SelectorMut::default();
+    // let value = selector.str_path(path)?.value(value).replace_with(fun)?;
+    // Ok(value.take().unwrap_or(Value::Null))
 }
 
 /// A pre-compiled expression.

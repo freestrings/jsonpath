@@ -1,26 +1,20 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use serde_json::{Number, Value};
-use serde_json::map::Entry;
-
-use parser::*;
-
-use self::expr_term::*;
-use self::value_walker::ValueWalker;
+use crate::parser::*;
 
 mod cmp;
 mod expr_term;
+pub mod select_value;
+pub mod json_node;
 mod value_walker;
 
-fn to_f64(n: &Number) -> f64 {
-    if n.is_i64() {
-        n.as_i64().unwrap() as f64
-    } else if n.is_f64() {
-        n.as_f64().unwrap()
-    } else {
-        n.as_u64().unwrap() as f64
-    }
+use self::expr_term::*;
+use self::select_value::{SelectValue, SelectValueType, ValueUpdater};
+use self::value_walker::ValueWalker;
+
+fn to_f64(n: i64) -> f64 {
+    n as f64
 }
 
 fn abs_index(n: isize, len: usize) -> usize {
@@ -64,9 +58,14 @@ impl fmt::Display for JsonPathError {
 }
 
 #[derive(Debug, Default)]
-struct FilterTerms<'a>(Vec<Option<ExprTerm<'a>>>);
+struct FilterTerms<'a, T>(Vec<Option<ExprTerm<'a, T>>>)
+where
+    T: SelectValue;
 
-impl<'a> FilterTerms<'a> {
+impl<'a, T> FilterTerms<'a, T>
+where
+    T: SelectValue,
+{
     fn new_filter_context(&mut self) {
         self.0.push(None);
         debug!("new_filter_context: {:?}", self.0);
@@ -76,18 +75,18 @@ impl<'a> FilterTerms<'a> {
         self.0.is_empty()
     }
 
-    fn push_term(&mut self, term: Option<ExprTerm<'a>>) {
+    fn push_term(&mut self, term: Option<ExprTerm<'a, T>>) {
         self.0.push(term);
     }
 
     #[allow(clippy::option_option)]
-    fn pop_term(&mut self) -> Option<Option<ExprTerm<'a>>> {
+    fn pop_term(&mut self) -> Option<Option<ExprTerm<'a, T>>> {
         self.0.pop()
     }
 
-    fn filter_json_term<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(
+    fn filter_json_term<F: Fn(&Vec<&'a T>, &mut Vec<&'a T>, &mut HashSet<usize>) -> FilterKey>(
         &mut self,
-        e: ExprTerm<'a>,
+        e: ExprTerm<'a, T>,
         fun: F,
     ) {
         debug!("filter_json_term: {:?}", e);
@@ -96,35 +95,40 @@ impl<'a> FilterTerms<'a> {
             let mut tmp = Vec::new();
             let mut not_matched = HashSet::new();
             let filter_key = if let Some(FilterKey::String(key)) = fk {
-                let key_contained = &vec.iter().map(|v| match v {
-                    Value::Object(map) if map.contains_key(&key) => map.get(&key).unwrap(),
-                    _ => v,
-                }).collect();
+                let key_contained = &vec
+                    .iter()
+                    .map(|v| match v.get_type() {
+                        SelectValueType::Dict if v.contains_key(&key) => v.get_key(&key).unwrap(),
+                        _ => v,
+                    })
+                    .collect();
                 fun(key_contained, &mut tmp, &mut not_matched)
             } else {
                 fun(&vec, &mut tmp, &mut not_matched)
             };
 
             if rel.is_some() {
-                self.0.push(Some(ExprTerm::Json(rel, Some(filter_key), tmp)));
+                self.0
+                    .push(Some(ExprTerm::Json(rel, Some(filter_key), tmp)));
             } else {
-                let filtered: Vec<&Value> = vec.iter().enumerate()
-                    .filter(
-                        |(idx, _)| !not_matched.contains(idx)
-                    )
+                let filtered: Vec<&T> = vec
+                    .iter()
+                    .enumerate()
+                    .filter(|(idx, _)| !not_matched.contains(idx))
                     .map(|(_, v)| *v)
                     .collect();
 
-                self.0.push(Some(ExprTerm::Json(Some(filtered), Some(filter_key), tmp)));
+                self.0
+                    .push(Some(ExprTerm::Json(Some(filtered), Some(filter_key), tmp)));
             }
         } else {
             unreachable!("unexpected: ExprTerm: {:?}", e);
         }
     }
 
-    fn push_json_term<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(
+    fn push_json_term<F: Fn(&Vec<&'a T>, &mut Vec<&'a T>, &mut HashSet<usize>) -> FilterKey>(
         &mut self,
-        current: &Option<Vec<&'a Value>>,
+        current: &Option<Vec<&'a T>>,
         fun: F,
     ) {
         debug!("push_json_term: {:?}", &current);
@@ -133,13 +137,14 @@ impl<'a> FilterTerms<'a> {
             let mut tmp = Vec::new();
             let mut not_matched = HashSet::new();
             let filter_key = fun(current, &mut tmp, &mut not_matched);
-            self.0.push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
+            self.0
+                .push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
         }
     }
 
-    fn filter<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(
+    fn filter<F: Fn(&Vec<&'a T>, &mut Vec<&'a T>, &mut HashSet<usize>) -> FilterKey>(
         &mut self,
-        current: &Option<Vec<&'a Value>>,
+        current: &Option<Vec<&'a T>>,
         fun: F,
     ) {
         if let Some(peek) = self.0.pop() {
@@ -151,7 +156,7 @@ impl<'a> FilterTerms<'a> {
         }
     }
 
-    fn filter_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) {
+    fn filter_all_with_str(&mut self, current: &Option<Vec<&'a T>>, key: &str) {
         self.filter(current, |vec, tmp, _| {
             ValueWalker::all_with_str(&vec, tmp, key, true);
             FilterKey::All
@@ -160,14 +165,14 @@ impl<'a> FilterTerms<'a> {
         debug!("filter_all_with_str : {}, {:?}", key, self.0);
     }
 
-    fn filter_next_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) {
+    fn filter_next_with_str(&mut self, current: &Option<Vec<&'a T>>, key: &str) {
         self.filter(current, |vec, tmp, not_matched| {
             let mut visited = HashSet::new();
             for (idx, v) in vec.iter().enumerate() {
-                match v {
-                    Value::Object(map) => {
-                        if map.contains_key(key) {
-                            let ptr = *v as *const Value;
+                match v.get_type() {
+                    SelectValueType::Dict => {
+                        if v.contains_key(key) {
+                            let ptr = *v as *const T;
                             if !visited.contains(&ptr) {
                                 visited.insert(ptr);
                                 tmp.push(v)
@@ -176,10 +181,10 @@ impl<'a> FilterTerms<'a> {
                             not_matched.insert(idx);
                         }
                     }
-                    Value::Array(vec) => {
+                    SelectValueType::Array => {
                         not_matched.insert(idx);
-                        for v in vec {
-                            ValueWalker::walk_dedup(v, tmp, key, &mut visited);
+                        for v1 in vec {
+                            ValueWalker::walk_dedup(*v1, tmp, key, &mut visited);
                         }
                     }
                     _ => {
@@ -194,8 +199,12 @@ impl<'a> FilterTerms<'a> {
         debug!("filter_next_with_str : {}, {:?}", key, self.0);
     }
 
-    fn collect_next_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
-        fn _collect<'a>(tmp: &mut Vec<&'a Value>, vec: &'a [Value], index: f64) {
+    fn collect_next_with_num(
+        &mut self,
+        current: &Option<Vec<&'a T>>,
+        index: f64,
+    ) -> Option<Vec<&'a T>> {
+        fn _collect<'a, T>(tmp: &mut Vec<&'a T>, vec: &[&'a T], index: f64) {
             let index = abs_index(index as isize, vec.len());
             if let Some(v) = vec.get(index) {
                 tmp.push(v);
@@ -203,18 +212,20 @@ impl<'a> FilterTerms<'a> {
         }
 
         if let Some(current) = current {
-            let mut tmp = Vec::new();
+            let mut tmp: Vec<&'a T> = Vec::new();
             for c in current {
-                match c {
-                    Value::Object(map) => {
-                        for k in map.keys() {
-                            if let Some(Value::Array(vec)) = map.get(k) {
-                                _collect(&mut tmp, vec, index);
+                match c.get_type() {
+                    SelectValueType::Dict => {
+                        for k in c.keys().unwrap() {
+                            if let Some(v) = c.get_key(&k) {
+                                if v.get_type() == SelectValueType::Array {
+                                    _collect(&mut tmp, &v.values().unwrap(), index);
+                                }
                             }
                         }
                     }
-                    Value::Array(vec) => {
-                        _collect(&mut tmp, vec, index);
+                    SelectValueType::Array => {
+                        _collect(&mut tmp, &c.values().unwrap(), index);
                     }
                     _ => {}
                 }
@@ -228,26 +239,23 @@ impl<'a> FilterTerms<'a> {
             }
         }
 
-        debug!(
-            "collect_next_with_num : {:?}, {:?}",
-            &index, &current
-        );
+        debug!("collect_next_with_num : {:?}, {:?}", &index, &current);
 
         None
     }
 
-    fn collect_next_all(&mut self, current: &Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+    fn collect_next_all(&mut self, current: &Option<Vec<&'a T>>) -> Option<Vec<&'a T>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             for c in current {
-                match c {
-                    Value::Object(map) => {
-                        for (_, v) in map {
+                match c.get_type() {
+                    SelectValueType::Dict => {
+                        for v in c.values().unwrap() {
                             tmp.push(v)
                         }
                     }
-                    Value::Array(vec) => {
-                        for v in vec {
+                    SelectValueType::Array => {
+                        for v in c.values().unwrap() {
                             tmp.push(v);
                         }
                     }
@@ -262,14 +270,18 @@ impl<'a> FilterTerms<'a> {
         None
     }
 
-    fn collect_next_with_str(&mut self, current: &Option<Vec<&'a Value>>, keys: &[String]) -> Option<Vec<&'a Value>> {
+    fn collect_next_with_str(
+        &mut self,
+        current: &Option<Vec<&'a T>>,
+        keys: &[String],
+    ) -> Option<Vec<&'a T>> {
         if let Some(current) = current {
-            let mut tmp = Vec::new();
+            let mut tmp: Vec<&'a T> = Vec::new();
             for c in current {
-                if let Value::Object(map) = c {
+                if c.get_type() == SelectValueType::Dict {
                     for key in keys {
-                        if let Some(v) = map.get(key) {
-                            tmp.push(v)
+                        if let Some(v) = c.get_key(&key) {
+                            tmp.push(&v)
                         }
                     }
                 }
@@ -283,15 +295,12 @@ impl<'a> FilterTerms<'a> {
             }
         }
 
-        debug!(
-            "collect_next_with_str : {:?}, {:?}",
-            keys, &current
-        );
+        debug!("collect_next_with_str : {:?}, {:?}", keys, &current);
 
         None
     }
 
-    fn collect_all(&mut self, current: &Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+    fn collect_all(&mut self, current: &Option<Vec<&'a T>>) -> Option<Vec<&'a T>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             ValueWalker::all(&current, &mut tmp);
@@ -302,7 +311,11 @@ impl<'a> FilterTerms<'a> {
         None
     }
 
-    fn collect_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) -> Option<Vec<&'a Value>> {
+    fn collect_all_with_str(
+        &mut self,
+        current: &Option<Vec<&'a T>>,
+        key: &str,
+    ) -> Option<Vec<&'a T>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             ValueWalker::all_with_str(&current, &mut tmp, key, false);
@@ -314,7 +327,11 @@ impl<'a> FilterTerms<'a> {
         None
     }
 
-    fn collect_all_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
+    fn collect_all_with_num(
+        &mut self,
+        current: &Option<Vec<&'a T>>,
+        index: f64,
+    ) -> Option<Vec<&'a T>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             ValueWalker::all_with_num(&current, &mut tmp, index);
@@ -327,18 +344,24 @@ impl<'a> FilterTerms<'a> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Selector<'a, 'b> {
+#[derive(Default, Debug)]
+pub struct Selector<'a, 'b, T>
+where
+    T: SelectValue,
+{
     node: Option<Node>,
     node_ref: Option<&'b Node>,
-    value: Option<&'a Value>,
+    value: Option<&'a T>,
     tokens: Vec<ParseToken>,
-    current: Option<Vec<&'a Value>>,
-    selectors: Vec<Selector<'a, 'b>>,
-    selector_filter: FilterTerms<'a>,
+    current: Option<Vec<&'a T>>,
+    selectors: Vec<Selector<'a, 'b, T>>,
+    selector_filter: FilterTerms<'a, T>,
 }
 
-impl<'a, 'b> Selector<'a, 'b> {
+impl<'a, 'b, T> Selector<'a, 'b, T>
+where
+    T: SelectValue,
+{
     pub fn new() -> Self {
         Self::default()
     }
@@ -373,7 +396,7 @@ impl<'a, 'b> Selector<'a, 'b> {
         self
     }
 
-    pub fn value(&mut self, v: &'a Value) -> &mut Self {
+    pub fn value(&mut self, v: &'a T) -> &mut Self {
         self.value = Some(v);
         self
     }
@@ -396,23 +419,23 @@ impl<'a, 'b> Selector<'a, 'b> {
         Ok(())
     }
 
-    pub fn select_as<T: serde::de::DeserializeOwned>(&mut self) -> Result<Vec<T>, JsonPathError> {
-        self._select()?;
+    // pub fn select_as<R: serde::de::DeserializeOwned>(&mut self) -> Result<Vec<R>, JsonPathError> {
+    //     self._select()?;
 
-        match &self.current {
-            Some(vec) => {
-                let mut ret = Vec::new();
-                for v in vec {
-                    match T::deserialize(*v) {
-                        Ok(v) => ret.push(v),
-                        Err(e) => return Err(JsonPathError::Serde(e.to_string())),
-                    }
-                }
-                Ok(ret)
-            }
-            _ => Err(JsonPathError::EmptyValue),
-        }
-    }
+    //     match &self.current {
+    //         Some(vec) => {
+    //             let mut ret = Vec::new();
+    //             for v in vec {
+    //                 match R::deserialize(*v) {
+    //                     Ok(v) => ret.push(v),
+    //                     Err(e) => return Err(JsonPathError::Serde(e.to_string())),
+    //                 }
+    //             }
+    //             Ok(ret)
+    //         }
+    //         _ => Err(JsonPathError::EmptyValue),
+    //     }
+    // }
 
     pub fn select_as_str(&mut self) -> Result<String, JsonPathError> {
         self._select()?;
@@ -425,7 +448,7 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
     }
 
-    pub fn select(&mut self) -> Result<Vec<&'a Value>, JsonPathError> {
+    pub fn select(&mut self) -> Result<Vec<&'a T>, JsonPathError> {
         self._select()?;
 
         match &self.current {
@@ -465,7 +488,10 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Selector<'a, 'b> {
+impl<'a, 'b, T> Selector<'a, 'b, T>
+where
+    T: SelectValue,
+{
     fn visit_absolute(&mut self) {
         if self.current.is_some() {
             let mut selector = Selector::default();
@@ -499,7 +525,8 @@ impl<'a, 'b> Selector<'a, 'b> {
         if self.is_last_before_token_match(ParseToken::Array) {
             if let Some(Some(e)) = self.selector_filter.pop_term() {
                 if let ExprTerm::String(key) = e {
-                    self.selector_filter.filter_next_with_str(&self.current, &key);
+                    self.selector_filter
+                        .filter_next_with_str(&self.current, &key);
                     self.tokens.pop();
                     return;
                 }
@@ -513,13 +540,22 @@ impl<'a, 'b> Selector<'a, 'b> {
             self.tokens.pop();
             if let Some(Some(e)) = self.selector_filter.pop_term() {
                 let selector_filter_consumed = match &e {
-                    ExprTerm::Number(n) => {
-                        self.current = self.selector_filter.collect_all_with_num(&self.current, to_f64(n));
+                    ExprTerm::Long(n) => {
+                        self.current = self
+                            .selector_filter
+                            .collect_all_with_num(&self.current, to_f64(*n));
+                        self.selector_filter.pop_term();
+                        true
+                    }
+                    ExprTerm::Double(n) => {
+                        self.current = self.selector_filter.collect_all_with_num(&self.current, *n);
                         self.selector_filter.pop_term();
                         true
                     }
                     ExprTerm::String(key) => {
-                        self.current = self.selector_filter.collect_all_with_str(&self.current, key);
+                        self.current = self
+                            .selector_filter
+                            .collect_all_with_str(&self.current, key);
                         self.selector_filter.pop_term();
                         true
                     }
@@ -537,11 +573,18 @@ impl<'a, 'b> Selector<'a, 'b> {
 
         if let Some(Some(e)) = self.selector_filter.pop_term() {
             match e {
-                ExprTerm::Number(n) => {
-                    self.current = self.selector_filter.collect_next_with_num(&self.current, to_f64(&n));
+                ExprTerm::Long(n) => {
+                    self.current = self
+                        .selector_filter
+                        .collect_next_with_num(&self.current, to_f64(n));
+                }
+                ExprTerm::Double(n) => {
+                    self.current = self.selector_filter.collect_next_with_num(&self.current, n);
                 }
                 ExprTerm::String(key) => {
-                    self.current = self.selector_filter.collect_next_with_str(&self.current, &[key]);
+                    self.current = self
+                        .selector_filter
+                        .collect_next_with_str(&self.current, &[key]);
                 }
                 ExprTerm::Json(rel, _, v) => {
                     if v.is_empty() {
@@ -592,7 +635,8 @@ impl<'a, 'b> Selector<'a, 'b> {
 
     fn visit_key(&mut self, key: &str) {
         if let Some(ParseToken::Array) = self.tokens.last() {
-            self.selector_filter.push_term(Some(ExprTerm::String(key.to_string())));
+            self.selector_filter
+                .push_term(Some(ExprTerm::String(key.to_string())));
             return;
         }
 
@@ -600,10 +644,14 @@ impl<'a, 'b> Selector<'a, 'b> {
             if self.selector_filter.is_term_empty() {
                 match t {
                     ParseToken::Leaves => {
-                        self.current = self.selector_filter.collect_all_with_str(&self.current, key)
+                        self.current = self
+                            .selector_filter
+                            .collect_all_with_str(&self.current, key)
                     }
                     ParseToken::In => {
-                        self.current = self.selector_filter.collect_next_with_str(&self.current, &[key.to_string()])
+                        self.current = self
+                            .selector_filter
+                            .collect_next_with_str(&self.current, &[key.to_string()])
                     }
                     _ => {}
                 }
@@ -613,7 +661,8 @@ impl<'a, 'b> Selector<'a, 'b> {
                         self.selector_filter.filter_all_with_str(&self.current, key);
                     }
                     ParseToken::In => {
-                        self.selector_filter.filter_next_with_str(&self.current, key);
+                        self.selector_filter
+                            .filter_next_with_str(&self.current, key);
                     }
                     _ => {}
                 }
@@ -627,7 +676,9 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
-            self.current = self.selector_filter.collect_next_with_str(&self.current, keys);
+            self.current = self
+                .selector_filter
+                .collect_next_with_str(&self.current, keys);
         } else {
             unreachable!();
         }
@@ -683,28 +734,28 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
-            let mut tmp = Vec::new();
+            let mut tmp: Vec<&'a T> = Vec::new();
             if let Some(current) = &self.current {
                 for v in current {
-                    if let Value::Array(vec) = v {
+                    if v.get_type() == SelectValueType::Array {
                         let from = if let Some(from) = from {
-                            abs_index(*from, vec.len())
+                            abs_index(*from, v.len().unwrap())
                         } else {
                             0
                         };
 
                         let to = if let Some(to) = to {
-                            abs_index(*to, vec.len())
+                            abs_index(*to, v.len().unwrap())
                         } else {
-                            vec.len()
+                            v.len().unwrap()
                         };
 
                         for i in (from..to).step_by(match step {
                             Some(step) => *step,
                             _ => 1,
                         }) {
-                            if let Some(v) = vec.get(i) {
-                                tmp.push(v);
+                            if let Some(v) = v.get_index(i) {
+                                tmp.push(&v);
                             }
                         }
                     }
@@ -722,13 +773,13 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
-            let mut tmp = Vec::new();
+            let mut tmp: Vec<&'a T> = Vec::new();
             if let Some(current) = &self.current {
                 for v in current {
-                    if let Value::Array(vec) = v {
+                    if v.get_type() == SelectValueType::Array {
                         for i in indices {
-                            if let Some(v) = vec.get(abs_index(*i, vec.len())) {
-                                tmp.push(v);
+                            if let Some(v) = v.get_index(abs_index(*i, v.len().unwrap())) {
+                                tmp.push(&v);
                             }
                         }
                     }
@@ -742,7 +793,10 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
+impl<'a, 'b, T> NodeVisitor for Selector<'a, 'b, T>
+where
+    T: SelectValue,
+{
     fn visit_token(&mut self, token: &ParseToken) {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
@@ -764,7 +818,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
             ParseToken::Key(key) => self.visit_key(key),
             ParseToken::Keys(keys) => self.visit_keys(keys),
             ParseToken::Number(v) => {
-                self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
+                self.selector_filter.push_term(Some(ExprTerm::Double(*v)));
             }
             ParseToken::Filter(ref ft) => self.visit_filter(ft),
             ParseToken::Range(from, to, step) => self.visit_range(from, to, step),
@@ -777,65 +831,15 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
 }
 
 #[derive(Default)]
-pub struct SelectorMut {
+pub struct SelectorMut<'a, T: SelectValue> {
     path: Option<Node>,
-    value: Option<Value>,
+    value: Option<&'a mut T>,
 }
 
-fn replace_value<F: FnMut(Value) -> Option<Value>>(
-    mut tokens: Vec<String>,
-    value: &mut Value,
-    fun: &mut F,
-) {
-    let mut target = value;
-
-    let last_index = tokens.len().saturating_sub(1);
-    for (i, token) in tokens.drain(..).enumerate() {
-        let target_once = target;
-        let is_last = i == last_index;
-        let target_opt = match *target_once {
-            Value::Object(ref mut map) => {
-                if is_last {
-                    if let Entry::Occupied(mut e) = map.entry(token) {
-                        let v = e.insert(Value::Null);
-                        if let Some(res) = fun(v) {
-                            e.insert(res);
-                        } else {
-                            e.remove();
-                        }
-                    }
-                    return;
-                }
-                map.get_mut(&token)
-            }
-            Value::Array(ref mut vec) => {
-                if let Ok(x) = token.parse::<usize>() {
-                    if is_last {
-                        let v = std::mem::replace(&mut vec[x], Value::Null);
-                        if let Some(res) = fun(v) {
-                            vec[x] = res;
-                        } else {
-                            vec.remove(x);
-                        }
-                        return;
-                    }
-                    vec.get_mut(x)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        };
-
-        if let Some(t) = target_opt {
-            target = t;
-        } else {
-            break;
-        }
-    }
-}
-
-impl SelectorMut {
+impl<'a, T> SelectorMut<'a, T>
+where
+    T: SelectValue,
+{
     pub fn new() -> Self {
         Self::default()
     }
@@ -845,25 +849,19 @@ impl SelectorMut {
         Ok(self)
     }
 
-    pub fn value(&mut self, value: Value) -> &mut Self {
+    pub fn value(&mut self, value: &'a mut T) -> &mut Self {
         self.value = Some(value);
         self
     }
 
-    pub fn take(&mut self) -> Option<Value> {
-        self.value.take()
-    }
-
-    fn compute_paths(&self, mut result: Vec<&Value>) -> Vec<Vec<String>> {
-        fn _walk(
-            origin: &Value,
-            target: &mut Vec<&Value>,
+    fn compute_paths(&self, mut result: Vec<&T>) -> Vec<Vec<String>> {
+        fn _walk<T: SelectValue>(
+            origin: &T,
+            target: &mut Vec<&T>,
             tokens: &mut Vec<String>,
-            visited: &mut HashSet<*const Value>,
+            visited: &mut HashSet<*const T>,
             visited_order: &mut Vec<Vec<String>>,
         ) -> bool {
-            trace!("{:?}, {:?}", target, tokens);
-
             if target.is_empty() {
                 return true;
             }
@@ -879,20 +877,26 @@ impl SelectorMut {
                 }
             });
 
-            match origin {
-                Value::Array(vec) => {
-                    for (i, v) in vec.iter().enumerate() {
+            match origin.get_type() {
+                SelectValueType::Array => {
+                    for (i, v) in origin.values().unwrap().iter().enumerate() {
                         tokens.push(i.to_string());
-                        if _walk(v, target, tokens, visited, visited_order) {
+                        if _walk(*v, target, tokens, visited, visited_order) {
                             return true;
                         }
                         tokens.pop();
                     }
                 }
-                Value::Object(map) => {
-                    for (k, v) in map {
+                SelectValueType::Dict => {
+                    for k in origin.keys().unwrap() {
                         tokens.push(k.clone());
-                        if _walk(v, target, tokens, visited, visited_order) {
+                        if _walk(
+                            origin.get_key(&k).unwrap(),
+                            target,
+                            tokens,
+                            visited,
+                            visited_order,
+                        ) {
                             return true;
                         }
                         tokens.pop();
@@ -907,7 +911,7 @@ impl SelectorMut {
         let mut visited = HashSet::new();
         let mut visited_order = Vec::new();
 
-        if let Some(origin) = &self.value {
+        if let Some(origin) = self.value.as_deref() {
             let mut tokens = Vec::new();
             _walk(
                 origin,
@@ -921,21 +925,22 @@ impl SelectorMut {
         visited_order
     }
 
-    pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {
-        self.replace_with(&mut |_| Some(Value::Null))
-    }
+    // pub fn delete(&mut self) -> Result<&mut Self, JsonPathError> {
+    //     // self.replace_with(&mut |_| Some(Value::Null))
+    //     self.replace_with(&mut |_| None)
+    // }
 
-    pub fn remove(&mut self) -> Result<&mut Self, JsonPathError> {
-        self.replace_with(&mut |_| None)
-    }
+    // pub fn remove(&mut self) -> Result<&mut Self, JsonPathError> {
+    //     self.replace_with(&mut |_| None)
+    // }
 
-    fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
+    fn select(&self) -> Result<Vec<&T>, JsonPathError> {
         if let Some(node) = &self.path {
             let mut selector = Selector::default();
             selector.compiled_path(&node);
 
-            if let Some(value) = &self.value {
-                selector.value(value);
+            if let Some(v) = self.value.as_deref() {
+                selector.value(v);
             }
 
             Ok(selector.select()?)
@@ -944,18 +949,19 @@ impl SelectorMut {
         }
     }
 
-    pub fn replace_with<F: FnMut(Value) -> Option<Value>>(
+    pub fn replace_with<R: ValueUpdater<T>>(
         &mut self,
-        fun: &mut F,
+        updater: &mut R,
     ) -> Result<&mut Self, JsonPathError> {
         let paths = {
             let result = self.select()?;
             self.compute_paths(result)
         };
 
-        if let Some(ref mut value) = &mut self.value {
+        if let Some(v) = self.value.as_deref_mut() {
             for tokens in paths {
-                replace_value(tokens, value, fun);
+                updater.update(tokens, v)?;
+                // replace_value(tokens, v, fun);
             }
         }
 
@@ -963,41 +969,40 @@ impl SelectorMut {
     }
 }
 
+// #[cfg(test)]
+// mod select_inner_tests {
+//     use serde_json::Value;
 
-#[cfg(test)]
-mod select_inner_tests {
-    use serde_json::Value;
+//     #[test]
+//     fn to_f64_i64() {
+//         let number = 0_i64;
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
+//         } else {
+//             panic!();
+//         }
+//     }
 
-    #[test]
-    fn to_f64_i64() {
-        let number = 0_i64;
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
-        } else {
-            panic!();
-        }
-    }
+//     #[test]
+//     fn to_f64_f64() {
+//         let number = 0.1_f64;
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert_eq!((super::to_f64(&n) - number).abs() == 0_f64, true);
+//         } else {
+//             panic!();
+//         }
+//     }
 
-    #[test]
-    fn to_f64_f64() {
-        let number = 0.1_f64;
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number).abs() == 0_f64, true);
-        } else {
-            panic!();
-        }
-    }
-
-    #[test]
-    fn to_f64_u64() {
-        let number = u64::max_value();
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
-        } else {
-            panic!();
-        }
-    }
-}
+//     #[test]
+//     fn to_f64_u64() {
+//         let number = u64::max_value();
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
+//         } else {
+//             panic!();
+//         }
+//     }
+// }

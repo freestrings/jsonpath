@@ -6,7 +6,7 @@ extern crate serde_json;
 use serde::Deserialize;
 use serde_json::Value;
 
-use jsonpath::{Selector, SelectorMut};
+use jsonpath::{Selector, SelectorMut, JsonValueUpdater};
 
 mod common;
 
@@ -187,7 +187,7 @@ fn readme_selector() {
     let result = selector.select_as_str().unwrap();
     assert_eq!(r#"[{"name":"친구3","age":30}]"#, result);
 
-    let result = selector.select_as::<Friend>().unwrap();
+    let result = (jsonpath::selector_as(&json_obj))("$..[?(@.age >= 30)]").unwrap();
     assert_eq!(
         vec![Friend {
             name: "친구3".to_string(),
@@ -199,7 +199,7 @@ fn readme_selector() {
 
 #[test]
 fn readme_selector_mut() {
-    let json_obj = json!({
+    let mut json_obj = json!({
         "school": {
             "friends": [
                 {"name": "친구1", "age": 20},
@@ -212,26 +212,24 @@ fn readme_selector_mut() {
     ]});
 
     let mut selector_mut = SelectorMut::default();
+    let mut updater = JsonValueUpdater::new(|v| {
+        let age = if let Value::Number(n) = v {
+            n.as_u64().unwrap() * 2
+        } else {
+            0
+        };
 
-    let result = selector_mut
+        Some(json!(age))
+    });
+    selector_mut
         .str_path("$..[?(@.age == 20)].age")
         .unwrap()
-        .value(json_obj)
-        .replace_with(&mut |v| {
-            let age = if let Value::Number(n) = v {
-                n.as_u64().unwrap() * 2
-            } else {
-                0
-            };
-
-            Some(json!(age))
-        })
-        .unwrap()
-        .take()
+        .value(&mut json_obj)
+        .replace_with(&mut updater)
         .unwrap();
 
     assert_eq!(
-        result,
+        json_obj,
         json!({
             "school": {
                 "friends": [
@@ -307,21 +305,18 @@ fn readme_select_as() {
         phones: Vec<String>,
     }
 
-    let ret: Vec<Person> = jsonpath::select_as(
-        r#"{
-                    "person":
-                        {
-                            "name": "Doe John",
-                            "age": 44,
-                            "phones": [
-                                "+44 1234567",
-                                "+44 2345678"
-                            ]
-                        }
-                }"#,
-        "$.person",
-    )
-    .unwrap();
+    let json = serde_json::from_str(r#"{
+        "person":
+            {
+                "name": "Doe John",
+                "age": 44,
+                "phones": [
+                    "+44 1234567",
+                    "+44 2345678"
+                ]
+            }
+    }"#).unwrap();
+    let ret: Vec<Person> = (jsonpath::selector_as(&json))("$.person").unwrap();
 
     let person = Person {
         name: "Doe John".to_string(),

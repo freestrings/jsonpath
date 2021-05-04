@@ -36,10 +36,10 @@ pub fn select_and_then_compare(path: &str, json: Value, target: Value) {
         .str_path(path)
         .unwrap()
         .value(&json)
-        .select_as::<Value>()
+        .select()
         .unwrap();
     assert_eq!(
-        result,
+        result.iter().map(|v| v.clone().clone()).collect::<Vec<Value>>(),
         match target {
             Value::Array(vec) => vec,
             _ => panic!("Give me the Array!"),

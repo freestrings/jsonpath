@@ -1,30 +1,43 @@
-use serde_json::{Number, Value};
-use select::cmp::*;
-use select::{FilterKey, to_f64};
+use crate::select::cmp::*;
+use crate::select::select_value::{SelectValue, SelectValueType};
+use crate::select::{to_f64, FilterKey};
 
 #[derive(Debug, PartialEq)]
-pub(super) enum ExprTerm<'a> {
+pub(super) enum ExprTerm<'a, T>
+where
+    T: SelectValue,
+{
     String(String),
-    Number(Number),
+    Long(i64),
+    Double(f64),
     Bool(bool),
-    Json(Option<Vec<&'a Value>>, Option<FilterKey>, Vec<&'a Value>),
+    Json(Option<Vec<&'a T>>, Option<FilterKey>, Vec<&'a T>),
 }
 
-impl<'a> ExprTerm<'a> {
-    fn cmp<C1: Cmp, C2: Cmp>(
+impl<'a, T> ExprTerm<'a, T>
+where
+    T: SelectValue,
+{
+    fn cmp<C1: Cmp<'a, T>, C2: Cmp<'a, T>>(
         &self,
         other: &Self,
         cmp_fn: &C1,
         reverse_cmp_fn: &C2,
-    ) -> ExprTerm<'a> {
+    ) -> ExprTerm<'a, T> {
         match &self {
             ExprTerm::String(s1) => match &other {
                 ExprTerm::String(s2) => ExprTerm::Bool(cmp_fn.cmp_string(s1, s2)),
                 ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
-            ExprTerm::Number(n1) => match &other {
-                ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(to_f64(n1), to_f64(n2))),
+            ExprTerm::Long(n1) => match &other {
+                ExprTerm::Long(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(to_f64(*n1), to_f64(*n2))),
+                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                _ => ExprTerm::Bool(cmp_fn.default()),
+            },
+            ExprTerm::Double(n1) => match &other {
+                ExprTerm::Long(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(*n1, to_f64(*n2))),
+                ExprTerm::Double(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(*n1, *n2)),
                 ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
@@ -34,15 +47,20 @@ impl<'a> ExprTerm<'a> {
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Json(rel, fk1, vec1) => {
-                let ret: Vec<&Value> = match &other {
+                let ret: Vec<&T> = match &other {
                     ExprTerm::String(s2) => vec1
                         .iter()
-                        .filter(|v1| match v1 {
-                            Value::String(s1) => cmp_fn.cmp_string(s1, s2),
-                            Value::Object(map1) => {
+                        .filter(|v1| match v1.get_type() {
+                            SelectValueType::String => cmp_fn.cmp_string(&v1.get_str(), s2),
+                            SelectValueType::Dict => {
                                 if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::String(s1)) = map1.get(k) {
-                                        return cmp_fn.cmp_string(s1, s2);
+                                    if let Some(tmp) = v1.get_key(k) {
+                                        match tmp.get_type() {
+                                            SelectValueType::String => {
+                                                return cmp_fn.cmp_string(&tmp.get_str(), s2)
+                                            }
+                                            _ => {}
+                                        }
                                     }
                                 }
                                 cmp_fn.default()
@@ -51,14 +69,52 @@ impl<'a> ExprTerm<'a> {
                         })
                         .cloned()
                         .collect(),
-                    ExprTerm::Number(n2) => vec1
+                    ExprTerm::Long(n2) => vec1
                         .iter()
-                        .filter(|v1| match v1 {
-                            Value::Number(n1) => cmp_fn.cmp_f64(to_f64(n1), to_f64(n2)),
-                            Value::Object(map1) => {
+                        .filter(|v1| match v1.get_type() {
+                            SelectValueType::Long => {
+                                cmp_fn.cmp_f64(to_f64(v1.get_long()), to_f64(*n2))
+                            }
+                            SelectValueType::Double => cmp_fn.cmp_f64(v1.get_double(), to_f64(*n2)),
+                            SelectValueType::Dict => {
                                 if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::Number(n1)) = map1.get(k) {
-                                        return cmp_fn.cmp_f64(to_f64(n1), to_f64(n2));
+                                    if let Some(tmp) = v1.get_key(k) {
+                                        match tmp.get_type() {
+                                            SelectValueType::Long => {
+                                                return cmp_fn
+                                                    .cmp_f64(to_f64(tmp.get_long()), to_f64(*n2))
+                                            }
+                                            SelectValueType::Double => {
+                                                return cmp_fn
+                                                    .cmp_f64(tmp.get_double(), to_f64(*n2))
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                cmp_fn.default()
+                            }
+                            _ => cmp_fn.default(),
+                        })
+                        .cloned()
+                        .collect(),
+                    ExprTerm::Double(n2) => vec1
+                        .iter()
+                        .filter(|v1| match v1.get_type() {
+                            SelectValueType::Long => cmp_fn.cmp_f64(to_f64(v1.get_long()), *n2),
+                            SelectValueType::Double => cmp_fn.cmp_f64(v1.get_double(), *n2),
+                            SelectValueType::Dict => {
+                                if let Some(FilterKey::String(k)) = fk1 {
+                                    if let Some(tmp) = v1.get_key(k) {
+                                        match tmp.get_type() {
+                                            SelectValueType::Long => {
+                                                return cmp_fn.cmp_f64(to_f64(tmp.get_long()), *n2)
+                                            }
+                                            SelectValueType::Double => {
+                                                return cmp_fn.cmp_f64(tmp.get_double(), *n2)
+                                            }
+                                            _ => {}
+                                        }
                                     }
                                 }
                                 cmp_fn.default()
@@ -69,12 +125,17 @@ impl<'a> ExprTerm<'a> {
                         .collect(),
                     ExprTerm::Bool(b2) => vec1
                         .iter()
-                        .filter(|v1| match v1 {
-                            Value::Bool(b1) => cmp_fn.cmp_bool(*b1, *b2),
-                            Value::Object(map1) => {
+                        .filter(|v1| match v1.get_type() {
+                            SelectValueType::Bool => cmp_fn.cmp_bool(v1.get_bool(), *b2),
+                            SelectValueType::Dict => {
                                 if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::Bool(b1)) = map1.get(k) {
-                                        return cmp_fn.cmp_bool(*b1, *b2);
+                                    if let Some(tmp) = v1.get_key(k) {
+                                        match tmp.get_type() {
+                                            SelectValueType::Bool => {
+                                                return cmp_fn.cmp_bool(tmp.get_bool(), *b2)
+                                            }
+                                            _ => {}
+                                        }
                                     }
                                 }
                                 cmp_fn.default()
@@ -102,10 +163,10 @@ impl<'a> ExprTerm<'a> {
                     } else {
                         let mut tmp = Vec::new();
                         for rel_value in rel {
-                            if let Value::Object(map) = rel_value {
-                                for map_value in map.values() {
+                            if rel_value.get_type() == SelectValueType::Dict {
+                                for map_value in rel_value.values().unwrap() {
                                     for result_value in &ret {
-                                        if map_value.eq(*result_value) {
+                                        if (*map_value).eq(*result_value) {
                                             tmp.push(*rel_value);
                                         }
                                     }
@@ -121,7 +182,7 @@ impl<'a> ExprTerm<'a> {
         }
     }
 
-    pub fn eq(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn eq(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("eq - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpEq, &CmpEq);
@@ -129,7 +190,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn ne(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn ne(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("ne - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpNe, &CmpNe);
@@ -137,7 +198,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn gt(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn gt(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("gt - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpGt, &CmpLt);
@@ -145,7 +206,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn ge(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn ge(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("ge - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpGe, &CmpLe);
@@ -153,7 +214,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn lt(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn lt(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("lt - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpLt, &CmpGt);
@@ -161,7 +222,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn le(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn le(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("le - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpLe, &CmpGe);
@@ -169,7 +230,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn and(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn and(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("and - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpAnd, &CmpAnd);
@@ -177,7 +238,7 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn or(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn or(&self, other: &Self, ret: &mut Option<ExprTerm<'a, T>>) {
         debug!("or - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpOr, &CmpOr);
@@ -186,13 +247,17 @@ impl<'a> ExprTerm<'a> {
     }
 }
 
-impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
-    fn into(self) -> ExprTerm<'a> {
+impl<'a, T> Into<ExprTerm<'a, T>> for &Vec<&'a T>
+where
+    T: SelectValue,
+{
+    fn into(self) -> ExprTerm<'a, T> {
         if self.len() == 1 {
-            match &self[0] {
-                Value::Number(v) => return ExprTerm::Number(v.clone()),
-                Value::String(v) => return ExprTerm::String(v.clone()),
-                Value::Bool(v) => return ExprTerm::Bool(*v),
+            match &self[0].get_type() {
+                SelectValueType::Long => return ExprTerm::Long(self[0].get_long()),
+                SelectValueType::Double => return ExprTerm::Double(self[0].get_double()),
+                SelectValueType::String => return ExprTerm::String(self[0].get_str()),
+                SelectValueType::Bool => return ExprTerm::Bool(self[0].get_bool()),
                 _ => {}
             }
         }
@@ -201,27 +266,26 @@ impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
     }
 }
 
+// #[cfg(test)]
+// mod expr_term_inner_tests {
+//     use serde_json::{Number, Value};
+//     use crate::select::expr_term::ExprTerm;
 
-#[cfg(test)]
-mod expr_term_inner_tests {
-    use serde_json::{Number, Value};
-    use select::expr_term::ExprTerm;
+//     #[test]
+//     fn value_vec_into() {
+//         let v = Value::Bool(true);
+//         let vec = &vec![&v];
+//         let term: ExprTerm = vec.into();
+//         assert_eq!(term, ExprTerm::Bool(true));
 
-    #[test]
-    fn value_vec_into() {
-        let v = Value::Bool(true);
-        let vec = &vec![&v];
-        let term: ExprTerm = vec.into();
-        assert_eq!(term, ExprTerm::Bool(true));
+//         let v = Value::String("a".to_string());
+//         let vec = &vec![&v];
+//         let term: ExprTerm = vec.into();
+//         assert_eq!(term, ExprTerm::String("a".to_string()));
 
-        let v = Value::String("a".to_string());
-        let vec = &vec![&v];
-        let term: ExprTerm = vec.into();
-        assert_eq!(term, ExprTerm::String("a".to_string()));
-
-        let v = serde_json::from_str("1.0").unwrap();
-        let vec = &vec![&v];
-        let term: ExprTerm = vec.into();
-        assert_eq!(term, ExprTerm::Number(Number::from_f64(1.0).unwrap()));
-    }
-}
+//         let v = serde_json::from_str("1.0").unwrap();
+//         let vec = &vec![&v];
+//         let term: ExprTerm = vec.into();
+//         assert_eq!(term, ExprTerm::Number(Number::from_f64(1.0).unwrap()));
+//     }
+// }

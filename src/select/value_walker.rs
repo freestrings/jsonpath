@@ -1,31 +1,39 @@
-use serde_json::Value;
+use crate::select::select_value::{SelectValue, SelectValueType};
 use std::collections::HashSet;
 
 pub(super) struct ValueWalker;
 
 impl<'a> ValueWalker {
-    pub fn all_with_num(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, index: f64) {
-        Self::walk(vec, tmp, &|v| if v.is_array() {
-            if let Some(item) = v.get(index as usize) {
-                Some(vec![item])
+    pub fn all_with_num<T>(vec: &[&'a T], tmp: &mut Vec<&'a T>, index: f64)
+    where
+        T: SelectValue,
+    {
+        Self::walk(vec, tmp, &|v| {
+            if v.is_array() {
+                if let Some(item) = v.get_index(index as usize) {
+                    Some(vec![&item])
+                } else {
+                    None
+                }
             } else {
                 None
             }
-        } else {
-            None
         });
     }
 
-    pub fn all_with_str(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, key: &str, is_filter: bool) {
+    pub fn all_with_str<T>(vec: &[&'a T], tmp: &mut Vec<&'a T>, key: &str, is_filter: bool)
+    where
+        T: SelectValue,
+    {
         if is_filter {
-            Self::walk(vec, tmp, &|v| match v {
-                Value::Object(map) if map.contains_key(key) => Some(vec![v]),
+            Self::walk(vec, tmp, &|v| match v.get_type() {
+                SelectValueType::Dict if v.contains_key(key) => Some(vec![v]),
                 _ => None,
             });
         } else {
-            Self::walk(vec, tmp, &|v| match v {
-                Value::Object(map) => match map.get(key) {
-                    Some(v) => Some(vec![v]),
+            Self::walk(vec, tmp, &|v| match v.get_type() {
+                SelectValueType::Dict => match v.get_key(key) {
+                    Some(v) => Some(vec![&v]),
                     _ => None,
                 },
                 _ => None,
@@ -33,62 +41,58 @@ impl<'a> ValueWalker {
         }
     }
 
-    pub fn all(vec: &[&'a Value], tmp: &mut Vec<&'a Value>) {
-        Self::walk(vec, tmp, &|v| match v {
-            Value::Array(vec) => Some(vec.iter().collect()),
-            Value::Object(map) => {
-                let mut tmp = Vec::new();
-                for (_, v) in map {
-                    tmp.push(v);
-                }
-                Some(tmp)
-            }
-            _ => None,
-        });
+    pub fn all<T>(vec: &[&'a T], tmp: &mut Vec<&'a T>)
+    where
+        T: SelectValue,
+    {
+        Self::walk(vec, tmp, &|v| v.values());
     }
 
-    fn walk<F>(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, fun: &F) where F: Fn(&Value) -> Option<Vec<&Value>> {
+    fn walk<F, T>(vec: &[&'a T], tmp: &mut Vec<&'a T>, fun: &F)
+    where
+        F: Fn(&'a T) -> Option<Vec<&'a T>>,
+        T: SelectValue,
+    {
         for v in vec {
-            Self::_walk(v, tmp, fun);
+            Self::_walk(*v, tmp, fun);
         }
     }
 
-    fn _walk<F>(v: &'a Value, tmp: &mut Vec<&'a Value>, fun: &F) where F: Fn(&Value) -> Option<Vec<&Value>> {
+    fn _walk<F, T>(v: &'a T, tmp: &mut Vec<&'a T>, fun: &F)
+    where
+        F: Fn(&'a T) -> Option<Vec<&'a T>>,
+        T: SelectValue,
+    {
         if let Some(mut ret) = fun(v) {
             tmp.append(&mut ret);
         }
 
-        match v {
-            Value::Array(vec) => {
-                for v in vec {
+        match v.get_type() {
+            SelectValueType::Dict | SelectValueType::Array => {
+                for v in v.values().unwrap() {
                     Self::_walk(v, tmp, fun);
-                }
-            }
-            Value::Object(map) => {
-                for (_, v) in map {
-                    Self::_walk(&v, tmp, fun);
                 }
             }
             _ => {}
         }
     }
 
-    pub fn walk_dedup(v: &'a Value,
-                      tmp: &mut Vec<&'a Value>,
-                      key: &str,
-                      visited: &mut HashSet<*const Value>, ) {
-        match v {
-            Value::Object(map) => {
-                if map.contains_key(key) {
-                    let ptr = v as *const Value;
+    pub fn walk_dedup<T>(v: &'a T, tmp: &mut Vec<&'a T>, key: &str, visited: &mut HashSet<*const T>)
+    where
+        T: SelectValue,
+    {
+        match v.get_type() {
+            SelectValueType::Dict => {
+                if v.contains_key(key) {
+                    let ptr = v as *const T;
                     if !visited.contains(&ptr) {
                         visited.insert(ptr);
                         tmp.push(v)
                     }
                 }
             }
-            Value::Array(vec) => {
-                for v in vec {
+            SelectValueType::Array => {
+                for v in v.values().unwrap() {
                     Self::walk_dedup(v, tmp, key, visited);
                 }
             }
@@ -96,4 +100,3 @@ impl<'a> ValueWalker {
         }
     }
 }
-

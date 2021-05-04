@@ -165,8 +165,7 @@ fn test_to_struct() {
         phones: Vec<String>,
     }
 
-    let ret: Vec<Person> = jsonpath::select_as(
-        r#"
+    let json = serde_json::from_str(r#"
     {
         "person":
             {
@@ -178,10 +177,8 @@ fn test_to_struct() {
                 ]
             }
     }
-    "#,
-        "$.person",
-    )
-    .unwrap();
+    "#).unwrap();
+    let ret: Vec<Person> = (jsonpath::selector_as(&json))("$.person").unwrap();
 
     let person = Person {
         name: "Doe John".to_string(),
