@@ -140,9 +140,9 @@ use parser::Node;
 // #[doc(hidden)]
 // mod ffi;
 #[doc(hidden)]
-mod parser;
+pub mod parser;
 #[doc(hidden)]
-mod select;
+pub mod select;
 
 /// It is a high-order function. it compile a jsonpath and then returns a closure that has JSON as argument. if you need to reuse a jsonpath, it is good for performance.
 ///
