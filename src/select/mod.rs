@@ -358,6 +358,11 @@ where
     selector_filter: FilterTerms<'a, T>,
 }
 
+pub struct SelectResult<'a, T>{
+    pub n: &'a T,
+    pub path: Vec<String>,
+}
+
 impl<'a, 'b, T> Selector<'a, 'b, T>
 where
     T: SelectValue,
@@ -455,6 +460,93 @@ where
             Some(r) => Ok(r.to_vec()),
             _ => Err(JsonPathError::EmptyValue),
         }
+    }
+
+    fn compute_paths(&self, mut result: Vec<&T>) -> Vec<Vec<String>> {
+        fn _walk<T: SelectValue>(
+            origin: &T,
+            target: &mut Vec<&T>,
+            tokens: &mut Vec<String>,
+            visited: &mut HashSet<*const T>,
+            visited_order: &mut Vec<Vec<String>>,
+        ) -> bool {
+            if target.is_empty() {
+                return true;
+            }
+
+            target.retain(|t| {
+                if std::ptr::eq(origin, *t) {
+                    if visited.insert(*t) {
+                        visited_order.push(tokens.to_vec());
+                    }
+                    false
+                } else {
+                    true
+                }
+            });
+
+            match origin.get_type() {
+                SelectValueType::Array => {
+                    for (i, v) in origin.values().unwrap().iter().enumerate() {
+                        tokens.push(i.to_string());
+                        if _walk(*v, target, tokens, visited, visited_order) {
+                            return true;
+                        }
+                        tokens.pop();
+                    }
+                }
+                SelectValueType::Dict => {
+                    for k in origin.keys().unwrap() {
+                        tokens.push(k.clone());
+                        if _walk(
+                            origin.get_key(&k).unwrap(),
+                            target,
+                            tokens,
+                            visited,
+                            visited_order,
+                        ) {
+                            return true;
+                        }
+                        tokens.pop();
+                    }
+                }
+                _ => {}
+            }
+
+            false
+        }
+
+        let mut visited = HashSet::new();
+        let mut visited_order = Vec::new();
+
+        if let Some(origin) = self.value.as_deref() {
+            let mut tokens = Vec::new();
+            _walk(
+                origin,
+                &mut result,
+                &mut tokens,
+                &mut visited,
+                &mut visited_order,
+            );
+        }
+
+        visited_order
+    }
+
+    pub fn select_with_paths(&mut self) -> Result<Vec<SelectResult<'a, T>>, JsonPathError> {
+        let mut nodes = self.select()?;
+        let mut paths = self.compute_paths(nodes.to_owned());
+        nodes.reverse();
+
+        let mut res = Vec::new();
+        for n in nodes {
+            res.push(SelectResult{
+                n: n,
+                path: paths.pop().unwrap(),
+            })
+        }
+
+        Ok(res)
     }
 
     fn compute_absolute_path_filter(&mut self, token: &ParseToken) -> bool {

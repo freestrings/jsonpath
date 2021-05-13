@@ -13,7 +13,12 @@ pub enum SelectValueType {
 }
 
 pub trait SelectValue:
-    std::fmt::Debug + std::cmp::Eq + std::cmp::PartialEq + std::default::Default + std::clone::Clone + serde::Serialize
+    std::fmt::Debug + 
+    std::cmp::Eq + 
+    std::cmp::PartialEq + 
+    std::default::Default + 
+    std::clone::Clone + 
+    serde::Serialize
 {
     fn get_type(&self) -> SelectValueType;
     fn contains_key(&self, key: &str) -> bool;
