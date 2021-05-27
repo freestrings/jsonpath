@@ -10,7 +10,7 @@ impl SelectValue for Value {
             Value::String(_) => SelectValueType::String,
             Value::Null => SelectValueType::Null,
             Value::Array(_) => SelectValueType::Array,
-            Value::Object(_) => SelectValueType::Dict,
+            Value::Object(_) => SelectValueType::Object,
             Value::Number(n) => {
                 if n.is_i64() {
                     SelectValueType::Long
@@ -19,7 +19,7 @@ impl SelectValue for Value {
                 } else if n.is_f64() {
                     SelectValueType::Double
                 } else {
-                    SelectValueType::Undef
+                    panic!("bad type for Number value");
                 }
             }
         }
@@ -34,33 +34,15 @@ impl SelectValue for Value {
 
     fn values<'a>(&'a self) -> Option<Vec<&'a Self>> {
         match self {
-            Value::Array(arr) => {
-                let mut res = Vec::new();
-                for e in arr {
-                    res.push(e);
-                }
-                Some(res)
-            }
-            Value::Object(o) => {
-                let mut res = Vec::new();
-                for e in o.values() {
-                    res.push(e);
-                }
-                Some(res)
-            }
+            Value::Array(arr) => Some(arr.iter().collect()),
+            Value::Object(o) => Some(o.values().collect()),
             _ => None,
         }
     }
 
     fn keys(&self) -> Option<Vec<String>> {
         match self {
-            Value::Object(o) => {
-                let mut res = Vec::new();
-                for k in o.keys() {
-                    res.push(k.to_string());
-                }
-                Some(res)
-            }
+            Value::Object(o) => Some(o.keys().cloned().collect()),
             _ => None,
         }
     }

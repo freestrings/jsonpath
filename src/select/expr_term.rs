@@ -52,7 +52,7 @@ where
                         .iter()
                         .filter(|v1| match v1.get_type() {
                             SelectValueType::String => cmp_fn.cmp_string(&v1.get_str(), s2),
-                            SelectValueType::Dict => {
+                            SelectValueType::Object => {
                                 if let Some(FilterKey::String(k)) = fk1 {
                                     if let Some(tmp) = v1.get_key(k) {
                                         match tmp.get_type() {
@@ -76,7 +76,7 @@ where
                                 cmp_fn.cmp_f64(to_f64(v1.get_long()), to_f64(*n2))
                             }
                             SelectValueType::Double => cmp_fn.cmp_f64(v1.get_double(), to_f64(*n2)),
-                            SelectValueType::Dict => {
+                            SelectValueType::Object => {
                                 if let Some(FilterKey::String(k)) = fk1 {
                                     if let Some(tmp) = v1.get_key(k) {
                                         match tmp.get_type() {
@@ -103,7 +103,7 @@ where
                         .filter(|v1| match v1.get_type() {
                             SelectValueType::Long => cmp_fn.cmp_f64(to_f64(v1.get_long()), *n2),
                             SelectValueType::Double => cmp_fn.cmp_f64(v1.get_double(), *n2),
-                            SelectValueType::Dict => {
+                            SelectValueType::Object => {
                                 if let Some(FilterKey::String(k)) = fk1 {
                                     if let Some(tmp) = v1.get_key(k) {
                                         match tmp.get_type() {
@@ -127,7 +127,7 @@ where
                         .iter()
                         .filter(|v1| match v1.get_type() {
                             SelectValueType::Bool => cmp_fn.cmp_bool(v1.get_bool(), *b2),
-                            SelectValueType::Dict => {
+                            SelectValueType::Object => {
                                 if let Some(FilterKey::String(k)) = fk1 {
                                     if let Some(tmp) = v1.get_key(k) {
                                         match tmp.get_type() {
@@ -163,7 +163,7 @@ where
                     } else {
                         let mut tmp = Vec::new();
                         for rel_value in rel {
-                            if rel_value.get_type() == SelectValueType::Dict {
+                            if rel_value.get_type() == SelectValueType::Object {
                                 for map_value in rel_value.values().unwrap() {
                                     for result_value in &ret {
                                         if (*map_value).eq(*result_value) {

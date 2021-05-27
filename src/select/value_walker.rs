@@ -27,12 +27,12 @@ impl<'a> ValueWalker {
     {
         if is_filter {
             Self::walk(vec, tmp, &|v| match v.get_type() {
-                SelectValueType::Dict if v.contains_key(key) => Some(vec![v]),
+                SelectValueType::Object if v.contains_key(key) => Some(vec![v]),
                 _ => None,
             });
         } else {
             Self::walk(vec, tmp, &|v| match v.get_type() {
-                SelectValueType::Dict => match v.get_key(key) {
+                SelectValueType::Object => match v.get_key(key) {
                     Some(v) => Some(vec![&v]),
                     _ => None,
                 },
@@ -68,7 +68,7 @@ impl<'a> ValueWalker {
         }
 
         match v.get_type() {
-            SelectValueType::Dict | SelectValueType::Array => {
+            SelectValueType::Object | SelectValueType::Array => {
                 for v in v.values().unwrap() {
                     Self::_walk(v, tmp, fun);
                 }
@@ -82,7 +82,7 @@ impl<'a> ValueWalker {
         T: SelectValue,
     {
         match v.get_type() {
-            SelectValueType::Dict => {
+            SelectValueType::Object => {
                 if v.contains_key(key) {
                     let ptr = v as *const T;
                     if !visited.contains(&ptr) {

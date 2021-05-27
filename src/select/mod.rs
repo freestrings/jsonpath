@@ -98,7 +98,7 @@ where
                 let key_contained = &vec
                     .iter()
                     .map(|v| match v.get_type() {
-                        SelectValueType::Dict if v.contains_key(&key) => v.get_key(&key).unwrap(),
+                        SelectValueType::Object if v.contains_key(&key) => v.get_key(&key).unwrap(),
                         _ => v,
                     })
                     .collect();
@@ -170,7 +170,7 @@ where
             let mut visited = HashSet::new();
             for (idx, v) in vec.iter().enumerate() {
                 match v.get_type() {
-                    SelectValueType::Dict => {
+                    SelectValueType::Object => {
                         if v.contains_key(key) {
                             let ptr = *v as *const T;
                             if !visited.contains(&ptr) {
@@ -215,7 +215,7 @@ where
             let mut tmp: Vec<&'a T> = Vec::new();
             for c in current {
                 match c.get_type() {
-                    SelectValueType::Dict => {
+                    SelectValueType::Object => {
                         for k in c.keys().unwrap() {
                             if let Some(v) = c.get_key(&k) {
                                 if v.get_type() == SelectValueType::Array {
@@ -249,7 +249,7 @@ where
             let mut tmp = Vec::new();
             for c in current {
                 match c.get_type() {
-                    SelectValueType::Dict => {
+                    SelectValueType::Object => {
                         for v in c.values().unwrap() {
                             tmp.push(v)
                         }
@@ -278,7 +278,7 @@ where
         if let Some(current) = current {
             let mut tmp: Vec<&'a T> = Vec::new();
             for c in current {
-                if c.get_type() == SelectValueType::Dict {
+                if c.get_type() == SelectValueType::Object {
                     for key in keys {
                         if let Some(v) = c.get_key(&key) {
                             tmp.push(&v)
@@ -495,7 +495,7 @@ where
                         tokens.pop();
                     }
                 }
-                SelectValueType::Dict => {
+                SelectValueType::Object => {
                     for k in origin.keys().unwrap() {
                         tokens.push(k.clone());
                         if _walk(
@@ -979,7 +979,7 @@ where
                         tokens.pop();
                     }
                 }
-                SelectValueType::Dict => {
+                SelectValueType::Object => {
                     for k in origin.keys().unwrap() {
                         tokens.push(k.clone());
                         if _walk(

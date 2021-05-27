@@ -1,24 +1,25 @@
 use crate::select::JsonPathError;
+use std::fmt::Debug;
+use serde::Serialize;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SelectValueType {
-    Undef,
     Null,
     Bool,
     Long,
     Double,
     String,
     Array,
-    Dict,
+    Object,
 }
 
 pub trait SelectValue:
-    std::fmt::Debug + 
-    std::cmp::Eq + 
-    std::cmp::PartialEq + 
-    std::default::Default + 
-    std::clone::Clone + 
-    serde::Serialize
+    Debug + 
+    Eq + 
+    PartialEq + 
+    Default + 
+    Clone + 
+    Serialize
 {
     fn get_type(&self) -> SelectValueType;
     fn contains_key(&self, key: &str) -> bool;
