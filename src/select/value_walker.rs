@@ -6,11 +6,7 @@ pub(super) struct ValueWalker;
 impl<'a> ValueWalker {
     pub fn all_with_num(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, index: f64) {
         Self::walk(vec, tmp, &|v| if v.is_array() {
-            if let Some(item) = v.get(index as usize) {
-                Some(vec![item])
-            } else {
-                None
-            }
+            v.get(index as usize).map(|item| vec![item])
         } else {
             None
         });
@@ -24,10 +20,7 @@ impl<'a> ValueWalker {
             });
         } else {
             Self::walk(vec, tmp, &|v| match v {
-                Value::Object(map) => match map.get(key) {
-                    Some(v) => Some(vec![v]),
-                    _ => None,
-                },
+                Value::Object(map) => map.get(key).map(|v| vec![v]),
                 _ => None,
             });
         }

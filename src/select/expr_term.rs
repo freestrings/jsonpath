@@ -186,10 +186,10 @@ impl<'a> ExprTerm<'a> {
     }
 }
 
-impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
-    fn into(self) -> ExprTerm<'a> {
-        if self.len() == 1 {
-            match &self[0] {
+impl<'a> From<&Vec<&'a Value>> for ExprTerm<'a> {
+    fn from(vec: &Vec<&'a Value>) -> Self {
+        if vec.len() == 1 {
+            match &vec[0] {
                 Value::Number(v) => return ExprTerm::Number(v.clone()),
                 Value::String(v) => return ExprTerm::String(v.clone()),
                 Value::Bool(v) => return ExprTerm::Bool(*v),
@@ -197,10 +197,9 @@ impl<'a> Into<ExprTerm<'a>> for &Vec<&'a Value> {
             }
         }
 
-        ExprTerm::Json(None, None, self.to_vec())
+        ExprTerm::Json(None, None, vec.to_vec())
     }
 }
-
 
 #[cfg(test)]
 mod expr_term_inner_tests {

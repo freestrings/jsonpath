@@ -80,7 +80,7 @@ pub struct Parser;
 impl Parser {
     pub fn compile(input: &str) -> ParseResult<Node> {
         let mut tokenizer = TokenReader::new(input);
-        Ok(Self::json_path(&mut tokenizer)?)
+        Self::json_path(&mut tokenizer)
     }
 
     fn json_path(tokenizer: &mut TokenReader) -> ParseResult<Node> {
