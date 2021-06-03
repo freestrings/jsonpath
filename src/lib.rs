@@ -122,7 +122,6 @@
 //!                 &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99})
 //!             ]);
 //! ```
-extern crate array_tool;
 extern crate core;
 #[macro_use]
 extern crate log;

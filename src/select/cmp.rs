@@ -1,4 +1,3 @@
-use array_tool::vec::{Intersect, Union};
 use serde_json::Value;
 
 pub(super) trait Cmp {
@@ -31,7 +30,15 @@ impl Cmp for CmpEq {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        v1.to_vec().intersect(v2.to_vec())
+        let mut ret = vec![];
+        for a in v1 {
+            for b in v2 {
+                if a == b {
+                    ret.push(*a);
+                }
+            }
+        }
+        return ret;
     }
 }
 
@@ -51,7 +58,15 @@ impl Cmp for CmpNe {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        v1.to_vec().intersect_if(v2.to_vec(), |a, b| a != b)
+        let mut ret = vec![];
+        for a in v1 {
+            for b in v2 {
+                if a != b {
+                    ret.push(*a);
+                }
+            }
+        }
+        return ret;
     }
 }
 
@@ -151,7 +166,7 @@ impl Cmp for CmpAnd {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        v1.to_vec().intersect(v2.to_vec())
+        CmpEq.cmp_json(v1, v2)
     }
 }
 
@@ -171,7 +186,17 @@ impl Cmp for CmpOr {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        v1.to_vec().union(v2.to_vec())
+        let mut ret = [v1, v2].concat();
+
+        for x in (0..ret.len()).rev() {
+            for y in (x+1..ret.len()).rev() {
+                if &ret[x] == &ret[y] {
+                    ret.remove(y);
+                }
+            }
+        }
+
+        ret
     }
 }
 
