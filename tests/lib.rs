@@ -57,7 +57,7 @@ fn selector() {
     {
         let json = selector(path).unwrap();
         compare_result(json, target);
-    };
+    }
 
     let json_obj = read_json("./benchmark/data_obj.json");
     let mut selector = jsonpath::selector(&json_obj);
@@ -94,7 +94,7 @@ fn selector_as() {
     {
         let json = selector(path).unwrap();
         assert_eq!(json, target);
-    };
+    }
 
     let json_obj = read_json("./benchmark/data_obj.json");
     let mut selector = jsonpath::selector_as::<Friend>(&json_obj);
