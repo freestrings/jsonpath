@@ -31,6 +31,7 @@ impl Cmp for CmpEq {
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
         let mut ret = vec![];
+
         for a in v1 {
             for b in v2 {
                 if a == b {
@@ -38,7 +39,8 @@ impl Cmp for CmpEq {
                 }
             }
         }
-        return ret;
+
+        ret
     }
 }
 
@@ -59,6 +61,7 @@ impl Cmp for CmpNe {
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
         let mut ret = vec![];
+
         for a in v1 {
             for b in v2 {
                 if a != b {
@@ -66,7 +69,8 @@ impl Cmp for CmpNe {
                 }
             }
         }
-        return ret;
+
+        ret
     }
 }
 
@@ -190,7 +194,7 @@ impl Cmp for CmpOr {
 
         for x in (0..ret.len()).rev() {
             for y in (x+1..ret.len()).rev() {
-                if &ret[x] == &ret[y] {
+                if ret[x] == ret[y] {
                     ret.remove(y);
                 }
             }
