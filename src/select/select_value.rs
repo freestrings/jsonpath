@@ -31,6 +31,7 @@ pub trait SelectValue:
     fn is_array(&self) -> bool;
 
     fn get_str(&self) -> String;
+    fn as_str<'a>(&'a self) -> &'a str;
     fn get_bool(&self) -> bool;
     fn get_long(&self) -> i64;
     fn get_double(&self) -> f64;

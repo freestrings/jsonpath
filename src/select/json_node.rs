@@ -79,8 +79,16 @@ impl SelectValue for Value {
         match self {
             Value::String(s) => s.to_string(),
             _ => {
-                assert!(false, "not a string");
-                String::new()
+                panic!("not a string");
+            }
+        }
+    }
+
+    fn as_str<'a>(&'a self) -> &'a str {
+        match self {
+            Value::String(s) => s.as_str(),
+            _ => {
+                panic!("not a string");
             }
         }
     }
