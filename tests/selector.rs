@@ -3,7 +3,7 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 
 use common::{read_json, setup};
-use jsonpath::{Parser, Selector, SelectorMut};
+use jsonpath::{Parser, Selector, SelectorMut, JsonPathError};
 use serde_json::Value;
 
 mod common;
@@ -23,7 +23,7 @@ fn selector_mut() {
             if let Value::Number(n) = v {
                 nums.push(n.as_f64().unwrap());
             }
-            Some(Value::String("a".to_string()))
+            Ok(Some(Value::String("a".to_string())))
         })
         .unwrap()
         .take()
@@ -51,6 +51,25 @@ fn selector_mut() {
             &json!("a")
         ],
         result
+    );
+}
+
+#[test]
+fn selector_mut_err() {
+    setup();
+
+    let mut selector_mut = SelectorMut::default();
+    let result = selector_mut
+        .str_path(r#"$.store..price"#)
+        .unwrap()
+        .value(read_json("./benchmark/example.json"))
+        .replace_with(&mut |_| {
+            Err(JsonPathError::EmptyValue)
+        });
+
+    assert_eq!(
+        result.is_err(),
+        true
     );
 }
 
