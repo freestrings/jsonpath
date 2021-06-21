@@ -224,7 +224,7 @@ fn readme_selector_mut() {
                 0
             };
 
-            Some(json!(age))
+            Ok(Some(json!(age)))
         })
         .unwrap()
         .take()
@@ -522,7 +522,7 @@ fn readme_replace_with() {
             0
         };
 
-        Some(json!(age))
+        Ok(Some(json!(age)))
     })
     .unwrap();
 
