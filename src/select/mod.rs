@@ -497,7 +497,7 @@ where
                 }
                 SelectValueType::Object => {
                     for k in origin.keys().unwrap() {
-                        tokens.push(k.clone());
+                        tokens.push(k.to_string());
                         if _walk(
                             origin.get_key(&k).unwrap(),
                             target,
@@ -981,7 +981,7 @@ where
                 }
                 SelectValueType::Object => {
                     for k in origin.keys().unwrap() {
-                        tokens.push(k.clone());
+                        tokens.push(k.to_string());
                         if _walk(
                             origin.get_key(&k).unwrap(),
                             target,

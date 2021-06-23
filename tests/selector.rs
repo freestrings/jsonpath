@@ -69,7 +69,7 @@ fn selector_delete() {
 
     let mut selector_mut = SelectorMut::default();
     let mut json = read_json("./benchmark/example.json");
-    let mut updater = JsonValueUpdater::new(|_V| Some(Value::Null));
+    let mut updater = JsonValueUpdater::new(|_v| Some(Value::Null));
     selector_mut
         .str_path(r#"$.store..price[?(@>13)]"#)
         .unwrap()
@@ -103,7 +103,7 @@ fn selector_remove() {
 
     let mut selector_mut = SelectorMut::default();
     let mut json = read_json("./benchmark/example.json");
-    let mut updater = JsonValueUpdater::new(|_V| None);
+    let mut updater = JsonValueUpdater::new(|_v| None);
     selector_mut
         .str_path(r#"$.store..price[?(@>13)]"#)
         .unwrap()

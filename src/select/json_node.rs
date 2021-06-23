@@ -40,9 +40,9 @@ impl SelectValue for Value {
         }
     }
 
-    fn keys<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a String> + 'a>> {
+    fn keys<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a str> + 'a>> {
         match self {
-            Value::Object(o) => Some(Box::new(o.keys())),
+            Value::Object(o) => Some(Box::new(o.keys().map(|k| &k[..]))),
             _ => None,
         }
     }
