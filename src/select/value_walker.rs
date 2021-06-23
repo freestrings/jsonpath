@@ -45,7 +45,12 @@ impl<'a> ValueWalker {
     where
         T: SelectValue,
     {
-        Self::walk(vec, tmp, &|v| v.values());
+        Self::walk(vec, tmp, &|v| {
+            match v.values() {
+                Some(v) => Some(v.collect::<Vec<&'a T>>()),
+                None => None,
+            }
+        })
     }
 
     fn walk<F, T>(vec: &[&'a T], tmp: &mut Vec<&'a T>, fun: &F)

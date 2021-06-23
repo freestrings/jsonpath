@@ -219,13 +219,13 @@ where
                         for k in c.keys().unwrap() {
                             if let Some(v) = c.get_key(&k) {
                                 if v.get_type() == SelectValueType::Array {
-                                    _collect(&mut tmp, &v.values().unwrap(), index);
+                                    _collect(&mut tmp, &v.values().unwrap().collect::<Vec<&'a T>>(), index);
                                 }
                             }
                         }
                     }
                     SelectValueType::Array => {
-                        _collect(&mut tmp, &c.values().unwrap(), index);
+                        _collect(&mut tmp, &c.values().unwrap().collect::<Vec<&'a T>>(), index);
                     }
                     _ => {}
                 }
@@ -487,9 +487,9 @@ where
 
             match origin.get_type() {
                 SelectValueType::Array => {
-                    for (i, v) in origin.values().unwrap().iter().enumerate() {
+                    for (i, v) in origin.values().unwrap().enumerate() {
                         tokens.push(i.to_string());
-                        if _walk(*v, target, tokens, visited, visited_order) {
+                        if _walk(v, target, tokens, visited, visited_order) {
                             return true;
                         }
                         tokens.pop();
@@ -971,9 +971,9 @@ where
 
             match origin.get_type() {
                 SelectValueType::Array => {
-                    for (i, v) in origin.values().unwrap().iter().enumerate() {
+                    for (i, v) in origin.values().unwrap().enumerate() {
                         tokens.push(i.to_string());
-                        if _walk(*v, target, tokens, visited, visited_order) {
+                        if _walk(v, target, tokens, visited, visited_order) {
                             return true;
                         }
                         tokens.pop();

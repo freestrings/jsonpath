@@ -32,17 +32,17 @@ impl SelectValue for Value {
         }
     }
 
-    fn values<'a>(&'a self) -> Option<Vec<&'a Self>> {
+    fn values<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a Self> + 'a>> {
         match self {
-            Value::Array(arr) => Some(arr.iter().collect()),
-            Value::Object(o) => Some(o.values().collect()),
+            Value::Array(arr) => Some(Box::new(arr.iter())),
+            Value::Object(o) => Some(Box::new(o.values())),
             _ => None,
         }
     }
 
-    fn keys(&self) -> Option<Vec<String>> {
+    fn keys<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a String> + 'a>> {
         match self {
-            Value::Object(o) => Some(o.keys().cloned().collect()),
+            Value::Object(o) => Some(Box::new(o.keys())),
             _ => None,
         }
     }
@@ -50,6 +50,7 @@ impl SelectValue for Value {
     fn len(&self) -> Option<usize> {
         match self {
             Value::Array(arr) => Some(arr.len()),
+            Value::Object(obj) => Some(obj.len()),
             _ => None,
         }
     }
