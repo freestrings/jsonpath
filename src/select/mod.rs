@@ -531,20 +531,9 @@ where
         visited_order
     }
 
-    pub fn select_with_paths(&mut self) -> Result<Vec<SelectResult<'a, T>>, JsonPathError> {
-        let mut nodes = self.select()?;
-        let mut paths = self.compute_paths(nodes.to_owned());
-        nodes.reverse();
-
-        let mut res = Vec::new();
-        for n in nodes {
-            res.push(SelectResult{
-                n: n,
-                path: paths.pop().unwrap(),
-            })
-        }
-
-        Ok(res)
+    pub fn select_with_paths<F: FnMut(&'a T) -> bool>(&mut self, mut filter: F) -> Result<Vec<Vec<String>>, JsonPathError> {
+        let nodes = self.select()?.drain(..).filter(|v| filter(*v)).collect();
+        Ok(self.compute_paths(nodes))
     }
 
     fn compute_absolute_path_filter(&mut self, token: &ParseToken) -> bool {
