@@ -47,6 +47,13 @@ impl SelectValue for Value {
         }
     }
 
+    fn items<'a>(&'a self) -> Option<Box<dyn Iterator<Item = (&'a str, &'a Self)> + 'a>>{
+        match self {
+            Value::Object(o) => Some(Box::new(o.iter().map(|(k,v)| (&k[..],v)))),
+            _ => None,
+        }
+    }
+
     fn len(&self) -> Option<usize> {
         match self {
             Value::Array(arr) => Some(arr.len()),

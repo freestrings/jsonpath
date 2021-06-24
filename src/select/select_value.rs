@@ -25,6 +25,7 @@ pub trait SelectValue:
     fn contains_key(&self, key: &str) -> bool;
     fn values<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a Self> + 'a>>;
     fn keys<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a str> + 'a>>;
+    fn items<'a>(&'a self) -> Option<Box<dyn Iterator<Item = (&'a str, &'a Self)> + 'a>>;
     fn len(&self) -> Option<usize>;
     fn get_key<'a>(&'a self, key: &str) -> Option<&'a Self>;
     fn get_index<'a>(&'a self, index: usize) -> Option<&'a Self>;

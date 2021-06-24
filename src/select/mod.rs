@@ -216,11 +216,9 @@ where
             for c in current {
                 match c.get_type() {
                     SelectValueType::Object => {
-                        for k in c.keys().unwrap() {
-                            if let Some(v) = c.get_key(&k) {
-                                if v.get_type() == SelectValueType::Array {
-                                    _collect(&mut tmp, &v.values().unwrap().collect::<Vec<&'a T>>(), index);
-                                }
+                        for v in c.values().unwrap() {
+                            if v.get_type() == SelectValueType::Array {
+                                _collect(&mut tmp, &v.values().unwrap().collect::<Vec<&'a T>>(), index);
                             }
                         }
                     }
@@ -496,10 +494,10 @@ where
                     }
                 }
                 SelectValueType::Object => {
-                    for k in origin.keys().unwrap() {
+                    for (k,v) in origin.items().unwrap() {
                         tokens.push(k.to_string());
                         if _walk(
-                            origin.get_key(&k).unwrap(),
+                            v,
                             target,
                             tokens,
                             visited,
@@ -980,10 +978,10 @@ where
                     }
                 }
                 SelectValueType::Object => {
-                    for k in origin.keys().unwrap() {
+                    for (k,v) in origin.items().unwrap() {
                         tokens.push(k.to_string());
                         if _walk(
-                            origin.get_key(&k).unwrap(),
+                            v,
                             target,
                             tokens,
                             visited,
