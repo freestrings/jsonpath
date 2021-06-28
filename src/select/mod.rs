@@ -811,11 +811,13 @@ fn replace_value<F: FnMut(Value) -> Option<Value>>(
             Value::Array(ref mut vec) => {
                 if let Ok(x) = token.parse::<usize>() {
                     if is_last {
-                        let v = std::mem::replace(&mut vec[x], Value::Null);
-                        if let Some(res) = fun(v) {
-                            vec[x] = res;
-                        } else {
-                            vec.remove(x);
+                        if x < vec.len() {
+                            let v = std::mem::replace(&mut vec[x], Value::Null);
+                            if let Some(res) = fun(v) {
+                                vec[x] = res;
+                            } else {
+                                vec.remove(x);
+                            }
                         }
                         return;
                     }

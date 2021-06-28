@@ -63,6 +63,27 @@ fn selector_node_ref() {
 }
 
 #[test]
+fn selector_delete_multi_elements_from_array() {
+    setup();
+
+    let mut selector_mut = SelectorMut::default();
+
+    let result = selector_mut
+        .str_path(r#"$[0,2]"#)
+        .unwrap()
+        .value(serde_json::from_str("[1,2,3]").unwrap())
+        .remove()
+        .unwrap()
+        .take()
+        .unwrap();
+
+    assert_eq!(
+        result,
+        serde_json::from_str::<serde_json::Value>("[2,3]").unwrap(),
+    );
+}
+
+#[test]
 fn selector_delete() {
     setup();
 
