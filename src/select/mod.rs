@@ -975,7 +975,7 @@ mod select_inner_tests {
         let number = 0_i64;
         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
         if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
+            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
         } else {
             panic!();
         }
@@ -986,7 +986,7 @@ mod select_inner_tests {
         let number = 0.1_f64;
         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
         if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number).abs() == 0_f64, true);
+            assert!((super::to_f64(&n) - number).abs() == 0_f64);
         } else {
             panic!();
         }
@@ -997,7 +997,7 @@ mod select_inner_tests {
         let number = u64::max_value();
         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
         if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
+            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
         } else {
             panic!();
         }

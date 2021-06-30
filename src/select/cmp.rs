@@ -214,109 +214,109 @@ mod cmp_inner_tests {
     #[test]
     fn cmp_eq() {
         let cmp_fn = CmpEq;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), false);
-        assert_eq!(cmp_fn.cmp_bool(true, true), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.1), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.2), false);
-        assert_eq!(cmp_fn.cmp_string("1", "1"), true);
-        assert_eq!(cmp_fn.cmp_string("1", "2"), false);
+        assert!(!cmp_fn.default());
+        assert!(!cmp_fn.cmp_bool(true, false));
+        assert!(cmp_fn.cmp_bool(true, true));
+        assert!(cmp_fn.cmp_f64(0.1, 0.1));
+        assert!(!cmp_fn.cmp_f64(0.1, 0.2));
+        assert!(cmp_fn.cmp_string("1", "1"));
+        assert!(!cmp_fn.cmp_string("1", "2"));
     }
 
     #[test]
     fn cmp_ne() {
         let cmp_fn = CmpNe;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), true);
-        assert_eq!(cmp_fn.cmp_bool(true, true), false);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.1), false);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.2), true);
-        assert_eq!(cmp_fn.cmp_string("1", "1"), false);
-        assert_eq!(cmp_fn.cmp_string("1", "2"), true);
+        assert!(!cmp_fn.default());
+        assert!(cmp_fn.cmp_bool(true, false));
+        assert!(!cmp_fn.cmp_bool(true, true));
+        assert!(!cmp_fn.cmp_f64(0.1, 0.1));
+        assert!(cmp_fn.cmp_f64(0.1, 0.2));
+        assert!(!cmp_fn.cmp_string("1", "1"));
+        assert!(cmp_fn.cmp_string("1", "2"));
     }
 
     #[test]
     fn cmp_gt() {
         let cmp_fn = CmpGt;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), true);
-        assert_eq!(cmp_fn.cmp_bool(true, true), false);
-        assert_eq!(cmp_fn.cmp_f64(0.2, 0.1), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.2), false);
-        assert_eq!(cmp_fn.cmp_string("a", "a"), false);
-        assert_eq!(cmp_fn.cmp_string("b", "a"), true);
-        assert_eq!(cmp_fn.cmp_string("1", "2"), false);
+        assert!(!cmp_fn.default());
+        assert!(cmp_fn.cmp_bool(true, false));
+        assert!(!cmp_fn.cmp_bool(true, true));
+        assert!(cmp_fn.cmp_f64(0.2, 0.1));
+        assert!(!cmp_fn.cmp_f64(0.1, 0.2));
+        assert!(!cmp_fn.cmp_string("a", "a"));
+        assert!(cmp_fn.cmp_string("b", "a"));
+        assert!(!cmp_fn.cmp_string("1", "2"));
     }
 
     #[test]
     fn cmp_ge() {
         let cmp_fn = CmpGe;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), true);
-        assert_eq!(cmp_fn.cmp_bool(true, true), true);
-        assert_eq!(cmp_fn.cmp_f64(0.2, 0.1), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.1), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.2), false);
-        assert_eq!(cmp_fn.cmp_string("1", "1"), true);
-        assert_eq!(cmp_fn.cmp_string("ab", "a"), true);
-        assert_eq!(cmp_fn.cmp_string("1", "2"), false);
+        assert!(!cmp_fn.default());
+        assert!(cmp_fn.cmp_bool(true, false));
+        assert!(cmp_fn.cmp_bool(true, true));
+        assert!(cmp_fn.cmp_f64(0.2, 0.1));
+        assert!(cmp_fn.cmp_f64(0.1, 0.1));
+        assert!(!cmp_fn.cmp_f64(0.1, 0.2));
+        assert!(cmp_fn.cmp_string("1", "1"));
+        assert!(cmp_fn.cmp_string("ab", "a"));
+        assert!(!cmp_fn.cmp_string("1", "2"));
     }
 
     #[test]
     fn cmp_lt() {
         let cmp_fn = CmpLt;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), false);
-        assert_eq!(cmp_fn.cmp_bool(false, true), true);
-        assert_eq!(cmp_fn.cmp_bool(true, true), false);
-        assert_eq!(cmp_fn.cmp_bool(false, false), false);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.2), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.1), false);
-        assert_eq!(cmp_fn.cmp_f64(0.2, 0.1), false);
-        assert_eq!(cmp_fn.cmp_string("a", "a"), false);
-        assert_eq!(cmp_fn.cmp_string("ab", "b"), true);
-        assert_eq!(cmp_fn.cmp_string("1", "2"), true);
+        assert!(!cmp_fn.default());
+        assert!(!cmp_fn.cmp_bool(true, false));
+        assert!(cmp_fn.cmp_bool(false, true));
+        assert!(!cmp_fn.cmp_bool(true, true));
+        assert!(!cmp_fn.cmp_bool(false, false));
+        assert!(cmp_fn.cmp_f64(0.1, 0.2));
+        assert!(!cmp_fn.cmp_f64(0.1, 0.1));
+        assert!(!cmp_fn.cmp_f64(0.2, 0.1));
+        assert!(!cmp_fn.cmp_string("a", "a"));
+        assert!(cmp_fn.cmp_string("ab", "b"));
+        assert!(cmp_fn.cmp_string("1", "2"));
     }
 
     #[test]
     fn cmp_le() {
         let cmp_fn = CmpLe;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), false);
-        assert_eq!(cmp_fn.cmp_bool(false, true), true);
-        assert_eq!(cmp_fn.cmp_bool(true, true), true);
-        assert_eq!(cmp_fn.cmp_bool(false, false), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.2), true);
-        assert_eq!(cmp_fn.cmp_f64(0.1, 0.1), true);
-        assert_eq!(cmp_fn.cmp_f64(0.2, 0.1), false);
-        assert_eq!(cmp_fn.cmp_string("a", "a"), true);
-        assert_eq!(cmp_fn.cmp_string("ab", "b"), true);
-        assert_eq!(cmp_fn.cmp_string("abd", "abc"), false);
-        assert_eq!(cmp_fn.cmp_string("1", "2"), true);
+        assert!(!cmp_fn.default());
+        assert!(!cmp_fn.cmp_bool(true, false));
+        assert!(cmp_fn.cmp_bool(false, true));
+        assert!(cmp_fn.cmp_bool(true, true));
+        assert!(cmp_fn.cmp_bool(false, false));
+        assert!(cmp_fn.cmp_f64(0.1, 0.2));
+        assert!(cmp_fn.cmp_f64(0.1, 0.1));
+        assert!(!cmp_fn.cmp_f64(0.2, 0.1));
+        assert!(cmp_fn.cmp_string("a", "a"));
+        assert!(cmp_fn.cmp_string("ab", "b"));
+        assert!(!cmp_fn.cmp_string("abd", "abc"));
+        assert!(cmp_fn.cmp_string("1", "2"));
     }
 
     #[test]
     fn cmp_and() {
         let cmp_fn = CmpAnd;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), false);
-        assert_eq!(cmp_fn.cmp_bool(false, true), false);
-        assert_eq!(cmp_fn.cmp_bool(true, true), true);
-        assert_eq!(cmp_fn.cmp_bool(false, false), false);
-        assert_eq!(cmp_fn.cmp_f64(0.0, 0.0), true);
-        assert_eq!(cmp_fn.cmp_string("a", "a"), true);
+        assert!(!cmp_fn.default());
+        assert!(!cmp_fn.cmp_bool(true, false));
+        assert!(!cmp_fn.cmp_bool(false, true));
+        assert!(cmp_fn.cmp_bool(true, true));
+        assert!(!cmp_fn.cmp_bool(false, false));
+        assert!(cmp_fn.cmp_f64(0.0, 0.0));
+        assert!(cmp_fn.cmp_string("a", "a"));
     }
 
     #[test]
     fn cmp_or() {
         let cmp_fn = CmpOr;
-        assert_eq!(cmp_fn.default(), false);
-        assert_eq!(cmp_fn.cmp_bool(true, false), true);
-        assert_eq!(cmp_fn.cmp_bool(false, true), true);
-        assert_eq!(cmp_fn.cmp_bool(true, true), true);
-        assert_eq!(cmp_fn.cmp_bool(false, false), false);
-        assert_eq!(cmp_fn.cmp_f64(0.0, 0.0), true);
-        assert_eq!(cmp_fn.cmp_string("a", "a"), true);
+        assert!(!cmp_fn.default());
+        assert!(cmp_fn.cmp_bool(true, false));
+        assert!(cmp_fn.cmp_bool(false, true));
+        assert!(cmp_fn.cmp_bool(true, true));
+        assert!(!cmp_fn.cmp_bool(false, false));
+        assert!(cmp_fn.cmp_f64(0.0, 0.0));
+        assert!(cmp_fn.cmp_string("a", "a"));
     }
 
     #[test]
