@@ -17,23 +17,24 @@ impl<'a> PathReader<'a> {
 
     pub fn peek_char(&self) -> Result<(usize, char), ReaderError> {
         let ch = self.input.chars().next().ok_or(ReaderError::Eof)?;
-        Ok((self.pos + ch.len_utf8(), ch))
+        Ok((self.pos, ch))
     }
 
-    pub fn take_while<F>(&mut self, fun: F) -> Result<(usize, String), ReaderError>
+    pub fn take_while<F>(&mut self, fun: F) -> Result<(usize, &'a str), ReaderError>
     where
         F: Fn(&char) -> bool,
     {
         let mut char_len: usize = 0;
-        let mut ret = String::new();
+        // let mut ret = String::new();
         for c in self.input.chars().by_ref() {
             if !fun(&c) {
                 break;
             }
             char_len += c.len_utf8();
-            ret.push(c);
+
         }
 
+        let ret = &self.input[..char_len];
         self.pos += char_len;
         self.input = &self.input[char_len..];
         Ok((self.pos, ret))

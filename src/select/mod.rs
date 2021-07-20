@@ -278,7 +278,7 @@ where
             for c in current {
                 if c.get_type() == SelectValueType::Object {
                     for key in keys {
-                        if let Some(v) = c.get_key(&key) {
+                        if let Some(v) = c.get_key(key) {
                             tmp.push(&v)
                         }
                     }
@@ -343,16 +343,16 @@ where
 }
 
 #[derive(Default, Debug)]
-pub struct Selector<'a, 'b, T>
+pub struct Selector<'a, 'b, 'c, T>
 where
     T: SelectValue,
 {
-    node: Option<Node>,
-    node_ref: Option<&'b Node>,
+    node: Option<Node<'c>>,
+    node_ref: Option<&'b Node<'c>>,
     value: Option<&'a T>,
-    tokens: Vec<ParseToken>,
+    tokens: Vec<ParseToken<'c>>,
     current: Option<Vec<&'a T>>,
-    selectors: Vec<Selector<'a, 'b, T>>,
+    selectors: Vec<Selector<'a, 'b, 'c, T>>,
     selector_filter: FilterTerms<'a, T>,
 }
 
@@ -361,7 +361,7 @@ pub struct SelectResult<'a, T>{
     pub path: Vec<String>,
 }
 
-impl<'a, 'b, T> Selector<'a, 'b, T>
+impl<'a, 'b, 'c, T> Selector<'a, 'b, 'c, T>
 where
     T: SelectValue,
 {
@@ -369,7 +369,7 @@ where
         Self::default()
     }
 
-    pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
+    pub fn str_path(&mut self, path: &'c str) -> Result<&mut Self, JsonPathError> {
         debug!("path : {}", path);
         self.node_ref.take();
         self.node = Some(Parser::compile(path).map_err(JsonPathError::Path)?);
@@ -388,7 +388,7 @@ where
         None
     }
 
-    pub fn compiled_path(&mut self, node: &'b Node) -> &mut Self {
+    pub fn compiled_path(&mut self, node: &'b Node<'c>) -> &mut Self {
         self.node.take();
         self.node_ref = Some(node);
         self
@@ -536,7 +536,7 @@ where
         Ok(self.compute_paths(nodes))
     }
 
-    fn compute_absolute_path_filter(&mut self, token: &ParseToken) -> bool {
+    fn compute_absolute_path_filter(&mut self, token: &ParseToken<'c>) -> bool {
         if !self.selectors.is_empty() {
             match token {
                 ParseToken::Absolute | ParseToken::Relative | ParseToken::Filter(_) => {
@@ -567,7 +567,7 @@ where
     }
 }
 
-impl<'a, 'b, T> Selector<'a, 'b, T>
+impl<'a, 'b, 'c, T> Selector<'a, 'b, 'c, T>
 where
     T: SelectValue,
 {
@@ -872,11 +872,11 @@ where
     }
 }
 
-impl<'a, 'b, T> NodeVisitor for Selector<'a, 'b, T>
+impl<'a, 'b, 'c, T> NodeVisitor<'c> for Selector<'a, 'b, 'c, T>
 where
     T: SelectValue,
 {
-    fn visit_token(&mut self, token: &ParseToken) {
+    fn visit_token(&mut self, token: &ParseToken<'c>) {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
         if self.compute_absolute_path_filter(token) {
@@ -895,6 +895,7 @@ where
                 self.selector_filter.push_term(Some(ExprTerm::Bool(*b)));
             }
             ParseToken::Key(key) => self.visit_key(key),
+            ParseToken::KeyString(key) => self.visit_key(&key),
             ParseToken::Keys(keys) => self.visit_keys(keys),
             ParseToken::Number(v) => {
                 self.selector_filter.push_term(Some(ExprTerm::Double(*v)));
@@ -911,7 +912,7 @@ where
 
 #[derive(Default)]
 pub struct SelectorMut<'a, T: SelectValue> {
-    path: Option<Node>,
+    path: Option<Node<'a>>,
     value: Option<&'a mut T>,
 }
 
@@ -923,7 +924,7 @@ where
         Self::default()
     }
 
-    pub fn str_path(&mut self, path: &str) -> Result<&mut Self, JsonPathError> {
+    pub fn str_path(&mut self, path: &'a str) -> Result<&mut Self, JsonPathError> {
         self.path = Some(Parser::compile(path).map_err(JsonPathError::Path)?);
         Ok(self)
     }
