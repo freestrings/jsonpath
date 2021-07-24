@@ -856,6 +856,11 @@ impl SelectorMut {
         self.value.take()
     }
 
+    pub fn compiled_path(&mut self, node: Node) -> &mut Self {
+        self.path = Some(node);
+        self
+    }
+
     fn compute_paths(&self, mut result: Vec<&Value>) -> Vec<Vec<String>> {
         fn _walk(
             origin: &Value,

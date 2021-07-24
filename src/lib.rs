@@ -535,4 +535,21 @@ impl Compiled {
         let mut selector = Selector::default();
         selector.compiled_path(&self.node).value(value).select()
     }
+
+    /// Execute the delete operation on the pre-compiled path.
+    pub fn delete(&self, value: Value) -> Result<Value, JsonPathError> {
+        let mut selector = SelectorMut::default();
+        let value = selector.compiled_path(self.node.clone()).value(value).delete()?;
+        Ok(value.take().unwrap_or(Value::Null))
+    }
+
+    /// Execute the replace operation on the pre-compiled path.
+    pub fn replace_with<F>(&self, value: Value, fun: &mut F) -> Result<Value, JsonPathError>
+        where
+            F: FnMut(Value) -> Option<Value>,
+    {
+        let mut selector = SelectorMut::default();
+        let value = selector.compiled_path(self.node.clone()).value(value).replace_with(fun)?;
+        Ok(value.take().unwrap_or(Value::Null))
+    }
 }
