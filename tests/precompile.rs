@@ -3,7 +3,7 @@ extern crate serde_json;
 extern crate jsonpath_lib;
 
 use common::{setup};
-use jsonpath_lib::Compiled;
+use jsonpath_lib::PathCompiled;
 use serde_json::Value;
 
 mod common;
@@ -18,7 +18,7 @@ fn precompile_test() {
 
     // compile once
 
-    let compiled = Compiled::compile("$.foo.bar");
+    let compiled = PathCompiled::compile("$.foo.bar");
 
     assert!(compiled.is_ok());
 
@@ -35,7 +35,7 @@ fn precompile_test() {
 fn precompile_failure() {
     setup();
 
-    let compiled = Compiled::compile("");
+    let compiled = PathCompiled::compile("");
 
     assert!(compiled.is_err());
 }

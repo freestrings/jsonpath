@@ -201,26 +201,26 @@ impl<'a> From<&Vec<&'a Value>> for ExprTerm<'a> {
     }
 }
 
-#[cfg(test)]
-mod expr_term_inner_tests {
-    use serde_json::{Number, Value};
-    use select::expr_term::ExprTerm;
-
-    #[test]
-    fn value_vec_into() {
-        let v = Value::Bool(true);
-        let vec = &vec![&v];
-        let term: ExprTerm = vec.into();
-        assert_eq!(term, ExprTerm::Bool(true));
-
-        let v = Value::String("a".to_string());
-        let vec = &vec![&v];
-        let term: ExprTerm = vec.into();
-        assert_eq!(term, ExprTerm::String("a".to_string()));
-
-        let v = serde_json::from_str("1.0").unwrap();
-        let vec = &vec![&v];
-        let term: ExprTerm = vec.into();
-        assert_eq!(term, ExprTerm::Number(Number::from_f64(1.0).unwrap()));
-    }
-}
+// #[cfg(test)]
+// mod expr_term_inner_tests {
+//     use serde_json::{Number, Value};
+//     use select::expr_term::ExprTerm;
+//
+//     #[test]
+//     fn value_vec_into() {
+//         let v = Value::Bool(true);
+//         let vec = &vec![&v];
+//         let term: ExprTerm = vec.into();
+//         assert_eq!(term, ExprTerm::Bool(true));
+//
+//         let v = Value::String("a".to_string());
+//         let vec = &vec![&v];
+//         let term: ExprTerm = vec.into();
+//         assert_eq!(term, ExprTerm::String("a".to_string()));
+//
+//         let v = serde_json::from_str("1.0").unwrap();
+//         let vec = &vec![&v];
+//         let term: ExprTerm = vec.into();
+//         assert_eq!(term, ExprTerm::Number(Number::from_f64(1.0).unwrap()));
+//     }
+// }

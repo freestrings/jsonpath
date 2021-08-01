@@ -327,6 +327,7 @@ impl<'a> FilterTerms<'a> {
     }
 }
 
+#[deprecated(since = "0.4.0", note = "Please use `JsonSelector`")]
 #[derive(Debug, Default)]
 pub struct Selector<'a, 'b> {
     node: Option<Node>,
@@ -776,6 +777,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     }
 }
 
+#[deprecated(since = "0.4.0", note = "Please use `JsonSelectorMut`")]
 #[derive(Default)]
 pub struct SelectorMut {
     path: Option<Node>,
@@ -966,40 +968,40 @@ impl SelectorMut {
 }
 
 
-#[cfg(test)]
-mod select_inner_tests {
-    use serde_json::Value;
-
-    #[test]
-    fn to_f64_i64() {
-        let number = 0_i64;
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
-        } else {
-            panic!();
-        }
-    }
-
-    #[test]
-    fn to_f64_f64() {
-        let number = 0.1_f64;
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert!((super::to_f64(&n) - number).abs() == 0_f64);
-        } else {
-            panic!();
-        }
-    }
-
-    #[test]
-    fn to_f64_u64() {
-        let number = u64::max_value();
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
-        } else {
-            panic!();
-        }
-    }
-}
+// #[cfg(test)]
+// mod select_inner_tests {
+//     use serde_json::Value;
+//
+//     #[test]
+//     fn to_f64_i64() {
+//         let number = 0_i64;
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
+//         } else {
+//             panic!();
+//         }
+//     }
+//
+//     #[test]
+//     fn to_f64_f64() {
+//         let number = 0.1_f64;
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert!((super::to_f64(&n) - number).abs() == 0_f64);
+//         } else {
+//             panic!();
+//         }
+//     }
+//
+//     #[test]
+//     fn to_f64_u64() {
+//         let number = u64::max_value();
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
+//         } else {
+//             panic!();
+//         }
+//     }
+// }
