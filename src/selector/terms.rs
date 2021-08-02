@@ -2,10 +2,9 @@ use std::collections::HashSet;
 
 use serde_json::{Number, Value};
 
-use super::value_walker::ValueWalker;
-use super::utils;
-
 use super::cmp::*;
+use super::utils;
+use super::value_walker::ValueWalker;
 
 #[derive(Debug, PartialEq)]
 pub enum ExprTerm<'a> {
@@ -16,133 +15,194 @@ pub enum ExprTerm<'a> {
 }
 
 impl<'a> ExprTerm<'a> {
-    fn cmp<C1: Cmp, C2: Cmp>(
-        &self,
-        other: &Self,
-        cmp_fn: &C1,
-        reverse_cmp_fn: &C2,
-    ) -> ExprTerm<'a> {
-        match &self {
-            ExprTerm::String(s1) => match &other {
-                ExprTerm::String(s2) => {
-                    let (s1, opt1) = utils::to_path_str(s1);
-                    let (s2, opt2) = utils::to_path_str(s2);
-                    let k1 = if let Some(opt) = opt1.as_ref() { opt } else { s1 };
-                    let k2 = if let Some(opt) = opt2.as_ref() { opt } else { s2 };
+    fn cmp_string<C1, C2>(&self, s1: &str, other: &ExprTerm<'a>, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+        where
+            C1: Cmp,
+            C2: Cmp
+    {
+        match other {
+            ExprTerm::String(s2) => {
+                let (s1, opt1) = utils::to_path_str(s1);
+                let (s2, opt2) = utils::to_path_str(s2);
+                let k1 = if let Some(opt) = opt1.as_ref() { opt } else { s1 };
+                let k2 = if let Some(opt) = opt2.as_ref() { opt } else { s2 };
+                ExprTerm::Bool(cmp_fn.cmp_string(k1, k2))
+            }
+            ExprTerm::Json(_, _, _) => other.cmp(self, rev_cmp_fn, cmp_fn),
+            _ => ExprTerm::Bool(cmp_fn.default()),
+        }
+    }
 
-                    ExprTerm::Bool(cmp_fn.cmp_string(k1, k2))
-                }
-                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
-                _ => ExprTerm::Bool(cmp_fn.default()),
-            },
-            ExprTerm::Number(n1) => match &other {
-                ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2))),
-                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
-                _ => ExprTerm::Bool(cmp_fn.default()),
-            },
-            ExprTerm::Bool(b1) => match &other {
-                ExprTerm::Bool(b2) => ExprTerm::Bool(cmp_fn.cmp_bool(*b1, *b2)),
-                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
-                _ => ExprTerm::Bool(cmp_fn.default()),
-            },
-            ExprTerm::Json(rel, fk1, vec1) => {
-                let ret: Vec<&Value> = match &other {
-                    ExprTerm::String(s2) => {
-                        let (s2, opt2) = utils::to_path_str(s2);
-                        vec1
-                            .iter()
-                            .filter(|v1| match v1 {
-                                Value::String(s1) => {
-                                    if let Some(opt) = opt2.as_ref() {
-                                        cmp_fn.cmp_string(s1, opt)
-                                    } else {
-                                        cmp_fn.cmp_string(s1, s2)
-                                    }
-                                }
-                                Value::Object(map1) => {
-                                    if let Some(FilterKey::String(k)) = fk1 {
-                                        if let Some(Value::String(s1)) = map1.get(*k) {
-                                            return if let Some(opt) = opt2.as_ref() {
-                                                cmp_fn.cmp_string(s1, opt)
-                                            } else {
-                                                cmp_fn.cmp_string(s1, s2)
-                                            };
-                                        }
-                                    }
-                                    cmp_fn.default()
-                                }
-                                _ => cmp_fn.default(),
-                            })
-                            .cloned()
-                            .collect()
-                    }
-                    ExprTerm::Number(n2) => vec1
-                        .iter()
-                        .filter(|v1| match v1 {
-                            Value::Number(n1) => cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2)),
-                            Value::Object(map1) => {
-                                if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::Number(n1)) = map1.get(*k) {
-                                        return cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2));
-                                    }
-                                }
-                                cmp_fn.default()
-                            }
-                            _ => cmp_fn.default(),
-                        })
-                        .cloned()
-                        .collect(),
-                    ExprTerm::Bool(b2) => vec1
-                        .iter()
-                        .filter(|v1| match v1 {
-                            Value::Bool(b1) => cmp_fn.cmp_bool(*b1, *b2),
-                            Value::Object(map1) => {
-                                if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::Bool(b1)) = map1.get(*k) {
-                                        return cmp_fn.cmp_bool(*b1, *b2);
-                                    }
-                                }
-                                cmp_fn.default()
-                            }
-                            _ => cmp_fn.default(),
-                        })
-                        .cloned()
-                        .collect(),
-                    ExprTerm::Json(parent, _, vec2) => {
-                        if let Some(vec1) = rel {
-                            cmp_fn.cmp_json(vec1, vec2)
-                        } else if let Some(vec2) = parent {
-                            cmp_fn.cmp_json(vec1, vec2)
-                        } else {
-                            cmp_fn.cmp_json(vec1, vec2)
-                        }
-                    }
-                };
+    fn cmp_number<C1, C2>(&self, n1: &Number, other: &ExprTerm<'a>, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+        where
+            C1: Cmp,
+            C2: Cmp
+    {
+        match other {
+            ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2))),
+            ExprTerm::Json(_, _, _) => other.cmp(self, rev_cmp_fn, cmp_fn),
+            _ => ExprTerm::Bool(cmp_fn.default()),
+        }
+    }
 
-                if ret.is_empty() {
-                    ExprTerm::Bool(cmp_fn.default())
-                } else if let Some(rel) = rel {
-                    if let ExprTerm::Json(_, _, _) = &other {
-                        ExprTerm::Json(Some(rel.to_vec()), None, ret)
-                    } else {
-                        let mut tmp = Vec::new();
-                        for rel_value in rel {
-                            if let Value::Object(map) = rel_value {
-                                for map_value in map.values() {
-                                    for result_value in &ret {
-                                        if map_value.eq(*result_value) {
-                                            tmp.push(*rel_value);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        ExprTerm::Json(Some(tmp), None, ret)
-                    }
+    fn cmp_bool<C1, C2>(&self, b1: &bool, other: &ExprTerm<'a>, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+        where
+            C1: Cmp,
+            C2: Cmp
+    {
+        match other {
+            ExprTerm::Bool(b2) => ExprTerm::Bool(cmp_fn.cmp_bool(*b1, *b2)),
+            ExprTerm::Json(_, _, _) => other.cmp(self, rev_cmp_fn, cmp_fn),
+            _ => ExprTerm::Bool(cmp_fn.default()),
+        }
+    }
+
+    fn cmp_json_string<C1>(&self, s2: &str, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+        where
+            C1: Cmp
+    {
+        let (s2, opt2) = utils::to_path_str(s2);
+        vec1.iter().filter(|v1| match v1 {
+            Value::String(s1) => {
+                if let Some(opt) = opt2.as_ref() {
+                    cmp_fn.cmp_string(s1, opt)
                 } else {
-                    ExprTerm::Json(None, None, ret)
+                    cmp_fn.cmp_string(s1, s2)
                 }
             }
+            Value::Object(map1) => {
+                if let Some(FilterKey::String(k)) = fk1 {
+                    if let Some(Value::String(s1)) = map1.get(*k) {
+                        return if let Some(opt) = opt2.as_ref() {
+                            cmp_fn.cmp_string(s1, opt)
+                        } else {
+                            cmp_fn.cmp_string(s1, s2)
+                        };
+                    }
+                }
+                cmp_fn.default()
+            }
+            _ => cmp_fn.default(),
+        }).copied().collect()
+    }
+
+    fn cmp_json_number<C1>(&self, n2: &Number, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+        where
+            C1: Cmp
+    {
+        vec1.iter().filter(|v1| match v1 {
+            Value::Number(n1) => cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2)),
+            Value::Object(map1) => {
+                if let Some(FilterKey::String(k)) = fk1 {
+                    if let Some(Value::Number(n1)) = map1.get(*k) {
+                        return cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2));
+                    }
+                }
+                cmp_fn.default()
+            }
+            _ => cmp_fn.default(),
+        }).copied().collect()
+    }
+
+    fn cmp_json_bool<C1>(&self, b2: &bool, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+        where
+            C1: Cmp
+    {
+        vec1.iter().filter(|v1| match v1 {
+            Value::Bool(b1) => cmp_fn.cmp_bool(*b1, *b2),
+            Value::Object(map1) => {
+                if let Some(FilterKey::String(k)) = fk1 {
+                    if let Some(Value::Bool(b1)) = map1.get(*k) {
+                        return cmp_fn.cmp_bool(*b1, *b2);
+                    }
+                }
+                cmp_fn.default()
+            }
+            _ => cmp_fn.default(),
+        }).copied().collect()
+    }
+
+    fn cmp_json_json<C1>(&self, rel: &Option<Vec<&'a Value>>, parent: &Option<Vec<&'a Value>>, vec1: &Vec<&'a Value>, vec2: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+        where
+            C1: Cmp
+    {
+        if let Some(vec1) = rel {
+            cmp_fn.cmp_json(vec1, vec2)
+        } else if let Some(vec2) = parent {
+            cmp_fn.cmp_json(vec1, vec2)
+        } else {
+            cmp_fn.cmp_json(vec1, vec2)
+        }
+    }
+
+    fn cmp_json<C1>(&self, rel: &Option<Vec<&'a Value>>, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, other: &ExprTerm<'a>, cmp_fn: &C1) -> ExprTerm<'a>
+        where
+            C1: Cmp
+    {
+        let ret: Vec<&Value> = match other {
+            ExprTerm::String(s2) => self.cmp_json_string(s2, fk1, vec1, cmp_fn),
+            ExprTerm::Number(n2) => self.cmp_json_number(n2, fk1, vec1, cmp_fn),
+            ExprTerm::Bool(b2) => self.cmp_json_bool(b2, fk1, vec1, cmp_fn),
+            ExprTerm::Json(parent, _, vec2) => self.cmp_json_json(rel, parent, vec1, vec2, cmp_fn)
+        };
+
+        if ret.is_empty() {
+            return ExprTerm::Bool(cmp_fn.default());
+        }
+
+        if let Some(rel) = rel {
+            if let ExprTerm::Json(_, _, _) = &other {
+                return ExprTerm::Json(Some(rel.to_vec()), None, ret);
+            } else {
+                let mut object_exist = false;
+                for v in rel {
+                    if v.is_object() {
+                        object_exist = true;
+                        break;
+                    }
+                }
+
+                if !object_exist {
+                    return ExprTerm::Json(Some(Vec::new()), None, ret);
+                }
+
+                let ret_set: HashSet<*const Value> = ret.iter()
+                    .fold(HashSet::new(), |mut acc, v| {
+                        let ptr = *v as *const Value;
+                        acc.insert(ptr);
+                        acc
+                    });
+
+                let mut tmp = Vec::new();
+                for rv in rel {
+                    if let Value::Object(map) = rv {
+                        for map_value in map.values() {
+                            let ptr = map_value as *const Value;
+                            if ret_set.contains(&ptr) {
+                                tmp.push(*rv);
+                            }
+                        }
+                    }
+                }
+
+                return ExprTerm::Json(Some(tmp), None, ret);
+            }
+        }
+
+        ExprTerm::Json(None, None, ret)
+    }
+
+    fn cmp<C1, C2>(&self, other: &Self, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+        where
+            C1: Cmp,
+            C2: Cmp
+    {
+        match &self {
+            ExprTerm::String(s1) => self.cmp_string(s1, other, cmp_fn, rev_cmp_fn),
+            ExprTerm::Number(n1) => self.cmp_number(n1, other, cmp_fn, rev_cmp_fn),
+            ExprTerm::Bool(b1) => self.cmp_bool(b1, other, cmp_fn, rev_cmp_fn),
+            ExprTerm::Json(rel, fk1, vec1) =>
+                self.cmp_json(rel, fk1, vec1, other, cmp_fn)
         }
     }
 

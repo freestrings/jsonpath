@@ -28,10 +28,7 @@ impl<'a> ValueWalker {
 
     pub fn all_with_strs(vec: Vec<&'a Value>, keys: &[&'a str]) -> Vec<&'a Value> {
         let mut acc = Vec::new();
-        let mut new_keys = Vec::new();
-        for key in keys {
-            new_keys.push(utils::to_path_str(key));
-        }
+        let new_keys: Vec<(&str, Option<String>)> = keys.iter().map(|key| utils::to_path_str(key)).collect();
 
         for v in vec {
             if let Value::Object(map) = v {

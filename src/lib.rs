@@ -150,7 +150,7 @@ use std::rc::Rc;
 #[doc(hidden)]
 #[deprecated(
 since = "0.4.0",
-note = "It will be move to other location like wasm. since 0.5"
+note = "'ffi' is moved to another location like 'wasm' from version 0.5.x"
 )]
 mod ffi;
 #[doc(hidden)]
@@ -199,7 +199,7 @@ impl From<&paths::TokenError> for JsonPathError {
 /// ```
 #[deprecated(
 since = "0.2.5",
-note = "Please use the PathCompiled::compile function instead. It will be removed since 0.4.1"
+note = "Please use the PathCompiled::compile function instead. It will be removed from 0.4.1"
 )]
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
     #[allow(deprecated)]
