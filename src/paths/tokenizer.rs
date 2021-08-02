@@ -245,72 +245,54 @@ impl<'a> Tokenizer<'a> {
 #[derive(Clone, Debug)]
 pub(super) struct TokenReader<'a> {
     tokenizer: Tokenizer<'a>,
-    tokens: Vec<(usize, Token)>,
     curr_pos: usize,
-    err: TokenError,
+    err: Option<TokenError>,
+    peeked: Option<Result<Token, TokenError>>,
 }
 
 impl<'a> TokenReader<'a> {
     pub fn new(input: &'a str) -> Self {
-        let mut tokenizer = Tokenizer::new(input);
-        let mut tokens = Vec::new();
-        loop {
-            match tokenizer.next_token() {
-                Ok(mut token) => {
-                    let prev_pos = if let Some((pos, _)) = tokens.get(0) {
-                        *pos
-                    } else {
-                        0
-                    };
-
-                    // let new_token = match token {
-                    //     Token::SingleQuoted(ref range) | Token::DoubleQuoted(ref range) => {
-                    //         token.reset_span(StrRange::new(prev_pos + 1, tokenizer.current_pos() - prev_pos - 2))
-                    //     }
-                    //     _ => token.reset_span(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos))
-                    // };
-                    let token = token.reset_span(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos));
-                    tokens.insert(0, (tokenizer.current_pos(), token));
-                }
-                Err(err) => {
-                    return TokenReader {
-                        tokenizer,
-                        tokens,
-                        curr_pos: 0,
-                        err,
-                    };
-                }
-            }
+        TokenReader {
+            tokenizer: Tokenizer::new(input),
+            curr_pos: 0,
+            err: None,
+            peeked: None,
         }
     }
 
-    pub fn read_value(&self, span: &StrRange) -> &'a str {
-        self.tokenizer.read_span(span)
+    pub fn read_value(&self, str_range: &StrRange) -> &'a str {
+        self.tokenizer.read_span(str_range)
     }
 
-    pub fn peek_token(&mut self) -> Result<&Token, TokenError> {
-        match self.tokens.last() {
-            Some((_, t)) => {
-                trace!("%{:?}", t);
-                Ok(t)
+    pub fn peek_token(&mut self) -> Result<&Token, &TokenError> {
+        let tokenizer = &mut self.tokenizer;
+        let prev_pos = self.curr_pos;
+        let peeked = self.peeked.get_or_insert_with(|| {
+            let mut token = tokenizer.next_token();
+            if let Ok(token) = &mut token {
+                let token = token.reset_span(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos));
+                return Ok(token);
             }
-            _ => {
-                trace!("%{:?}", self.err);
-                Err(self.err.clone())
-            }
-        }
+            token
+        });
+        self.curr_pos = tokenizer.current_pos();
+        peeked.as_ref()
     }
 
     pub fn next_token(&mut self) -> Result<Token, TokenError> {
-        match self.tokens.pop() {
-            Some((pos, t)) => {
-                self.curr_pos = pos;
-                trace!("@{:?}", t);
-                Ok(t)
-            }
-            _ => {
-                trace!("@{:?}", self.err);
-                Err(self.err.clone())
+        match self.peeked.take() {
+            Some(v) => v,
+            None => {
+                let prev_pos = self.curr_pos;
+                let tokenizer = &mut self.tokenizer;
+                let mut token = tokenizer.next_token();
+                if let Ok(token) = &mut token {
+                    let current_pos = tokenizer.current_pos();
+                    let token = token.reset_span(StrRange::new(prev_pos, current_pos - prev_pos));
+                    self.curr_pos = current_pos;
+                    return Ok(token);
+                }
+                token
             }
         }
     }
