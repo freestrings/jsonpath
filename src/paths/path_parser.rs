@@ -27,7 +27,7 @@ impl<'a> PathParser<'a> {
 
         let token_reader = &self.parser.token_reader;
         if let Some(parse_node) = self.parser.parse_node.as_ref() {
-            self.visit(&parse_node, parse_token_handler, &|s| {
+            self.visit(parse_node, parse_token_handler, &|s| {
                 token_reader.read_value(s)
             });
         }
@@ -347,7 +347,7 @@ impl<'a> ParserImpl<'a> {
         match self.token_reader.next_token() {
             Ok(Token::Key(s)) => {
                 let str_step = self.token_reader.read_value(&s);
-                match Self::string_to_num(&str_step, || self.token_reader.to_error()) {
+                match Self::string_to_num(str_step, || self.token_reader.to_error()) {
                     Ok(step) => Ok(Some(step)),
                     Err(e) => Err(e),
                 }
@@ -495,7 +495,7 @@ impl<'a> ParserImpl<'a> {
                 match self.token_reader.peek_token() {
                     Ok(Token::Dot(_)) => self.term_num_float(val),
                     _ => {
-                        let number = Self::string_to_num(&val, || self.token_reader.to_error())?;
+                        let number = Self::string_to_num(val, || self.token_reader.to_error())?;
                         Ok(self.create_node(ParseToken::Number(number)))
                     }
                 }
@@ -520,7 +520,7 @@ impl<'a> ParserImpl<'a> {
     fn term(&mut self) -> Result<ParseNode, TokenError> {
         debug!("#term");
 
-        if let Err(_) = self.token_reader.peek_token() {
+        if self.token_reader.peek_token().is_err() {
             return Err(self.token_reader.to_error());
         }
 

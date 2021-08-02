@@ -123,11 +123,10 @@ fn bench_delete(b: &mut Bencher) {
 fn bench_select_to_compare_with_delete(b: &mut Bencher) {
     let json = &get_json();
 
-    let parser = Rc::new(Box::new(PathParser::compile(get_path()).unwrap()));
+    let parser = Rc::new(PathParser::compile(get_path()).unwrap());
 
     b.iter(move || {
         for _ in 1..100 {
-            let json = json.clone();
             let mut s = JsonSelector::new_ref(Rc::clone(&parser));
             let _ = s.value(&json);
             let r = s.select();

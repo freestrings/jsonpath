@@ -517,7 +517,7 @@ impl Parser {
         match tokenizer.next_token() {
             Ok(Token::Key(pos, frac)) => {
                 let mut f = String::new();
-                f.push_str(&num);
+                f.push_str(num);
                 f.push('.');
                 f.push_str(frac.as_str());
                 let number = utils::string_to_num(&f, || tokenizer.err_msg_with_pos(pos))?;

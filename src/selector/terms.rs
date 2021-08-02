@@ -32,17 +32,17 @@ impl<'a> ExprTerm<'a> {
 
                     ExprTerm::Bool(cmp_fn.cmp_string(k1, k2))
                 }
-                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Number(n1) => match &other {
                 ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2))),
-                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Bool(b1) => match &other {
                 ExprTerm::Bool(b2) => ExprTerm::Bool(cmp_fn.cmp_bool(*b1, *b2)),
-                ExprTerm::Json(_, _, _) => other.cmp(&self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Json(rel, fk1, vec1) => {
@@ -277,7 +277,7 @@ impl<'a> FilterTerms<'a> {
             } else {
                 let not_matched = not_matched.unwrap();
                 let filtered = vec.iter().enumerate()
-                    .filter(|(idx, _)| !not_matched.contains(&idx))
+                    .filter(|(idx, _)| !not_matched.contains(idx))
                     .map(|(_, v)| *v).collect();
                 self.push_term(Some(ExprTerm::Json(Some(filtered), Some(filter_key), collected)));
             }
@@ -319,7 +319,7 @@ impl<'a> FilterTerms<'a> {
 
     pub fn filter_all_with_str(&mut self, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
         let current = self.filter(current, |vec, _| {
-            (FilterKey::All, ValueWalker::all_with_str(vec, key, true))
+            (FilterKey::All, ValueWalker::all_with_str(vec, key))
         });
 
         debug!("filter_all_with_str : {}, {:?}", key, self.0);
@@ -450,7 +450,7 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        let ret = ValueWalker::all_with_str(current.unwrap(), key, false);
+        let ret = ValueWalker::all_with_str(current.unwrap(), key);
         Some(ret)
     }
 

@@ -16,28 +16,12 @@ impl<'a> ValueWalker {
         })
     }
 
-    pub fn all_with_str(vec: Vec<&'a Value>, key: &'a str, is_filter: bool) -> Vec<&'a Value> {
+    pub fn all_with_str(vec: Vec<&'a Value>, key: &'a str) -> Vec<&'a Value> {
         let (key, opt) = utils::to_path_str(key);
         let k = if let Some(opt) = opt.as_ref() { opt } else { key };
-        Self::walk(vec, &|v, acc| {
-            if is_filter {
-                match v {
-                    Value::Object(map) => {
-                        if let Some(v) = map.get(k) {
-                            acc.push(v);
-                        }
-                    }
-                    _ => {}
-                }
-            } else {
-                match v {
-                    Value::Object(map) => {
-                        if let Some(v) = map.get(k) {
-                            acc.push(v);
-                        }
-                    }
-                    _ => {}
-                }
+        Self::walk(vec, &|v, acc| if let Value::Object(map) = v {
+            if let Some(v) = map.get(k) {
+                acc.push(v);
             }
         })
     }
@@ -96,7 +80,7 @@ impl<'a> ValueWalker {
                 vec.iter().for_each(|v| Self::_walk(v, acc, fun));
             }
             Value::Object(map) => {
-                map.values().into_iter().for_each(|v| Self::_walk(&v, acc, fun));
+                map.values().into_iter().for_each(|v| Self::_walk(v, acc, fun));
             }
             _ => {}
         }

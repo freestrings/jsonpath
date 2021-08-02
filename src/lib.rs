@@ -148,6 +148,10 @@ pub use paths::PathParser;
 use std::rc::Rc;
 
 #[doc(hidden)]
+#[deprecated(
+since = "0.4.0",
+note = "It will be move to other location like wasm. since 0.5"
+)]
 mod ffi;
 #[doc(hidden)]
 mod parser;
@@ -623,7 +627,7 @@ impl Compiled {
 /// ```
 #[derive(Clone, Debug)]
 pub struct PathCompiled<'a> {
-    parser: Rc<Box<PathParser<'a>>>,
+    parser: Rc<PathParser<'a>>,
 }
 
 impl<'a> PathCompiled<'a> {
@@ -633,7 +637,7 @@ impl<'a> PathCompiled<'a> {
     pub fn compile(path: &str) -> Result<PathCompiled, JsonPathError> {
         let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
         Ok(PathCompiled {
-            parser: Rc::new(Box::new(parser))
+            parser: Rc::new(parser)
         })
     }
 

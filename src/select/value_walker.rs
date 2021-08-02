@@ -59,7 +59,7 @@ impl<'a> ValueWalker {
             }
             Value::Object(map) => {
                 for (_, v) in map {
-                    Self::_walk(&v, tmp, fun);
+                    Self::_walk(v, tmp, fun);
                 }
             }
             _ => {}

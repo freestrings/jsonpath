@@ -18,7 +18,7 @@ pub fn abs_index(n: isize, len: usize) -> usize {
     }
 }
 
-pub fn to_path_str<'a>(key: &'a str) -> (&'a str, Option<String>) {
+pub fn to_path_str(key: &str) -> (&str, Option<String>) {
     let key = if key.starts_with('\'') || key.starts_with('"') {
         let s = &key[1..key.len() - 1];
         if key.contains('\\') {

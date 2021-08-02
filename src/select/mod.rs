@@ -153,7 +153,7 @@ impl<'a> FilterTerms<'a> {
 
     fn filter_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) {
         self.filter(current, |vec, tmp, _| {
-            ValueWalker::all_with_str(&vec, tmp, key, true);
+            ValueWalker::all_with_str(vec, tmp, key, true);
             FilterKey::All
         });
 
@@ -294,7 +294,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all(&mut self, current: &Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all(&current, &mut tmp);
+            ValueWalker::all(current, &mut tmp);
             return Some(tmp);
         }
         debug!("collect_all: {:?}", &current);
@@ -305,7 +305,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all_with_str(&current, &mut tmp, key, false);
+            ValueWalker::all_with_str(current, &mut tmp, key, false);
             return Some(tmp);
         }
 
@@ -317,7 +317,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all_with_num(&current, &mut tmp, index);
+            ValueWalker::all_with_num(current, &mut tmp, index);
             return Some(tmp);
         }
 
@@ -944,7 +944,7 @@ impl SelectorMut {
     fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
         if let Some(node) = &self.path {
             let mut selector = Selector::default();
-            selector.compiled_path(&node);
+            selector.compiled_path(node);
 
             if let Some(value) = &self.value {
                 selector.value(value);

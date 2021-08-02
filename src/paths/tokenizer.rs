@@ -229,7 +229,7 @@ impl<'a> Tokenizer<'a> {
         let (span, ch) = self.input.next_char().map_err(to_token_error)?;
         match self.read_token(span, ch) {
             Ok(t) => Ok(t),
-            Err(e) => Err(e.clone()),
+            Err(e) => Err(e),
         }
     }
 
