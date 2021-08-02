@@ -25,7 +25,6 @@ impl<'a> PathReader<'a> {
         F: Fn(&char) -> bool,
     {
         let mut char_len: usize = 0;
-        // let mut ret = String::new();
         for c in self.input.chars().by_ref() {
             if !fun(&c) {
                 break;

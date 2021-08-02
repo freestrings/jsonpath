@@ -175,7 +175,7 @@ pub mod select;
     since = "0.2.5",
     note = "Please use the Compiled::compile function instead"
 )]
-pub fn compile<'a>(path: &'a str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> + 'a {
+pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> + '_ {
     let node = parser::Parser::compile(path);
     move |json| match &node {
         Ok(node) => {
