@@ -341,8 +341,8 @@ impl<'a> FilterTerms<'a> {
                                 visited.insert(ptr);
                                 acc.push(*v)
                             }
-                        } else {
-                            if let Some(set) = not_matched { set.insert(idx); }
+                        } else if let Some(set) = not_matched {
+                            set.insert(idx);
                         }
                     }
                     Value::Array(ay) => {

@@ -79,6 +79,7 @@ pub struct Node {
 #[deprecated(since = "0.4.0", note = "Please use `paths::PathParser`")]
 pub struct Parser;
 
+#[allow(deprecated)]
 impl Parser {
     pub fn compile(input: &str) -> ParseResult<Node> {
         let mut tokenizer = TokenReader::new(input);
@@ -610,6 +611,7 @@ impl Parser {
     }
 }
 
+#[allow(deprecated)]
 pub trait NodeVisitor {
     fn visit(&mut self, node: &Node) {
         match &node.token {

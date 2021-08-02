@@ -36,6 +36,7 @@ fn compile() {
     };
 
     fn compile_error() {
+        #[allow(deprecated)]
         let template = jsonpath::Compiled::compile("$[");
         assert!(template.is_err());
     }

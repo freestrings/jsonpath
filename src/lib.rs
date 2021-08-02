@@ -130,8 +130,11 @@ extern crate serde_json;
 
 use serde_json::Value;
 
+#[allow(deprecated)]
 use parser::Node;
+#[allow(deprecated)]
 pub use parser::Parser;
+#[allow(deprecated)]
 pub use select::{Selector, SelectorMut};
 
 #[deprecated(
@@ -195,9 +198,11 @@ since = "0.2.5",
 note = "Please use the PathCompiled::compile function instead. It will be removed since 0.4.1"
 )]
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
+    #[allow(deprecated)]
     let node = parser::Parser::compile(path);
     move |json| match &node {
         Ok(node) => {
+            #[allow(deprecated)]
             let mut selector = Selector::default();
             selector.compiled_path(node).value(json).select()
         }
@@ -548,19 +553,21 @@ pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, J
 #[derive(Clone, Debug)]
 #[deprecated(
 since = "0.4.0",
-note = "lifetime has been added. Please use PathCompiled."
+note = "Please use PathCompiled."
 )]
 pub struct Compiled {
+    #[allow(deprecated)]
     node: Node,
 }
 
+#[allow(deprecated)]
 impl Compiled {
     /// Compile a path expression and return a compiled instance.
     ///
     /// If parsing the path fails, it will return an error.
-    pub fn compile(path: &str) -> Result<Compiled, String> {
+    pub fn compile(path: &str) -> Result<Self, String> {
         let node = parser::Parser::compile(path)?;
-        Ok(Compiled {
+        Ok(Self {
             node
         })
     }

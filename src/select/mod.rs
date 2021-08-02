@@ -330,15 +330,19 @@ impl<'a> FilterTerms<'a> {
 #[deprecated(since = "0.4.0", note = "Please use `JsonSelector`")]
 #[derive(Debug, Default)]
 pub struct Selector<'a, 'b> {
+    #[allow(deprecated)]
     node: Option<Node>,
+    #[allow(deprecated)]
     node_ref: Option<&'b Node>,
     value: Option<&'a Value>,
     tokens: Vec<ParseToken>,
     current: Option<Vec<&'a Value>>,
+    #[allow(deprecated)]
     selectors: Vec<Selector<'a, 'b>>,
     selector_filter: FilterTerms<'a>,
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> Selector<'a, 'b> {
     pub fn new() -> Self {
         Self::default()
@@ -466,6 +470,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> Selector<'a, 'b> {
     fn visit_absolute(&mut self) {
         if self.current.is_some() {
@@ -743,6 +748,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     fn visit_token(&mut self, token: &ParseToken) {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
@@ -780,6 +786,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
 #[deprecated(since = "0.4.0", note = "Please use `JsonSelectorMut`")]
 #[derive(Default)]
 pub struct SelectorMut {
+    #[allow(deprecated)]
     path: Option<Node>,
     value: Option<Value>,
 }
@@ -839,6 +846,7 @@ fn replace_value<F: FnMut(Value) -> Option<Value>>(
     }
 }
 
+#[allow(deprecated)]
 impl SelectorMut {
     pub fn new() -> Self {
         Self::default()
