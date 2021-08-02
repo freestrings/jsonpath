@@ -6,11 +6,11 @@ extern crate serde_json;
 extern crate test;
 
 use std::io::Read;
+use std::rc::Rc;
 
+use jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
 use serde::Deserialize;
 use serde_json::Value;
-
-use jsonpath::{SelectorMut, Selector};
 
 use self::test::Bencher;
 
@@ -109,8 +109,8 @@ fn bench_select_as(b: &mut Bencher) {
 #[bench]
 fn bench_delete(b: &mut Bencher) {
     let json = get_json();
-    let mut selector = SelectorMut::default();
-    let _ = selector.str_path(get_path());
+    let parser = PathParser::compile(get_path()).unwrap();
+    let mut selector = JsonSelectorMut::new(parser);
 
     b.iter(move || {
         for _ in 1..100 {
@@ -123,15 +123,17 @@ fn bench_delete(b: &mut Bencher) {
 fn bench_select_to_compare_with_delete(b: &mut Bencher) {
     let json = &get_json();
 
-    let mut selector = Selector::default();
-    let _ = selector.str_path(get_path());
+    let parser = Rc::new(Box::new(PathParser::compile(get_path()).unwrap()));
 
     b.iter(move || {
         for _ in 1..100 {
             let json = json.clone();
-            let mut s = Selector::default();
-            let _ = s.compiled_path(selector.node_ref().unwrap()).value(&json);
-            let _ = s.select();
+            let mut s = JsonSelector::new_ref(Rc::clone(&parser));
+            let _ = s.value(&json);
+            let r = s.select();
+            if r.is_err() {
+                panic!()
+            }
         }
     });
 }
