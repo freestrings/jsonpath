@@ -326,57 +326,70 @@ impl<'a> Tokenizer<'a> {
 
 pub struct TokenReader<'a> {
     origin_input: &'a str,
-    err: TokenError,
-    err_pos: usize,
-    tokens: Vec<(usize, Token<'a>)>,
+    tokenizer: Tokenizer<'a>,
+    last_token: Option<Token<'a>>,
     curr_pos: Option<usize>,
+    err: Option<TokenError>,
+    err_pos: usize,
 }
 
 impl<'a> TokenReader<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut tokenizer = Tokenizer::new(input);
-        let mut tokens = vec![];
-        loop {
-            match tokenizer.next_token() {
-                Ok(t) => {
-                    tokens.insert(0, (tokenizer.current_pos(), t));
-                }
-                Err(e) => {
-                    return TokenReader {
-                        origin_input: input,
-                        err: e,
-                        err_pos: tokenizer.current_pos(),
-                        tokens,
-                        curr_pos: None,
-                    };
-                }
-            }
-        }
+        let next = tokenizer.next_token();
+        let curr_pos = tokenizer.current_pos();
+        match next{
+            Ok(t) => TokenReader {
+                origin_input: input,
+                tokenizer: tokenizer,
+                last_token: Some(t),
+                curr_pos: Some(curr_pos),
+                err: None,
+                err_pos: 0,
+            },
+            Err(r) => TokenReader {
+                origin_input: input,
+                tokenizer: tokenizer,
+                last_token: None,
+                curr_pos: None,
+                err: Some(r),
+                err_pos: curr_pos,
+            },
+        } 
     }
 
     pub fn peek_token(&self) -> Result<&Token, TokenError> {
-        match self.tokens.last() {
-            Some((_, t)) => {
+        match &self.last_token {
+            Some(t) => {
                 trace!("%{:?}", t);
                 Ok(t)
             }
             _ => {
                 trace!("%{:?}", self.err);
-                Err(self.err.clone())
+                Err(self.err.clone().unwrap())
             }
         }
     }
 
     pub fn next_token(&mut self) -> Result<Token<'a>, TokenError> {
-        match self.tokens.pop() {
-            Some((pos, t)) => {
-                self.curr_pos = Some(pos);
-                trace!("@{:?}", t);
+        match self.last_token.take(){
+            Some(t) => {
+                self.last_token = match self.tokenizer.next_token(){
+                    Ok(n_t) => {
+                        self.curr_pos = Some(self.tokenizer.current_pos());
+                        Some(n_t)
+                    }
+                    Err(r) => {
+                        self.curr_pos = None;
+                        self.err = Some(r);
+                        self.err_pos = self.tokenizer.current_pos();
+                        None
+                    }
+                };
                 Ok(t)
             }
             _ => {
-                trace!("@{:?}", self.err);
-                Err(self.err.clone())
+                Err(self.err.clone().unwrap())
             }
         }
     }
