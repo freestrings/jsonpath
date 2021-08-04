@@ -193,7 +193,7 @@ impl Cmp for CmpOr {
         let mut ret = [v1, v2].concat();
 
         for x in (0..ret.len()).rev() {
-            for y in (x+1..ret.len()).rev() {
+            for y in (x + 1..ret.len()).rev() {
                 if ret[x] == ret[y] {
                     ret.remove(y);
                 }
@@ -203,7 +203,6 @@ impl Cmp for CmpOr {
         ret
     }
 }
-
 
 #[cfg(test)]
 mod cmp_inner_tests {

@@ -130,10 +130,10 @@ extern crate serde_json;
 
 use serde_json::Value;
 
+use parser::Node;
 pub use parser::Parser; // TODO private
 pub use select::JsonPathError;
 pub use select::{Selector, SelectorMut};
-use parser::Node;
 
 #[doc(hidden)]
 mod ffi;
@@ -525,9 +525,7 @@ impl Compiled {
     /// If parsing the path fails, it will return an error.
     pub fn compile(path: &str) -> Result<Compiled, String> {
         let node = parser::Parser::compile(path)?;
-        Ok(Compiled{
-            node
-        })
+        Ok(Compiled { node })
     }
 
     /// Execute the select operation on the pre-compiled path.

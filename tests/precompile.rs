@@ -2,7 +2,7 @@
 extern crate serde_json;
 extern crate jsonpath_lib;
 
-use common::{setup};
+use common::setup;
 use jsonpath_lib::Compiled;
 use serde_json::Value;
 
@@ -27,8 +27,14 @@ fn precompile_test() {
     // re-use
 
     //let result = compiled(&json).unwrap();
-    assert_eq!(compiled.select(&json).unwrap().clone(), vec![&Value::String("baz".into())]);
-    assert_eq!(compiled.select(&json).unwrap().clone(), vec![&Value::String("baz".into())]);
+    assert_eq!(
+        compiled.select(&json).unwrap().clone(),
+        vec![&Value::String("baz".into())]
+    );
+    assert_eq!(
+        compiled.select(&json).unwrap().clone(),
+        vec![&Value::String("baz".into())]
+    );
 }
 
 #[test]

@@ -141,12 +141,5 @@ fn selector_remove() {
         .select()
         .unwrap();
 
-    assert_eq!(
-        result,
-        vec![
-            &json!(8.95),
-            &json!(12.99),
-            &json!(8.99)
-        ]
-    );
+    assert_eq!(result, vec![&json!(8.95), &json!(12.99), &json!(8.99)]);
 }

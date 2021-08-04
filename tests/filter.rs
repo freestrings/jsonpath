@@ -133,11 +133,11 @@ fn filter_parent_paths() {
     select_and_then_compare(
         "$[?(@.key.subKey == 'subKey2')]",
         json!([
-            {"key": {"seq": 1, "subKey": "subKey1"}},
-            {"key": {"seq": 2, "subKey": "subKey2"}},
-            {"key": 42},
-            {"some": "value"}
-         ]),
+           {"key": {"seq": 1, "subKey": "subKey1"}},
+           {"key": {"seq": 2, "subKey": "subKey2"}},
+           {"key": 42},
+           {"some": "value"}
+        ]),
         json!([{"key": {"seq": 2, "subKey": "subKey2"}}]),
     );
 }
@@ -149,15 +149,15 @@ fn bugs33_exist_in_all() {
     select_and_then_compare(
         "$..[?(@.first.second)]",
         json!({
-                "foo": {
-                    "first": { "second": "value" }
-                },
-                "foo2": {
-                    "first": {}
-                },
-                "foo3": {
-                }
-            }),
+            "foo": {
+                "first": { "second": "value" }
+            },
+            "foo2": {
+                "first": {}
+            },
+            "foo3": {
+            }
+        }),
         json!([
             {
                 "first": {
@@ -175,15 +175,15 @@ fn bugs33_exist_left_in_all_with_and_condition() {
     select_and_then_compare(
         "$..[?(@.first && @.first.second)]",
         json!({
-                "foo": {
-                    "first": { "second": "value" }
-                },
-                "foo2": {
-                    "first": {}
-                },
-                "foo3": {
-                }
-            }),
+            "foo": {
+                "first": { "second": "value" }
+            },
+            "foo2": {
+                "first": {}
+            },
+            "foo3": {
+            }
+        }),
         json!([
             {
                 "first": {
@@ -232,49 +232,49 @@ fn bugs38_array_notation_in_filter() {
     select_and_then_compare(
         "$[?(@['key']==42)]",
         json!([
-            {"key": 0},
-            {"key": 42},
-            {"key": -1},
-            {"key": 41},
-            {"key": 43},
-            {"key": 42.0001},
-            {"key": 41.9999},
-            {"key": 100},
-            {"some": "value"}
-         ]),
+           {"key": 0},
+           {"key": 42},
+           {"key": -1},
+           {"key": 41},
+           {"key": 43},
+           {"key": 42.0001},
+           {"key": 41.9999},
+           {"key": 100},
+           {"some": "value"}
+        ]),
         json!([{"key": 42}]),
     );
 
     select_and_then_compare(
         "$[?(@['key'].subKey == 'subKey2')]",
         json!([
-            {"key": {"seq": 1, "subKey": "subKey1"}},
-            {"key": {"seq": 2, "subKey": "subKey2"}},
-            {"key": 42},
-            {"some": "value"}
-         ]),
+           {"key": {"seq": 1, "subKey": "subKey1"}},
+           {"key": {"seq": 2, "subKey": "subKey2"}},
+           {"key": 42},
+           {"some": "value"}
+        ]),
         json!([{"key": {"seq": 2, "subKey": "subKey2"}}]),
     );
 
     select_and_then_compare(
         "$[?(@['key']['subKey'] == 'subKey2')]",
         json!([
-            {"key": {"seq": 1, "subKey": "subKey1"}},
-            {"key": {"seq": 2, "subKey": "subKey2"}},
-            {"key": 42},
-            {"some": "value"}
-         ]),
+           {"key": {"seq": 1, "subKey": "subKey1"}},
+           {"key": {"seq": 2, "subKey": "subKey2"}},
+           {"key": 42},
+           {"some": "value"}
+        ]),
         json!([{"key": {"seq": 2, "subKey": "subKey2"}}]),
     );
 
     select_and_then_compare(
         "$..key[?(@['subKey'] == 'subKey2')]",
         json!([
-            {"key": {"seq": 1, "subKey": "subKey1"}},
-            {"key": {"seq": 2, "subKey": "subKey2"}},
-            {"key": 42},
-            {"some": "value"}
-         ]),
+           {"key": {"seq": 1, "subKey": "subKey1"}},
+           {"key": {"seq": 2, "subKey": "subKey2"}},
+           {"key": 42},
+           {"some": "value"}
+        ]),
         json!([{"seq": 2, "subKey": "subKey2"}]),
     );
 }
