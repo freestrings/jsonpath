@@ -1,11 +1,11 @@
-use super::path_parser::ParseNode;
-use super::str_reader::StrRange;
-use super::tokens::{FilterToken, ParseToken};
+use paths::{ParserTokenHandler, StrRange};
+use paths::path_parser::ParserNode;
+use paths::tokens::{FilterToken, ParseToken};
 
-pub trait ParseNodeVisitor<'a> {
-    fn visit<F, F1>(&self, parse_node: &ParseNode, token_handler: &mut F, parse_value_reader: &F1)
+pub trait ParserNodeVisitor<'a> {
+    fn visit<F, F1>(&self, parse_node: &ParserNode, token_handler: &mut F, parse_value_reader: &F1)
         where
-            F: ParseTokenHandler<'a>,
+            F: ParserTokenHandler<'a>,
             F1: Fn(&StrRange) -> &'a str
     {
         trace!("visit {:?}", parse_node);
@@ -70,10 +70,4 @@ pub trait ParseNodeVisitor<'a> {
             _ => {}
         }
     }
-}
-
-pub trait ParseTokenHandler<'a> {
-    fn handle<F>(&mut self, token: &ParseToken, parse_value_reader: &F)
-        where
-            F: Fn(&StrRange) -> &'a str;
 }

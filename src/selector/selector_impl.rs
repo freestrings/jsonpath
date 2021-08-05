@@ -5,7 +5,7 @@ use serde_json::{Number, Value};
 use serde_json::map::Entry;
 
 use JsonPathError;
-use paths::{ParseTokenHandler, PathParser, StrRange, tokens::*};
+use paths::{ParserTokenHandler, PathParser, StrRange, tokens::*};
 use super::utils;
 
 use super::terms::*;
@@ -229,7 +229,7 @@ impl<'a> JsonSelector<'a> {
                 }
                 ExprTerm::Json(rel, _, v) => {
                     if v.is_empty() {
-                        self.current = Some(vec![]);
+                        self.current = Some(Vec::new());
                     } else if let Some(vec) = rel {
                         self.current = Some(vec);
                     } else {
@@ -331,7 +331,7 @@ impl<'a> JsonSelector<'a> {
             _ => panic!("empty term right"),
         };
 
-        let left = match self.selector_filter.pop_term() {
+        let mut left = match self.selector_filter.pop_term() {
             Some(Some(left)) => left,
             Some(None) => ExprTerm::Json(
                 None,
@@ -344,21 +344,18 @@ impl<'a> JsonSelector<'a> {
             _ => panic!("empty term left"),
         };
 
-        let mut ret = None;
-        match ft {
-            FilterToken::Equal => left.eq(&right, &mut ret),
-            FilterToken::NotEqual => left.ne(&right, &mut ret),
-            FilterToken::Greater => left.gt(&right, &mut ret),
-            FilterToken::GreaterOrEqual => left.ge(&right, &mut ret),
-            FilterToken::Little => left.lt(&right, &mut ret),
-            FilterToken::LittleOrEqual => left.le(&right, &mut ret),
-            FilterToken::And => left.and(&right, &mut ret),
-            FilterToken::Or => left.or(&right, &mut ret),
+        let expr = match ft {
+            FilterToken::Equal => left.eq_(right),
+            FilterToken::NotEqual => left.ne_(right),
+            FilterToken::Greater => left.gt(right),
+            FilterToken::GreaterOrEqual => left.ge(right),
+            FilterToken::Little => left.lt(right),
+            FilterToken::LittleOrEqual => left.le(right),
+            FilterToken::And => left.and(right),
+            FilterToken::Or => left.or(right),
         };
 
-        if let Some(e) = ret {
-            self.selector_filter.push_term(Some(e));
-        }
+        self.selector_filter.push_term(Some(expr));
     }
 
     fn visit_range(&mut self, from: &Option<isize>, to: &Option<isize>, step: &Option<usize>) {
@@ -426,7 +423,7 @@ impl<'a> JsonSelector<'a> {
     }
 }
 
-impl<'a> ParseTokenHandler<'a> for JsonSelector<'a> {
+impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
     fn handle<F>(&mut self, token: &ParseToken, parse_value_reader: &F)
         where
             F: Fn(&StrRange) -> &'a str

@@ -18,16 +18,37 @@ pub fn abs_index(n: isize, len: usize) -> usize {
     }
 }
 
-pub fn to_path_str(key: &str) -> (&str, Option<String>) {
-    let key = if key.starts_with('\'') || key.starts_with('"') {
-        let s = &key[1..key.len() - 1];
-        if key.contains('\\') {
-            (s, Some(s.chars().filter(|ch| ch != &'\\').collect()))
+pub struct PathKey<'a> {
+    key: &'a str,
+    special_key: Option<String>
+}
+
+impl<'a: 'b, 'b> PathKey<'a> {
+    pub fn get_key(&'a self) -> &'b str {
+        if let Some(skey) = self.special_key.as_ref() {
+            skey
         } else {
-            (s, None)
+            self.key
         }
-    } else {
-        (key, None)
+    }
+
+    pub fn get_origin_key(&self) -> &'a str {
+        self.key
+    }
+}
+
+pub fn to_path_str<'a>(key: &'a str) -> PathKey<'a> {
+    let mut path_key = PathKey {
+        key,
+        special_key: None
     };
-    key
+
+    if key.starts_with('\'') || key.starts_with('"') {
+        let s = &key[1..key.len() - 1];
+        path_key.key = s;
+        if key.contains('\\') {
+            path_key.special_key = Some(s.chars().filter(|ch| ch != &'\\').collect());
+        }
+    }
+    path_key
 }

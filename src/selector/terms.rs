@@ -15,69 +15,59 @@ pub enum ExprTerm<'a> {
 }
 
 impl<'a> ExprTerm<'a> {
-    fn cmp_string<C1, C2>(&self, s1: &str, other: &ExprTerm<'a>, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+    fn cmp_string<C>(s1: &str, other: &mut ExprTerm<'a>, cmp_fn: &C) -> ExprTerm<'a>
         where
-            C1: Cmp,
-            C2: Cmp
+            C: Cmp,
     {
         match other {
             ExprTerm::String(s2) => {
-                let (s1, opt1) = utils::to_path_str(s1);
-                let (s2, opt2) = utils::to_path_str(s2);
-                let k1 = if let Some(opt) = opt1.as_ref() { opt } else { s1 };
-                let k2 = if let Some(opt) = opt2.as_ref() { opt } else { s2 };
-                ExprTerm::Bool(cmp_fn.cmp_string(k1, k2))
+                let p1 = utils::to_path_str(s1);
+                let p2 = utils::to_path_str(s2);
+                ExprTerm::Bool(cmp_fn.cmp_string(p1.get_key(), p2.get_key()))
             }
-            ExprTerm::Json(_, _, _) => other.cmp(self, rev_cmp_fn, cmp_fn),
+            ExprTerm::Json(_, _, _) => unreachable!(),
             _ => ExprTerm::Bool(cmp_fn.default()),
         }
     }
 
-    fn cmp_number<C1, C2>(&self, n1: &Number, other: &ExprTerm<'a>, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+    fn cmp_number<C>(n1: &Number, other: &mut ExprTerm<'a>, cmp_fn: &C) -> ExprTerm<'a>
         where
-            C1: Cmp,
-            C2: Cmp
+            C: Cmp,
     {
         match other {
-            ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2))),
-            ExprTerm::Json(_, _, _) => other.cmp(self, rev_cmp_fn, cmp_fn),
+            ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(&n2))),
+            ExprTerm::Json(_, _, _) => unreachable!(),
             _ => ExprTerm::Bool(cmp_fn.default()),
         }
     }
 
-    fn cmp_bool<C1, C2>(&self, b1: &bool, other: &ExprTerm<'a>, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+    fn cmp_bool<C>(b1: &bool, other: &mut ExprTerm<'a>, cmp_fn: &C) -> ExprTerm<'a>
         where
-            C1: Cmp,
-            C2: Cmp
+            C: Cmp,
     {
         match other {
             ExprTerm::Bool(b2) => ExprTerm::Bool(cmp_fn.cmp_bool(*b1, *b2)),
-            ExprTerm::Json(_, _, _) => other.cmp(self, rev_cmp_fn, cmp_fn),
+            ExprTerm::Json(_, _, _) => unreachable!(),
             _ => ExprTerm::Bool(cmp_fn.default()),
         }
     }
 
-    fn cmp_json_string<C1>(&self, s2: &str, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+    fn cmp_json_string<C>(s2: &str,
+                          fk1: &Option<FilterKey>,
+                          vec1: &Vec<&'a Value>,
+                          cmp_fn: &C) -> Vec<&'a Value>
         where
-            C1: Cmp
+            C: Cmp
     {
-        let (s2, opt2) = utils::to_path_str(s2);
+        let path_str = utils::to_path_str(s2);
         vec1.iter().filter(|v1| match v1 {
             Value::String(s1) => {
-                if let Some(opt) = opt2.as_ref() {
-                    cmp_fn.cmp_string(s1, opt)
-                } else {
-                    cmp_fn.cmp_string(s1, s2)
-                }
+                cmp_fn.cmp_string(s1, path_str.get_key())
             }
             Value::Object(map1) => {
                 if let Some(FilterKey::String(k)) = fk1 {
                     if let Some(Value::String(s1)) = map1.get(*k) {
-                        return if let Some(opt) = opt2.as_ref() {
-                            cmp_fn.cmp_string(s1, opt)
-                        } else {
-                            cmp_fn.cmp_string(s1, s2)
-                        };
+                        return cmp_fn.cmp_string(s1, path_str.get_key());
                     }
                 }
                 cmp_fn.default()
@@ -86,9 +76,12 @@ impl<'a> ExprTerm<'a> {
         }).copied().collect()
     }
 
-    fn cmp_json_number<C1>(&self, n2: &Number, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+    fn cmp_json_number<C>(n2: &Number,
+                          fk1: &Option<FilterKey>,
+                          vec1: &Vec<&'a Value>,
+                          cmp_fn: &C) -> Vec<&'a Value>
         where
-            C1: Cmp
+            C: Cmp
     {
         vec1.iter().filter(|v1| match v1 {
             Value::Number(n1) => cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2)),
@@ -104,7 +97,10 @@ impl<'a> ExprTerm<'a> {
         }).copied().collect()
     }
 
-    fn cmp_json_bool<C1>(&self, b2: &bool, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+    fn cmp_json_bool<C1>(b2: &bool,
+                         fk1: &Option<FilterKey>,
+                         vec1: &Vec<&'a Value>,
+                         cmp_fn: &C1) -> Vec<&'a Value>
         where
             C1: Cmp
     {
@@ -122,12 +118,20 @@ impl<'a> ExprTerm<'a> {
         }).copied().collect()
     }
 
-    fn cmp_json_json<C1>(&self, rel: &Option<Vec<&'a Value>>, parent: &Option<Vec<&'a Value>>, vec1: &Vec<&'a Value>, vec2: &Vec<&'a Value>, cmp_fn: &C1) -> Vec<&'a Value>
+    fn cmp_json_json<C1>(rel: &Option<Vec<&'a Value>>,
+                         parent: &Option<Vec<&'a Value>>,
+                         vec1: &Vec<&'a Value>,
+                         vec2: &Vec<&'a Value>,
+                         cmp_fn: &C1) -> Vec<&'a Value>
         where
             C1: Cmp
     {
         if let Some(vec1) = rel {
-            cmp_fn.cmp_json(vec1, vec2)
+            if let Some(vec2) = parent {
+                cmp_fn.cmp_json(vec1, vec2)
+            } else {
+                cmp_fn.cmp_json(vec1, vec2)
+            }
         } else if let Some(vec2) = parent {
             cmp_fn.cmp_json(vec1, vec2)
         } else {
@@ -135,139 +139,148 @@ impl<'a> ExprTerm<'a> {
         }
     }
 
-    fn cmp_json<C1>(&self, rel: &Option<Vec<&'a Value>>, fk1: &Option<FilterKey>, vec1: &Vec<&'a Value>, other: &ExprTerm<'a>, cmp_fn: &C1) -> ExprTerm<'a>
+    fn cmp_json<C1>(rel: Option<Vec<&'a Value>>,
+                    fk1: Option<FilterKey<'a>>,
+                    vec1: &mut Vec<&'a Value>,
+                    other: &mut ExprTerm<'a>,
+                    cmp_fn: &C1) -> ExprTerm<'a>
         where
             C1: Cmp
     {
         let ret: Vec<&Value> = match other {
-            ExprTerm::String(s2) => self.cmp_json_string(s2, fk1, vec1, cmp_fn),
-            ExprTerm::Number(n2) => self.cmp_json_number(n2, fk1, vec1, cmp_fn),
-            ExprTerm::Bool(b2) => self.cmp_json_bool(b2, fk1, vec1, cmp_fn),
-            ExprTerm::Json(parent, _, vec2) => self.cmp_json_json(rel, parent, vec1, vec2, cmp_fn)
+            ExprTerm::String(s2) => Self::cmp_json_string(s2, &fk1, vec1, cmp_fn),
+            ExprTerm::Number(n2) => Self::cmp_json_number(&n2, &fk1, vec1, cmp_fn),
+            ExprTerm::Bool(b2) => Self::cmp_json_bool(&b2, &fk1, vec1, cmp_fn),
+            ExprTerm::Json(parent, _, vec2) => {
+                Self::cmp_json_json(&rel, &parent, vec1, &vec2, cmp_fn)
+            }
         };
 
         if ret.is_empty() {
             return ExprTerm::Bool(cmp_fn.default());
         }
 
-        if let Some(rel) = rel {
+        if rel.is_none() {
+            return ExprTerm::Json(None, None, ret);
+        }
+
+        if rel.is_some() {
             if let ExprTerm::Json(_, _, _) = &other {
-                return ExprTerm::Json(Some(rel.to_vec()), None, ret);
-            } else {
-                let mut object_exist = false;
-                for v in rel {
-                    if v.is_object() {
-                        object_exist = true;
-                        break;
-                    }
-                }
-
-                if !object_exist {
-                    return ExprTerm::Json(Some(Vec::new()), None, ret);
-                }
-
-                let ret_set: HashSet<*const Value> = ret.iter()
-                    .fold(HashSet::new(), |mut acc, v| {
-                        let ptr = *v as *const Value;
-                        acc.insert(ptr);
-                        acc
-                    });
-
-                let mut tmp = Vec::new();
-                for rv in rel {
-                    if let Value::Object(map) = rv {
-                        for map_value in map.values() {
-                            let ptr = map_value as *const Value;
-                            if ret_set.contains(&ptr) {
-                                tmp.push(*rv);
-                            }
-                        }
-                    }
-                }
-
-                return ExprTerm::Json(Some(tmp), None, ret);
+                return ExprTerm::Json(Some(rel.unwrap()), None, ret);
             }
         }
 
-        ExprTerm::Json(None, None, ret)
+        let rel = rel.unwrap();
+        let mut object_exist = false;
+        for v in &rel {
+            if v.is_object() {
+                object_exist = true;
+                break;
+            }
+        }
+
+        if !object_exist {
+            return ExprTerm::Json(Some(Vec::new()), None, ret);
+        }
+
+        let ret_set: HashSet<*const Value> = ret.iter()
+            .fold(HashSet::new(), |mut acc, v| {
+                let ptr = *v as *const Value;
+                acc.insert(ptr);
+                acc
+            });
+
+        let mut tmp = Vec::new();
+        for rv in rel {
+            if let Value::Object(map) = rv {
+                for map_value in map.values() {
+                    let ptr = map_value as *const Value;
+                    if ret_set.contains(&ptr) {
+                        tmp.push(rv);
+                    }
+                }
+            }
+        }
+
+        ExprTerm::Json(Some(tmp), None, ret)
     }
 
-    fn cmp<C1, C2>(&self, other: &Self, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
+    fn cmp<C1, C2>(&mut self, other: &mut Self, cmp_fn: &C1, rev_cmp_fn: &C2) -> ExprTerm<'a>
         where
             C1: Cmp,
             C2: Cmp
     {
-        match &self {
-            ExprTerm::String(s1) => self.cmp_string(s1, other, cmp_fn, rev_cmp_fn),
-            ExprTerm::Number(n1) => self.cmp_number(n1, other, cmp_fn, rev_cmp_fn),
-            ExprTerm::Bool(b1) => self.cmp_bool(b1, other, cmp_fn, rev_cmp_fn),
+        if let ExprTerm::Json(_, _, _) = other {
+            if let ExprTerm::Json(_, _, _) = &self {
+                //
+            } else {
+                return other.cmp(self, rev_cmp_fn, cmp_fn);
+            }
+        }
+
+        match self {
+            ExprTerm::String(s1) => Self::cmp_string(s1, other, cmp_fn),
+            ExprTerm::Number(n1) => Self::cmp_number(n1, other, cmp_fn),
+            ExprTerm::Bool(b1) => Self::cmp_bool(b1, other, cmp_fn),
             ExprTerm::Json(rel, fk1, vec1) =>
-                self.cmp_json(rel, fk1, vec1, other, cmp_fn)
+                Self::cmp_json(rel.take(), fk1.take(), vec1, other, cmp_fn)
         }
     }
 
-    pub fn eq(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn eq_(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("eq - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpEq, &CmpEq);
-        debug!("eq = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpEq, &CmpEq);
+        debug!("eq = {:?}", expr);
+        expr
     }
 
-    pub fn ne(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn ne_(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("ne - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpNe, &CmpNe);
-        debug!("ne = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpNe, &CmpNe);
+        debug!("ne = {:?}", expr);
+        expr
     }
 
-    pub fn gt(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn gt(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("gt - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpGt, &CmpLt);
-        debug!("gt = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpGt, &CmpLt);
+        debug!("gt = {:?}", expr);
+        expr
     }
 
-    pub fn ge(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn ge(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("ge - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpGe, &CmpLe);
-        debug!("ge = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpGe, &CmpLe);
+        debug!("ge = {:?}", expr);
+        expr
     }
 
-    pub fn lt(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn lt(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("lt - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpLt, &CmpGt);
-        debug!("lt = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpLt, &CmpGt);
+        debug!("lt = {:?}", expr);
+        expr
     }
 
-    pub fn le(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn le(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("le - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpLe, &CmpGe);
-        debug!("le = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpLe, &CmpGe);
+        debug!("le = {:?}", expr);
+        expr
     }
 
-    pub fn and(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn and(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("and - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpAnd, &CmpAnd);
-        debug!("and = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpAnd, &CmpAnd);
+        debug!("and = {:?}", expr);
+        expr
     }
 
-    pub fn or(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn or(&mut self, mut other: Self) -> ExprTerm<'a> {
         debug!("or - {:?} : {:?}", &self, &other);
-        let _ = ret.take();
-        let tmp = self.cmp(other, &CmpOr, &CmpOr);
-        debug!("or = {:?}", tmp);
-        *ret = Some(tmp);
+        let expr = self.cmp(&mut other, &CmpOr, &CmpOr);
+        debug!("or = {:?}", expr);
+        expr
     }
 }
 
@@ -292,6 +305,11 @@ pub enum FilterKey<'a> {
     All,
 }
 
+struct FilterResult<'a> {
+    key: FilterKey<'a>,
+    collected: Vec<&'a Value>
+}
+
 #[derive(Debug, Default)]
 pub struct FilterTerms<'a>(pub Vec<Option<ExprTerm<'a>>>);
 
@@ -314,55 +332,60 @@ impl<'a> FilterTerms<'a> {
         self.0.pop()
     }
 
-    pub fn filter_json_term<F>(&mut self, e: ExprTerm<'a>, fun: F)
+    fn filter_json_term<F>(&mut self, e: ExprTerm<'a>, fun: F)
         where
-            F: Fn(Vec<&'a Value>, &mut Option<HashSet<usize>>) -> (FilterKey<'a>, Vec<&'a Value>),
+            F: Fn(&Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
     {
         debug!("filter_json_term: {:?}", e);
 
         if let ExprTerm::Json(rel, fk, vec) = e {
             let mut not_matched = Some(HashSet::new());
-            let (filter_key, collected) = if let Some(FilterKey::String(key)) = fk {
-                let tmp = vec.iter().map(|v| match v {
-                    Value::Object(map) if map.contains_key(key) => map.get(key).unwrap(),
-                    _ => v
-                }).collect();
-                fun(tmp, &mut not_matched)
+            let filter_result = if let Some(FilterKey::String(key)) = fk {
+                fun(&ValueWalker::next_with_str(&vec, key), &mut not_matched)
             } else {
-                fun(vec.to_vec(), &mut not_matched)
+                fun(&vec, &mut not_matched)
             };
 
             if rel.is_some() {
-                self.push_term(Some(ExprTerm::Json(rel, Some(filter_key), collected)));
+                self.push_term(Some(ExprTerm::Json(
+                    rel,
+                    Some(filter_result.key),
+                    filter_result.collected)));
             } else {
                 let not_matched = not_matched.unwrap();
                 let filtered = vec.iter().enumerate()
                     .filter(|(idx, _)| !not_matched.contains(idx))
                     .map(|(_, v)| *v).collect();
-                self.push_term(Some(ExprTerm::Json(Some(filtered), Some(filter_key), collected)));
+                self.push_term(Some(ExprTerm::Json(
+                    Some(filtered),
+                    Some(filter_result.key),
+                    filter_result.collected)));
             }
         } else {
             unreachable!("unexpected: ExprTerm: {:?}", e);
         }
     }
 
-    pub fn push_json_term<F>(&mut self, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
+    fn push_json_term<F>(&mut self, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
         where
-            F: Fn(Vec<&'a Value>, &mut Option<HashSet<usize>>) -> (FilterKey<'a>, Vec<&'a Value>),
+            F: Fn(&Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
     {
         debug!("push_json_term: {:?}", &current);
 
         if let Some(current) = &current {
-            let (filter_key, collected) = fun(current.to_vec(), &mut None);
-            self.push_term(Some(ExprTerm::Json(None, Some(filter_key), collected)));
+            let filter_result = fun(current, &mut None);
+            self.push_term(Some(ExprTerm::Json(
+                None,
+                Some(filter_result.key),
+                filter_result.collected)));
         }
 
         current
     }
 
-    pub fn filter<F>(&mut self, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
+    fn filter<F>(&mut self, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
         where
-            F: Fn(Vec<&'a Value>, &mut Option<HashSet<usize>>) -> (FilterKey<'a>, Vec<&'a Value>),
+            F: Fn(&Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
     {
         let peek = self.pop_term();
 
@@ -379,7 +402,10 @@ impl<'a> FilterTerms<'a> {
 
     pub fn filter_all_with_str(&mut self, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
         let current = self.filter(current, |vec, _| {
-            (FilterKey::All, ValueWalker::all_with_str(vec, key))
+            FilterResult {
+                key: FilterKey::All,
+                collected: ValueWalker::all_with_str(vec, key)
+            }
         });
 
         debug!("filter_all_with_str : {}, {:?}", key, self.0);
@@ -390,34 +416,27 @@ impl<'a> FilterTerms<'a> {
         let current = self.filter(current, |vec, not_matched| {
             let mut visited = HashSet::new();
             let mut acc = Vec::new();
-            let (key, opt) = utils::to_path_str(key);
-            let k = if let Some(opt) = opt.as_ref() { opt } else { key };
-            vec.iter().enumerate().for_each(|(idx, v)| {
-                match v {
-                    Value::Object(map) => {
-                        if map.contains_key(k) {
-                            let ptr = *v as *const Value;
-                            if !visited.contains(&ptr) {
-                                visited.insert(ptr);
-                                acc.push(*v)
-                            }
-                        } else if let Some(set) = not_matched {
-                            set.insert(idx);
-                        }
-                    }
-                    Value::Array(ay) => {
-                        if let Some(set) = not_matched { set.insert(idx); }
-                        for v in ay {
-                            ValueWalker::walk_dedup(v, &mut acc, k, &mut visited);
-                        }
-                    }
-                    _ => {
-                        if let Some(set) = not_matched { set.insert(idx); }
-                    }
-                }
-            });
 
-            (FilterKey::String(key), acc)
+            let ref path_key = utils::to_path_str(key);
+
+            ValueWalker::walk_dedup_all(vec,
+                                        path_key.get_key(),
+                                        &mut visited,
+                                        &mut |v| {
+                                            acc.push(v);
+                                        },
+                                        &mut |idx| {
+                                            if let Some(set) = not_matched {
+                                                set.insert(idx);
+                                            }
+                                        },
+                                        0
+            );
+
+            FilterResult {
+                key: FilterKey::String(path_key.get_origin_key()),
+                collected: acc
+            }
         });
 
         debug!("filter_next_with_str : {}, {:?}", key, self.0);
@@ -430,26 +449,7 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        let mut acc = Vec::new();
-        current.unwrap().iter().for_each(|v| {
-            match v {
-                Value::Object(map) => {
-                    for k in map.keys() {
-                        if let Some(Value::Array(vec)) = map.get(k) {
-                            if let Some(v) = vec.get(utils::abs_index(index as isize, vec.len())) {
-                                acc.push(v);
-                            }
-                        }
-                    }
-                }
-                Value::Array(vec) => {
-                    if let Some(v) = vec.get(utils::abs_index(index as isize, vec.len())) {
-                        acc.push(v);
-                    }
-                }
-                _ => {}
-            }
-        });
+        let acc = ValueWalker::next_with_num(&current.unwrap(), index);
 
         if acc.is_empty() {
             self.pop_term();
@@ -464,16 +464,7 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        let mut acc = Vec::new();
-        current.unwrap().iter().for_each(|v| {
-            match v {
-                Value::Object(map) => acc.extend(map.values()),
-                Value::Array(vec) => acc.extend(vec),
-                _ => {}
-            }
-        });
-
-        Some(acc)
+        Some(ValueWalker::next_all(&current.unwrap()))
     }
 
     pub fn collect_next_with_str(&mut self, current: Option<Vec<&'a Value>>, keys: &[&'a str]) -> Option<Vec<&'a Value>> {
@@ -485,8 +476,7 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        trace!("#1. {:?}", keys);
-        let acc = ValueWalker::all_with_strs(current.unwrap(), keys);
+        let acc = ValueWalker::all_with_strs(current.as_ref().unwrap(), keys);
 
         if acc.is_empty() {
             self.pop_term();
@@ -501,7 +491,7 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        Some(ValueWalker::all(current.unwrap()))
+        Some(ValueWalker::all(current.as_ref().unwrap()))
     }
 
     pub fn collect_all_with_str(&mut self, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
@@ -510,13 +500,13 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        let ret = ValueWalker::all_with_str(current.unwrap(), key);
+        let ret = ValueWalker::all_with_str(current.as_ref().unwrap(), key);
         Some(ret)
     }
 
     pub fn collect_all_with_num(&mut self, mut current: Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
         if let Some(current) = current.take() {
-            let ret = ValueWalker::all_with_num(current, index);
+            let ret = ValueWalker::all_with_num(&current, index);
             if !ret.is_empty() {
                 return Some(ret);
             }

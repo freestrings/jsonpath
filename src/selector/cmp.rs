@@ -60,17 +60,18 @@ impl Cmp for CmpNe {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        let mut ret = vec![];
-
-        for a in v1 {
-            for b in v2 {
-                if a != b {
-                    ret.push(*a);
-                }
+        let mut ret = v1.to_vec();
+        for v in v2 {
+            if let Some(i) = ret.iter().position(|r| r == v) {
+                ret.remove(i);
             }
         }
-
+        println!("{:?}", ret);
         ret
+    }
+
+    fn default(&self) -> bool {
+        true
     }
 }
 
@@ -226,7 +227,7 @@ mod cmp_inner_tests {
     #[test]
     fn cmp_ne() {
         let cmp_fn = CmpNe;
-        assert!(!cmp_fn.default());
+        assert!(cmp_fn.default());
         assert!(cmp_fn.cmp_bool(true, false));
         assert!(!cmp_fn.cmp_bool(true, true));
         assert!(!cmp_fn.cmp_f64(0.1, 0.1));
@@ -328,7 +329,7 @@ mod cmp_inner_tests {
         let empty: Vec<&Value> = Vec::new();
 
         assert_eq!(CmpEq.cmp_json(&left, &right), left.to_vec());
-        assert_eq!(CmpNe.cmp_json(&left, &right), left.to_vec());
+        assert_eq!(CmpNe.cmp_json(&left, &right), empty);
         assert_eq!(CmpGt.cmp_json(&left, &right), empty);
         assert_eq!(CmpGe.cmp_json(&left, &right), empty);
         assert_eq!(CmpLt.cmp_json(&left, &right), empty);
