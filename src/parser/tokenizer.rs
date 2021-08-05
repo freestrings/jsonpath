@@ -270,30 +270,12 @@ impl<'a> Tokenizer<'a> {
 
     pub fn next_token(&mut self) -> Result<Token<'a>, TokenError> {
         let (pos, ch) = self.input.peek_char().map_err(to_token_error)?;
-
-        match ch {
-            CH_DOT |
-            CH_ASTERISK |
-            CH_LARRAY |
-            CH_RARRAY |
-            CH_LPAREN |
-            CH_RPAREN |
-            CH_AT |
-            CH_QUESTION |
-            CH_COMMA |
-            CH_SEMICOLON |
-            CH_SINGLE_QUOTE |
-            CH_DOUBLE_QUOTE |
-            CH_EQUAL |
-            CH_GREATER |
-            CH_LITTLE |
-            CH_AMPERSAND |
-            CH_PIPE |
-            CH_EXCLAMATION |
-            ' ' => {self.input.next_char().unwrap();},
-            _ => {},
+if let CH_DOT | CH_ASTERISK | CH_LARRAY | CH_RARRAY | CH_LPAREN | CH_RPAREN | CH_AT
+        | CH_QUESTION | CH_COMMA | CH_SEMICOLON | CH_SINGLE_QUOTE | CH_DOUBLE_QUOTE
+        | CH_EQUAL | CH_GREATER | CH_LITTLE | CH_AMPERSAND | CH_PIPE | CH_EXCLAMATION | ' ' = ch
+        {
+            self.input.next_char().unwrap();
         }
-
         match ch {
             CH_DOLLA => self.dolla(pos, ch),
             CH_DOT => Ok(Token::Dot(pos)),
