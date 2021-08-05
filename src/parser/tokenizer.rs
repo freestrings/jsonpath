@@ -35,7 +35,7 @@ fn to_token_error(read_err: ReaderError) -> TokenError {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     Absolute(usize),
     Dot(usize),
     At(usize),
@@ -47,7 +47,7 @@ pub enum Token {
     Split(usize),
     OpenParenthesis(usize),
     CloseParenthesis(usize),
-    Key(usize, String),
+    Key(usize, &'a str),
     DoubleQuoted(usize, String),
     SingleQuoted(usize, String),
     Equal(usize),
@@ -61,7 +61,7 @@ pub enum Token {
     Whitespace(usize, usize),
 }
 
-impl Token {
+impl<'a> Token<'a> {
     pub fn is_match_token_type(&self, other: Token) -> bool {
         match self {
             Token::Absolute(_) => matches!(other, Token::Absolute(_)),
@@ -103,7 +103,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn dolla(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn dolla(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let fun = |c: &char| match c {
             &CH_DOT
             | &CH_ASTERISK
@@ -124,8 +124,7 @@ impl<'a> Tokenizer<'a> {
             => false,
             _ => !c.is_whitespace(),
         };
-        let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
-        vec.insert(0, ch);
+        let (_, vec) = self.input.take_while(fun).map_err(to_token_error)?;
 
         if vec.len() == 1 {
             Ok(Token::Absolute(pos))
@@ -135,10 +134,12 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn quote(&mut self, ch: char) -> Result<String, TokenError> {
-        let (_, mut val) = self
+        let (_, val) = self
             .input
             .take_while(|c| *c != ch)
             .map_err(to_token_error)?;
+
+        let mut val = val.to_string();
 
         if let Some('\\') = val.chars().last() {
             self.input.next_char().map_err(to_token_error)?;
@@ -149,7 +150,7 @@ impl<'a> Tokenizer<'a> {
                 .map_err(to_token_error)?;
             self.input.next_char().map_err(to_token_error)?;
             val.push(ch);
-            val.push_str(val_remain.as_str());
+            val.push_str(val_remain);
         } else {
             self.input.next_char().map_err(to_token_error)?;
         }
@@ -157,17 +158,17 @@ impl<'a> Tokenizer<'a> {
         Ok(val)
     }
 
-    fn single_quote(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn single_quote(&mut self, pos: usize, ch: char) -> Result<Token<'a>, TokenError> {
         let val = self.quote(ch)?;
         Ok(Token::SingleQuoted(pos, val))
     }
 
-    fn double_quote(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn double_quote(&mut self, pos: usize, ch: char) -> Result<Token<'a>, TokenError> {
         let val = self.quote(ch)?;
         Ok(Token::DoubleQuoted(pos, val))
     }
 
-    fn equal(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn equal(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -178,7 +179,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn not_equal(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn not_equal(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -189,7 +190,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn little(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn little(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -200,7 +201,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn greater(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn greater(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -211,7 +212,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn and(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn and(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_AMPERSAND => {
@@ -222,7 +223,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn or(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn or(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_PIPE => {
@@ -233,7 +234,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn whitespace(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn whitespace(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let (_, vec) = self
             .input
             .take_while(|c| c.is_whitespace())
@@ -241,7 +242,7 @@ impl<'a> Tokenizer<'a> {
         Ok(Token::Whitespace(pos, vec.len()))
     }
 
-    fn other(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn other(&mut self, pos: usize, _: char) -> Result<Token<'a>, TokenError> {
         let fun = |c: &char| match c {
             &CH_DOLLA
             | &CH_DOT
@@ -263,13 +264,18 @@ impl<'a> Tokenizer<'a> {
             => false,
             _ => !c.is_whitespace(),
         };
-        let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
-        vec.insert(0, ch);
+        let (_, vec) = self.input.take_while(fun).map_err(to_token_error)?;
         Ok(Token::Key(pos, vec))
     }
 
-    pub fn next_token(&mut self) -> Result<Token, TokenError> {
-        let (pos, ch) = self.input.next_char().map_err(to_token_error)?;
+    pub fn next_token(&mut self) -> Result<Token<'a>, TokenError> {
+        let (pos, ch) = self.input.peek_char().map_err(to_token_error)?;
+if let CH_DOT | CH_ASTERISK | CH_LARRAY | CH_RARRAY | CH_LPAREN | CH_RPAREN | CH_AT
+        | CH_QUESTION | CH_COMMA | CH_SEMICOLON | CH_SINGLE_QUOTE | CH_DOUBLE_QUOTE
+        | CH_EQUAL | CH_GREATER | CH_LITTLE | CH_AMPERSAND | CH_PIPE | CH_EXCLAMATION | ' ' = ch
+        {
+            self.input.next_char().unwrap();
+        }
         match ch {
             CH_DOLLA => self.dolla(pos, ch),
             CH_DOT => Ok(Token::Dot(pos)),
@@ -302,57 +308,70 @@ impl<'a> Tokenizer<'a> {
 
 pub struct TokenReader<'a> {
     origin_input: &'a str,
-    err: TokenError,
-    err_pos: usize,
-    tokens: Vec<(usize, Token)>,
+    tokenizer: Tokenizer<'a>,
+    last_token: Option<Token<'a>>,
     curr_pos: Option<usize>,
+    err: Option<TokenError>,
+    err_pos: usize,
 }
 
 impl<'a> TokenReader<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut tokenizer = Tokenizer::new(input);
-        let mut tokens = vec![];
-        loop {
-            match tokenizer.next_token() {
-                Ok(t) => {
-                    tokens.insert(0, (tokenizer.current_pos(), t));
-                }
-                Err(e) => {
-                    return TokenReader {
-                        origin_input: input,
-                        err: e,
-                        err_pos: tokenizer.current_pos(),
-                        tokens,
-                        curr_pos: None,
-                    };
-                }
-            }
-        }
+        let next = tokenizer.next_token();
+        let curr_pos = tokenizer.current_pos();
+        match next{
+            Ok(t) => TokenReader {
+                origin_input: input,
+                tokenizer: tokenizer,
+                last_token: Some(t),
+                curr_pos: Some(curr_pos),
+                err: None,
+                err_pos: 0,
+            },
+            Err(r) => TokenReader {
+                origin_input: input,
+                tokenizer: tokenizer,
+                last_token: None,
+                curr_pos: None,
+                err: Some(r),
+                err_pos: curr_pos,
+            },
+        } 
     }
 
     pub fn peek_token(&self) -> Result<&Token, TokenError> {
-        match self.tokens.last() {
-            Some((_, t)) => {
+        match &self.last_token {
+            Some(t) => {
                 trace!("%{:?}", t);
                 Ok(t)
             }
             _ => {
                 trace!("%{:?}", self.err);
-                Err(self.err.clone())
+                Err(self.err.clone().unwrap())
             }
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Token, TokenError> {
-        match self.tokens.pop() {
-            Some((pos, t)) => {
-                self.curr_pos = Some(pos);
-                trace!("@{:?}", t);
+    pub fn next_token(&mut self) -> Result<Token<'a>, TokenError> {
+        match self.last_token.take(){
+            Some(t) => {
+                self.last_token = match self.tokenizer.next_token(){
+                    Ok(n_t) => {
+                        self.curr_pos = Some(self.tokenizer.current_pos());
+                        Some(n_t)
+                    }
+                    Err(r) => {
+                        self.curr_pos = None;
+                        self.err = Some(r);
+                        self.err_pos = self.tokenizer.current_pos();
+                        None
+                    }
+                };
                 Ok(t)
             }
             _ => {
-                trace!("@{:?}", self.err);
-                Err(self.err.clone())
+                Err(self.err.clone().unwrap())
             }
         }
     }

@@ -175,7 +175,7 @@ pub mod select;
     since = "0.2.5",
     note = "Please use the Compiled::compile function instead"
 )]
-pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
+pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> + '_ {
     let node = parser::Parser::compile(path);
     move |json| match &node {
         Ok(node) => {
@@ -221,7 +221,7 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 /// ]);
 /// ```
 #[allow(clippy::needless_lifetimes)]
-pub fn selector<'a>(json: &'a Value) -> impl FnMut(&str) -> Result<Vec<&'a Value>, JsonPathError> {
+pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&'a Value>, JsonPathError> {
     let mut selector = Selector::default();
     let _ = selector.value(json);
     move |path: &str| selector.str_path(path)?.reset_value().select()
@@ -273,9 +273,9 @@ pub fn selector<'a>(json: &'a Value) -> impl FnMut(&str) -> Result<Vec<&'a Value
 ///
 /// assert_eq!(json, ret);
 /// ```
-pub fn selector_as<T: serde::de::DeserializeOwned>(
-    json: &Value,
-) -> impl FnMut(&str) -> Result<Vec<T>, JsonPathError> + '_ {
+pub fn selector_as<'a, T: serde::de::DeserializeOwned>(
+    json: &'a Value,
+) -> impl FnMut(&'a str) -> Result<Vec<T>, JsonPathError> + '_ {
     let mut selector = Selector::default();
     let _ = selector.value(json);
     move |path: &str| {
@@ -538,11 +538,11 @@ where
 /// ]);
 /// ```
 #[derive(Clone, Debug)]
-pub struct Compiled {
-    node: Node,
+pub struct Compiled<'a> {
+    node: Node<'a>,
 }
 
-impl Compiled {
+impl<'a> Compiled<'a> {
     /// Compile a path expression and return a compiled instance.
     ///
     /// If parsing the path fails, it will return an error.
@@ -554,7 +554,7 @@ impl Compiled {
     }
 
     /// Execute the select operation on the pre-compiled path.
-    pub fn select<'a>(&self, value: &'a Value) -> Result<Vec<&'a Value>, JsonPathError> {
+    pub fn select<'b>(&self, value: &'b Value) -> Result<Vec<&'b Value>, JsonPathError> {
         let mut selector = Selector::default();
         selector.compiled_path(&self.node).value(value).select()
     }

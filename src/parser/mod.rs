@@ -24,7 +24,7 @@ mod utils {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum ParseToken {
+pub enum ParseToken<'a> {
     // '$'
     Absolute,
     // '@'
@@ -36,7 +36,8 @@ pub enum ParseToken {
     // '*'
     All,
 
-    Key(String),
+    Key(&'a str),
+    KeyString(String),
     Keys(Vec<String>),
     // []
     Array,
@@ -69,21 +70,21 @@ pub enum FilterToken {
 }
 
 #[derive(Debug, Clone)]
-pub struct Node {
-    left: Option<Box<Node>>,
-    right: Option<Box<Node>>,
-    token: ParseToken,
+pub struct Node<'a> {
+    left: Option<Box<Node<'a>>>,
+    right: Option<Box<Node<'a>>>,
+    token: ParseToken<'a>,
 }
 
 pub struct Parser;
 
-impl Parser {
-    pub fn compile(input: &str) -> ParseResult<Node> {
+impl<'a> Parser {
+    pub fn compile(input: &'a str) -> ParseResult<Node<'a>> {
         let mut tokenizer = TokenReader::new(input);
         Ok(Self::json_path(&mut tokenizer)?)
     }
 
-    fn json_path(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn json_path(tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#json_path");
         match tokenizer.next_token() {
             Ok(Token::Absolute(_)) => {
@@ -94,7 +95,7 @@ impl Parser {
         }
     }
 
-    fn paths(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn paths(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#paths");
         match tokenizer.peek_token() {
             Ok(Token::Dot(_)) => {
@@ -111,13 +112,13 @@ impl Parser {
         }
     }
 
-    fn paths_dot(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn paths_dot(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#paths_dot");
         let node = Self::path(prev, tokenizer)?;
         Self::paths(node, tokenizer)
     }
 
-    fn path(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn path(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#path");
         match tokenizer.peek_token() {
             Ok(Token::Dot(_)) => Self::path_leaves(prev, tokenizer),
@@ -131,7 +132,7 @@ impl Parser {
         }
     }
 
-    fn path_leaves(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn path_leaves(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#path_leaves");
         Self::eat_token(tokenizer);
         match tokenizer.peek_token() {
@@ -146,7 +147,7 @@ impl Parser {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_leaves_key(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn path_leaves_key(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#path_leaves_key");
         Ok(Node {
             token: ParseToken::Leaves,
@@ -156,7 +157,7 @@ impl Parser {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_leaves_all(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn path_leaves_all(prev: Node<'a>, tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#path_leaves_all");
         Self::eat_token(tokenizer);
         Ok(Node {
@@ -167,7 +168,7 @@ impl Parser {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_in_all(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn path_in_all(prev: Node<'a>, tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#path_in_all");
         Self::eat_token(tokenizer);
         Ok(Node {
@@ -178,7 +179,7 @@ impl Parser {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_in_key(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn path_in_key(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#path_in_key");
         Ok(Node {
             token: ParseToken::In,
@@ -187,7 +188,7 @@ impl Parser {
         })
     }
 
-    fn key(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn key(tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#key");
         match tokenizer.next_token() {
             Ok(Token::Key(_, v)) => Ok(Self::node(ParseToken::Key(v))),
@@ -195,7 +196,7 @@ impl Parser {
         }
     }
 
-    fn boolean(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn boolean(tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#boolean");
 
         fn validation_bool_value(v: &str) -> bool {
@@ -211,7 +212,7 @@ impl Parser {
         }
     }
 
-    fn array_keys(tokenizer: &mut TokenReader, first_key: String) -> ParseResult<Node> {
+    fn array_keys(tokenizer: &mut TokenReader, first_key: String) -> ParseResult<Node<'a>> {
         let mut keys = vec![first_key];
 
         while let Ok(Token::Comma(_)) = tokenizer.peek_token() {
@@ -231,21 +232,21 @@ impl Parser {
         Ok(Self::node(ParseToken::Keys(keys)))
     }
 
-    fn array_quote_value(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn array_quote_value(tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#array_quote_value");
         match tokenizer.next_token() {
             Ok(Token::SingleQuoted(_, val)) | Ok(Token::DoubleQuoted(_, val)) => {
                 if let Ok(Token::Comma(_)) = tokenizer.peek_token() {
                     Self::array_keys(tokenizer, val)
                 } else {
-                    Ok(Self::node(ParseToken::Key(val)))
+                    Ok(Self::node(ParseToken::KeyString(val)))
                 }
             }
             _ => Err(tokenizer.err_msg()),
         }
     }
 
-    fn array_start(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn array_start(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#array_start");
         match tokenizer.peek_token() {
             Ok(Token::Question(_)) => {
@@ -272,14 +273,14 @@ impl Parser {
         }
     }
 
-    fn array(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn array(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#array");
         let ret = Self::array_start(prev, tokenizer)?;
         Self::eat_whitespace(tokenizer);
         Self::close_token(ret, Token::CloseArray(DUMMY), tokenizer)
     }
 
-    fn array_value_key(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn array_value_key(tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#array_value_key");
         match tokenizer.next_token() {
             Ok(Token::Key(pos, ref val)) => {
@@ -296,7 +297,7 @@ impl Parser {
         }
     }
 
-    fn array_value(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn array_value(tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#array_value");
         match tokenizer.peek_token() {
             Ok(Token::Key(_, _)) => Self::array_value_key(tokenizer),
@@ -315,7 +316,7 @@ impl Parser {
         }
     }
 
-    fn union(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn union(num: isize, tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#union");
         let mut values = vec![num];
         while matches!(tokenizer.peek_token(), Ok(Token::Comma(_))) {
@@ -367,7 +368,7 @@ impl Parser {
         }
     }
 
-    fn range_from(from: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn range_from(from: isize, tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#range_from");
         Self::eat_token(tokenizer);
         Self::eat_whitespace(tokenizer);
@@ -382,7 +383,7 @@ impl Parser {
         }
     }
 
-    fn range_to(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn range_to(tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#range_to");
 
         if let Some(step) = Self::range_value(tokenizer)? {
@@ -403,7 +404,7 @@ impl Parser {
         }
     }
 
-    fn range(from: isize, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn range(from: isize, tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#range");
         match tokenizer.next_token() {
             Ok(Token::Key(pos, ref str_to)) => {
@@ -415,7 +416,7 @@ impl Parser {
         }
     }
 
-    fn filter(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn filter(tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#filter");
         match tokenizer.next_token() {
             Ok(Token::OpenParenthesis(_)) => {
@@ -427,7 +428,7 @@ impl Parser {
         }
     }
 
-    fn exprs(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn exprs(tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         Self::eat_whitespace(tokenizer);
         debug!("#exprs");
         let node = match tokenizer.peek_token() {
@@ -447,7 +448,7 @@ impl Parser {
         Self::condition_expr(node, tokenizer)
     }
 
-    fn condition_expr(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn condition_expr(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#condition_expr");
         match tokenizer.peek_token() {
             Ok(Token::And(_)) => {
@@ -470,7 +471,7 @@ impl Parser {
         }
     }
 
-    fn expr(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn expr(tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#expr");
 
         let has_prop_candidate = matches!(tokenizer.peek_token(), Ok(Token::At(_)));
@@ -494,11 +495,11 @@ impl Parser {
         }
     }
 
-    fn term_num(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn term_num(tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#term_num");
         match tokenizer.next_token() {
             Ok(Token::Key(pos, val)) => match tokenizer.peek_token() {
-                Ok(Token::Dot(_)) => Self::term_num_float(val.as_str(), tokenizer),
+                Ok(Token::Dot(_)) => Self::term_num_float(val, tokenizer),
                 _ => {
                     let number = utils::string_to_num(&val, || tokenizer.err_msg_with_pos(pos))?;
                     Ok(Self::node(ParseToken::Number(number)))
@@ -508,7 +509,7 @@ impl Parser {
         }
     }
 
-    fn term_num_float(num: &str, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn term_num_float(num: &str, tokenizer: &mut TokenReader) -> ParseResult<Node<'a>> {
         debug!("#term_num_float");
         Self::eat_token(tokenizer);
         match tokenizer.next_token() {
@@ -516,7 +517,7 @@ impl Parser {
                 let mut f = String::new();
                 f.push_str(&num);
                 f.push('.');
-                f.push_str(frac.as_str());
+                f.push_str(frac);
                 let number = utils::string_to_num(&f, || tokenizer.err_msg_with_pos(pos))?;
                 Ok(Self::node(ParseToken::Number(number)))
             }
@@ -524,7 +525,7 @@ impl Parser {
         }
     }
 
-    fn term(tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn term(tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#term");
 
         match tokenizer.peek_token() {
@@ -558,7 +559,7 @@ impl Parser {
         }
     }
 
-    fn op(prev: Node, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn op(prev: Node<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#op");
         let token = match tokenizer.next_token() {
             Ok(Token::Equal(_)) => ParseToken::Filter(FilterToken::Equal),
@@ -599,7 +600,7 @@ impl Parser {
         }
     }
 
-    fn close_token(ret: Node, token: Token, tokenizer: &mut TokenReader) -> ParseResult<Node> {
+    fn close_token(ret: Node<'a>, token: Token<'a>, tokenizer: &mut TokenReader<'a>) -> ParseResult<Node<'a>> {
         debug!("#close_token");
         match tokenizer.next_token() {
             Ok(ref t) if t.is_match_token_type(token) => Ok(ret),
@@ -608,13 +609,14 @@ impl Parser {
     }
 }
 
-pub trait NodeVisitor {
-    fn visit(&mut self, node: &Node) {
+pub trait NodeVisitor<'a> {
+    fn visit(&mut self, node: &Node<'a>) {
         match &node.token {
             ParseToken::Absolute
             | ParseToken::Relative
             | ParseToken::All
             | ParseToken::Key(_)
+            | ParseToken::KeyString(_)
             | ParseToken::Keys(_)
             | ParseToken::Range(_, _, _)
             | ParseToken::Union(_)
@@ -676,7 +678,7 @@ pub trait NodeVisitor {
         }
     }
 
-    fn visit_token(&mut self, token: &ParseToken);
+    fn visit_token(&mut self, token: &ParseToken<'a>);
     fn end_term(&mut self) {}
 }
 
@@ -686,7 +688,7 @@ mod parser_tests {
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,
-        stack: Vec<ParseToken>,
+        stack: Vec<ParseToken<'a>>,
     }
 
     impl<'a> NodeVisitorTestImpl<'a> {
@@ -697,15 +699,15 @@ mod parser_tests {
             }
         }
 
-        fn start(&mut self) -> Result<Vec<ParseToken>, String> {
+        fn start(&mut self) -> Result<Vec<ParseToken<'a>>, String> {
             let node = Parser::compile(self.input)?;
             self.visit(&node);
             Ok(self.stack.split_off(0))
         }
     }
 
-    impl<'a> NodeVisitor for NodeVisitorTestImpl<'a> {
-        fn visit_token(&mut self, token: &ParseToken) {
+    impl<'a> NodeVisitor<'a> for NodeVisitorTestImpl<'a> {
+        fn visit_token(&mut self, token: &ParseToken<'a>) {
             self.stack.push(token.clone());
         }
     }
@@ -756,7 +758,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("aa".to_owned())
+                ParseToken::Key("aa")
             ])
         );
 
@@ -765,9 +767,9 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("00".to_owned()),
+                ParseToken::Key("00"),
                 ParseToken::In,
-                ParseToken::Key("a".to_owned())
+                ParseToken::Key("a")
             ])
         );
 
@@ -776,11 +778,11 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("00".to_owned()),
+                ParseToken::Key("00"),
                 ParseToken::In,
-                ParseToken::Key("韓창".to_owned()),
+                ParseToken::Key("韓창"),
                 ParseToken::In,
-                ParseToken::Key("seok".to_owned())
+                ParseToken::Key("seok")
             ])
         );
 
@@ -814,7 +816,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("$a".to_owned())
+                ParseToken::Key("$a")
             ])
         );
 
@@ -823,7 +825,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Key("$a".to_owned()),
+                ParseToken::KeyString("$a".to_string()),
                 ParseToken::ArrayEof,
             ])
         );
@@ -850,11 +852,11 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("book".to_string()),
+                ParseToken::Key("book"),
                 ParseToken::Array,
                 ParseToken::Relative,
                 ParseToken::In,
-                ParseToken::Key("isbn".to_string()),
+                ParseToken::Key("isbn"),
                 ParseToken::ArrayEof
             ])
         );
@@ -877,7 +879,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::All,
                 ParseToken::ArrayEof
@@ -889,12 +891,12 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::All,
                 ParseToken::ArrayEof,
                 ParseToken::In,
-                ParseToken::Key("가".to_owned())
+                ParseToken::Key("가")
             ])
         );
 
@@ -903,7 +905,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Number(0_f64),
                 ParseToken::ArrayEof,
@@ -918,7 +920,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Union(vec![1, 2]),
                 ParseToken::ArrayEof
@@ -930,7 +932,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Range(Some(10), None, None),
                 ParseToken::ArrayEof
@@ -942,7 +944,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Range(None, Some(11), None),
                 ParseToken::ArrayEof
@@ -954,7 +956,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Range(Some(-12), Some(13), None),
                 ParseToken::ArrayEof
@@ -1026,7 +1028,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Number(1_f64),
                 ParseToken::Number(2_f64),
@@ -1040,11 +1042,11 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("b".to_owned()),
+                ParseToken::Key("b"),
                 ParseToken::Number(3_f64),
                 ParseToken::Filter(FilterToken::Greater),
                 ParseToken::ArrayEof
@@ -1058,10 +1060,10 @@ mod parser_tests {
                 ParseToken::Array,
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("c".to_owned()),
+                ParseToken::Key("c"),
                 ParseToken::Relative,
                 ParseToken::In,
-                ParseToken::Key("d".to_owned()),
+                ParseToken::Key("d"),
                 ParseToken::Filter(FilterToken::Greater),
                 ParseToken::Number(1_f64),
                 ParseToken::Number(2_f64),
@@ -1078,10 +1080,10 @@ mod parser_tests {
                 ParseToken::Array,
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("c".to_owned()),
+                ParseToken::Key("c"),
                 ParseToken::Relative,
                 ParseToken::In,
-                ParseToken::Key("d".to_owned()),
+                ParseToken::Key("d"),
                 ParseToken::Filter(FilterToken::Greater),
                 ParseToken::Number(1_f64),
                 ParseToken::Number(2_f64),
@@ -1102,10 +1104,10 @@ mod parser_tests {
                 ParseToken::Array,
                 ParseToken::Relative,
                 ParseToken::In,
-                ParseToken::Key("a".to_owned()),
+                ParseToken::Key("a"),
                 ParseToken::Relative,
                 ParseToken::In,
-                ParseToken::Key("b".to_owned()),
+                ParseToken::Key("b"),
                 ParseToken::Filter(FilterToken::Little),
                 ParseToken::ArrayEof
             ])
@@ -1132,10 +1134,10 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Key("a".to_string()),
+                ParseToken::KeyString("a".to_string()),
                 ParseToken::ArrayEof,
                 ParseToken::Array,
-                ParseToken::Key("bb".to_string()),
+                ParseToken::KeyString("bb".to_string()),
                 ParseToken::ArrayEof
             ])
         );
@@ -1145,11 +1147,11 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::In,
-                ParseToken::Key("a".to_string()),
+                ParseToken::Key("a"),
                 ParseToken::Array,
                 ParseToken::Relative,
                 ParseToken::In,
-                ParseToken::Key("e".to_string()),
+                ParseToken::Key("e"),
                 ParseToken::Bool(true),
                 ParseToken::Filter(FilterToken::Equal),
                 ParseToken::ArrayEof
@@ -1183,7 +1185,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Key("single'quote".to_string()),
+                ParseToken::KeyString("single'quote".to_string()),
                 ParseToken::ArrayEof
             ])
         );
@@ -1193,7 +1195,7 @@ mod parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Key(r#"single"quote"#.to_string()),
+                ParseToken::KeyString(r#"single"quote"#.to_string()),
                 ParseToken::ArrayEof
             ])
         );
@@ -1291,9 +1293,9 @@ mod tokenizer_tests {
                 vec![
                     Token::Absolute(0),
                     Token::Dot(1),
-                    Token::Key(2, "01".to_string()),
+                    Token::Key(2, "01"),
                     Token::Dot(4),
-                    Token::Key(5, "a".to_string()),
+                    Token::Key(5, "a"),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -1328,7 +1330,7 @@ mod tokenizer_tests {
                     Token::Absolute(0),
                     Token::Dot(1),
                     Token::Dot(2),
-                    Token::Key(3, "ab".to_string()),
+                    Token::Key(3, "ab"),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -1341,7 +1343,7 @@ mod tokenizer_tests {
                     Token::Absolute(0),
                     Token::Dot(1),
                     Token::Dot(2),
-                    Token::Key(3, "가".to_string()),
+                    Token::Key(3, "가"),
                     Token::Whitespace(6, 0),
                     Token::OpenArray(7),
                 ],
@@ -1354,10 +1356,10 @@ mod tokenizer_tests {
             (
                 vec![
                     Token::OpenArray(0),
-                    Token::Key(1, "-1".to_string()),
+                    Token::Key(1, "-1"),
                     Token::Comma(3),
                     Token::Whitespace(4, 0),
-                    Token::Key(5, "2".to_string()),
+                    Token::Key(5, "2"),
                     Token::Whitespace(6, 0),
                     Token::CloseArray(7),
                 ],
@@ -1371,19 +1373,19 @@ mod tokenizer_tests {
                 vec![
                     Token::OpenArray(0),
                     Token::Whitespace(1, 0),
-                    Token::Key(2, "1".to_string()),
+                    Token::Key(2, "1"),
                     Token::Whitespace(3, 0),
-                    Token::Key(4, "2".to_string()),
+                    Token::Key(4, "2"),
                     Token::Whitespace(5, 0),
                     Token::Comma(6),
                     Token::Whitespace(7, 0),
-                    Token::Key(8, "3".to_string()),
+                    Token::Key(8, "3"),
                     Token::Whitespace(9, 0),
                     Token::DoubleQuoted(10, "abc".to_string()),
                     Token::Whitespace(15, 0),
                     Token::Split(16),
                     Token::Whitespace(17, 0),
-                    Token::Key(18, "-10".to_string()),
+                    Token::Key(18, "-10"),
                     Token::Whitespace(21, 0),
                     Token::CloseArray(22),
                 ],
@@ -1399,12 +1401,12 @@ mod tokenizer_tests {
                     Token::OpenParenthesis(1),
                     Token::At(2),
                     Token::Dot(3),
-                    Token::Key(4, "a가".to_string()),
+                    Token::Key(4, "a가"),
                     Token::Whitespace(8, 0),
                     Token::Little(9),
-                    Token::Key(10, "41".to_string()),
+                    Token::Key(10, "41"),
                     Token::Dot(12),
-                    Token::Key(13, "01".to_string()),
+                    Token::Key(13, "01"),
                     Token::CloseParenthesis(15),
                 ],
                 Some(TokenError::Eof),
@@ -1419,12 +1421,12 @@ mod tokenizer_tests {
                     Token::OpenParenthesis(1),
                     Token::At(2),
                     Token::Dot(3),
-                    Token::Key(4, "a".to_string()),
+                    Token::Key(4, "a"),
                     Token::Whitespace(5, 0),
                     Token::Little(6),
-                    Token::Key(7, "4a".to_string()),
+                    Token::Key(7, "4a"),
                     Token::Dot(9),
-                    Token::Key(10, "01".to_string()),
+                    Token::Key(10, "01"),
                     Token::CloseParenthesis(12),
                 ],
                 Some(TokenError::Eof),
@@ -1439,11 +1441,11 @@ mod tokenizer_tests {
                     Token::OpenParenthesis(1),
                     Token::Absolute(2),
                     Token::Dot(3),
-                    Token::Key(4, "c".to_string()),
+                    Token::Key(4, "c"),
                     Token::Greater(5),
                     Token::At(6),
                     Token::Dot(7),
-                    Token::Key(8, "d".to_string()),
+                    Token::Key(8, "d"),
                     Token::CloseParenthesis(9),
                 ],
                 Some(TokenError::Eof),
