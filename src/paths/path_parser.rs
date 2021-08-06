@@ -18,7 +18,7 @@ impl<'a> PathParser<'a> {
         Ok(PathParser { parser })
     }
 
-    pub fn parse<F>(&self, parse_token_handler: &mut F) -> Result<(), String>
+    pub(crate) fn parse<F>(&self, parse_token_handler: &mut F) -> Result<(), String>
         where
             F: ParserTokenHandler<'a>,
     {

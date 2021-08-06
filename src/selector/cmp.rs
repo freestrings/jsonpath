@@ -30,17 +30,14 @@ impl Cmp for CmpEq {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        let mut ret = vec![];
-
-        for a in v1 {
-            for b in v2 {
-                if a == b {
-                    ret.push(*a);
+        v1.iter().fold(Vec::new(), |acc, a| {
+            v2.iter().fold(acc, |mut acc, b| {
+                if *a as *const Value == *b as *const Value {
+                    acc.push(*a);
                 }
-            }
-        }
-
-        ret
+                acc
+            })
+        })
     }
 }
 
@@ -62,11 +59,13 @@ impl Cmp for CmpNe {
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
         let mut ret = v1.to_vec();
         for v in v2 {
-            if let Some(i) = ret.iter().position(|r| r == v) {
-                ret.remove(i);
+            for i in 0..ret.len() {
+                if *v as *const Value == &*ret[i] as *const Value {
+                    ret.remove(i);
+                    break;
+                }
             }
         }
-        println!("{:?}", ret);
         ret
     }
 
@@ -191,17 +190,22 @@ impl Cmp for CmpOr {
     }
 
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
-        let mut ret = [v1, v2].concat();
+        v2.iter().fold(v1.to_vec(), |mut acc, v| {
+            let mut contains = false;
 
-        for x in (0..ret.len()).rev() {
-            for y in (x + 1..ret.len()).rev() {
-                if ret[x] == ret[y] {
-                    ret.remove(y);
+            for ptr in v1.iter().map(|v| *v as *const Value) {
+                if ptr == *v as *const Value {
+                    contains = true;
+                    break;
                 }
             }
-        }
 
-        ret
+            if !contains {
+                acc.push(v);
+            }
+
+            acc
+        })
     }
 }
 

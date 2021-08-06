@@ -72,18 +72,15 @@ impl<'a> ValueWalker {
     }
 
     pub fn all_with_strs(vec: &Vec<&'a Value>, keys: &[&'a str]) -> Vec<&'a Value> {
-        let mut acc = Vec::new();
         let ref path_keys: Vec<PathKey> = keys.iter().map(|key| { utils::to_path_str(key) }).collect();
-        for v in vec {
+        vec.iter().fold(Vec::new(), |mut acc, v| {
             if let Value::Object(map) = v {
-                for pk in path_keys {
-                    if let Some(v) = map.get(pk.get_key()) {
-                        acc.push(v)
-                    }
-                }
+                path_keys.iter().for_each(|pk| if let Some(v) = map.get(pk.get_key()) {
+                    acc.push(v)
+                });
             }
-        }
-        acc
+            acc
+        })
     }
 
     pub fn all(vec: &Vec<&'a Value>) -> Vec<&'a Value> {
@@ -102,11 +99,10 @@ impl<'a> ValueWalker {
         where
             F: Fn(&'a Value, &mut Vec<&'a Value>),
     {
-        let mut acc = Vec::new();
-        vec.iter().for_each(|v| {
+        vec.iter().fold(Vec::new(), |mut acc, v| {
             Self::_walk(v, &mut acc, fun);
-        });
-        acc
+            acc
+        })
     }
 
     fn _walk<F>(v: &'a Value, acc: &mut Vec<&'a Value>, fun: &F)
@@ -163,7 +159,7 @@ impl<'a> ValueWalker {
 
         match v {
             Value::Object(map) => {
-                if map.contains_key(key) {
+                if let Some(_) = map.get(key) {
                     let ptr = v as *const Value;
                     if !visited.contains(&ptr) {
                         visited.insert(ptr);

@@ -83,12 +83,13 @@ impl<'a> ExprTerm<'a> {
         where
             C: Cmp
     {
+        let n2 = utils::to_f64(n2);
         vec1.iter().filter(|v1| match v1 {
-            Value::Number(n1) => cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2)),
+            Value::Number(n1) => cmp_fn.cmp_f64(utils::to_f64(n1), n2),
             Value::Object(map1) => {
                 if let Some(FilterKey::String(k)) = fk1 {
                     if let Some(Value::Number(n1)) = map1.get(*k) {
-                        return cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2));
+                        return cmp_fn.cmp_f64(utils::to_f64(n1), n2);
                     }
                 }
                 cmp_fn.default()
