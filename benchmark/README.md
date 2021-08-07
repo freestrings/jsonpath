@@ -31,12 +31,22 @@ sudo sh -c 'echo 0 >/proc/sys/kernel/kptr_restrict'
 1. valgrind 설치
 > sudo apt-get install valgrind
 
+2. massif-visualizer
+> sudo apt-get install massif-visualizer
+
+## 실행
+
+> ./gen_valgrind.sh
+> massif-visualizer 실행 #massif.out.xxx 읽기
+
+
+## call 그래프 보려면
+
 2. kcachegrind 설치
 > sudo apt-get install kcachegrind
 
 ## 실행
 
-> ./gen_valgrind.sh
+> ./gen_valgrind.sh # --tool=callgrind --dump-instr=yes --collect-jumps=yes --simulate-cache=yes
 > kcachegrind #callgrind.out.xxx 읽기
-> 
 > 
