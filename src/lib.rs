@@ -474,6 +474,57 @@ where
     Ok(value.take().unwrap_or(Value::Null))
 }
 
+/// Select JSON properties using a jsonpath, exposing the path to the values with the value itself. Allows updating of the value while tracking field names/paths.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde_json::Value;
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// let ret = jsonpath::replace_with_tokens(json_obj, "$..[?(@.age == 20)].age", &mut |v, _tokens| {
+///     let age = if let Value::Number(n) = v {
+///         n.as_u64().unwrap() * 2
+///     } else {
+///         0
+///     };
+///
+///     Ok(Some(json!(age)))
+/// }).unwrap();
+///
+/// assert_eq!(ret, json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 40},
+///             {"name": "친구2", "age": 40}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]}));
+/// ```
+pub fn replace_with_tokens<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
+    where
+        F: FnMut(Value, &[String]) -> Result<Option<Value>, JsonPathError>,
+{
+    let mut selector = SelectorMut::default();
+    let value = selector.str_path(path)?.value(value).replace_with_tokens(fun)?;
+    Ok(value.take().unwrap_or(Value::Null))
+}
+
 /// A pre-compiled expression.
 ///
 /// Calling the select function of this struct will re-use the existing, compiled expression.
