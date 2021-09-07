@@ -32,15 +32,6 @@ impl<'a> ValueWalker {
     pub fn next_with_num(vec: &Vec<&'a Value>, index: f64) -> Vec<&'a Value> {
         vec.iter().fold(Vec::new(), |mut acc, v| {
             match v {
-                Value::Object(map) => {
-                    for k in map.keys() {
-                        if let Some(Value::Array(vec)) = map.get(k) {
-                            if let Some(v) = vec.get(utils::abs_index(index as isize, vec.len())) {
-                                acc.push(v);
-                            }
-                        }
-                    }
-                }
                 Value::Array(vec) => {
                     if let Some(v) = vec.get(utils::abs_index(index as isize, vec.len())) {
                         acc.push(v);

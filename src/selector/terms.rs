@@ -450,6 +450,27 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
+        if let Some(Some(e)) = self.pop_term() {
+            match e {
+                ExprTerm::Json(rel, _, vec) => {
+                    return if vec.is_empty() {
+                        Some(Vec::new())
+                    } else if let Some(vec) = rel {
+                        let index = utils::abs_index(index as isize, vec.len());
+                        let ret = vec.get(index).map_or(Vec::new(), |v| vec![*v]);
+                        Some(ret)
+                    } else {
+                        let index = utils::abs_index(index as isize, vec.len());
+                        let ret = vec.get(index).map_or(Vec::new(), |v| vec![*v]);
+                        Some(ret)
+                    };
+                }
+                _ => {
+                    self.push_term(Some(e));
+                }
+            }
+        }
+
         let acc = ValueWalker::next_with_num(&current.unwrap(), index);
 
         if acc.is_empty() {
@@ -457,15 +478,6 @@ impl<'a> FilterTerms<'a> {
         }
 
         Some(acc)
-    }
-
-    pub fn collect_next_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
-        if current.is_none() {
-            debug!("collect_next_all : {:?}", &current);
-            return current;
-        }
-
-        Some(ValueWalker::next_all(&current.unwrap()))
     }
 
     pub fn collect_next_with_str(&mut self, current: Option<Vec<&'a Value>>, keys: &[&'a str]) -> Option<Vec<&'a Value>> {
@@ -484,6 +496,15 @@ impl<'a> FilterTerms<'a> {
         }
 
         Some(acc)
+    }
+
+    pub fn collect_next_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+        if current.is_none() {
+            debug!("collect_next_all : {:?}", &current);
+            return current;
+        }
+
+        Some(ValueWalker::next_all(&current.unwrap()))
     }
 
     pub fn collect_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
