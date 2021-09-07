@@ -32,7 +32,7 @@ impl Cmp for CmpEq {
     fn cmp_json<'a>(&self, v1: &[&'a Value], v2: &[&'a Value]) -> Vec<&'a Value> {
         v1.iter().fold(Vec::new(), |acc, a| {
             v2.iter().fold(acc, |mut acc, b| {
-                if *a as *const Value == *b as *const Value {
+                if std::ptr::eq(*a, *b) {
                     acc.push(*a);
                 }
                 acc
@@ -60,7 +60,7 @@ impl Cmp for CmpNe {
         let mut ret = v1.to_vec();
         for v in v2 {
             for i in 0..ret.len() {
-                if *v as *const Value == &*ret[i] as *const Value {
+                if std::ptr::eq(*v, &*ret[i]) {
                     ret.remove(i);
                     break;
                 }
