@@ -37,7 +37,7 @@ impl<'a: 'b, 'b> PathKey<'a> {
     }
 }
 
-pub fn to_path_str<'a>(key: &'a str) -> PathKey<'a> {
+pub fn to_path_str(key: &str) -> PathKey {
     let mut path_key = PathKey {
         key,
         special_key: None

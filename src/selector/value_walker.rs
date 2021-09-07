@@ -7,7 +7,7 @@ use selector::utils::PathKey;
 pub(super) struct ValueWalker;
 
 impl<'a> ValueWalker {
-    pub fn next_all(vec: &Vec<&'a Value>) -> Vec<&'a Value> {
+    pub fn next_all(vec: &[&'a Value]) -> Vec<&'a Value> {
         vec.iter().fold(Vec::new(), |mut acc, v| {
             match v {
                 Value::Object(map) => acc.extend(map.values()),
@@ -18,7 +18,7 @@ impl<'a> ValueWalker {
         })
     }
 
-    pub fn next_with_str(vec: &Vec<&'a Value>, key: &'a str) -> Vec<&'a Value> {
+    pub fn next_with_str(vec: &[&'a Value], key: &'a str) -> Vec<&'a Value> {
         vec.iter().fold(Vec::new(), |mut acc, v| {
             if let Value::Object(map) = v {
                 if let Some(v) = map.get(key) {
@@ -29,21 +29,18 @@ impl<'a> ValueWalker {
         })
     }
 
-    pub fn next_with_num(vec: &Vec<&'a Value>, index: f64) -> Vec<&'a Value> {
+    pub fn next_with_num(vec: &[&'a Value], index: f64) -> Vec<&'a Value> {
         vec.iter().fold(Vec::new(), |mut acc, v| {
-            match v {
-                Value::Array(vec) => {
-                    if let Some(v) = vec.get(utils::abs_index(index as isize, vec.len())) {
-                        acc.push(v);
-                    }
+            if let Value::Array(vec) = v {
+                if let Some(v) = vec.get(utils::abs_index(index as isize, vec.len())) {
+                    acc.push(v);
                 }
-                _ => {}
             }
             acc
         })
     }
 
-    pub fn all_with_num(vec: &Vec<&'a Value>, index: f64) -> Vec<&'a Value> {
+    pub fn all_with_num(vec: &[&'a Value], index: f64) -> Vec<&'a Value> {
         Self::walk(vec, &|v, acc| {
             if v.is_array() {
                 if let Some(v) = v.get(index as usize) {
@@ -53,7 +50,7 @@ impl<'a> ValueWalker {
         })
     }
 
-    pub fn all_with_str(vec: &Vec<&'a Value>, key: &'a str) -> Vec<&'a Value> {
+    pub fn all_with_str(vec: &[&'a Value], key: &'a str) -> Vec<&'a Value> {
         let path_key = utils::to_path_str(key);
         Self::walk(vec, &|v, acc| if let Value::Object(map) = v {
             if let Some(v) = map.get(path_key.get_key()) {
@@ -62,8 +59,8 @@ impl<'a> ValueWalker {
         })
     }
 
-    pub fn all_with_strs(vec: &Vec<&'a Value>, keys: &[&'a str]) -> Vec<&'a Value> {
-        let ref path_keys: Vec<PathKey> = keys.iter().map(|key| { utils::to_path_str(key) }).collect();
+    pub fn all_with_strs(vec: &[&'a Value], keys: &[&'a str]) -> Vec<&'a Value> {
+        let path_keys: &Vec<PathKey> = &keys.iter().map(|key| { utils::to_path_str(key) }).collect();
         vec.iter().fold(Vec::new(), |mut acc, v| {
             if let Value::Object(map) = v {
                 path_keys.iter().for_each(|pk| if let Some(v) = map.get(pk.get_key()) {
@@ -74,7 +71,7 @@ impl<'a> ValueWalker {
         })
     }
 
-    pub fn all(vec: &Vec<&'a Value>) -> Vec<&'a Value> {
+    pub fn all(vec: &[&'a Value]) -> Vec<&'a Value> {
         Self::walk(vec, &|v, acc| {
             match v {
                 Value::Array(ay) => acc.extend(ay),
@@ -86,7 +83,7 @@ impl<'a> ValueWalker {
         })
     }
 
-    fn walk<F>(vec: &Vec<&'a Value>, fun: &F) -> Vec<&'a Value>
+    fn walk<F>(vec: &[&'a Value], fun: &F) -> Vec<&'a Value>
         where
             F: Fn(&'a Value, &mut Vec<&'a Value>),
     {
@@ -113,7 +110,7 @@ impl<'a> ValueWalker {
         }
     }
 
-    pub fn walk_dedup_all<F1, F2>(vec: &Vec<&'a Value>,
+    pub fn walk_dedup_all<F1, F2>(vec: &[&'a Value],
                                   key: &str,
                                   visited: &mut HashSet<*const Value>,
                                   is_contain: &mut F1,
@@ -150,16 +147,14 @@ impl<'a> ValueWalker {
 
         match v {
             Value::Object(map) => {
-                if let Some(_) = map.get(key) {
+                if map.get(key).is_some() {
                     let ptr = v as *const Value;
                     if !visited.contains(&ptr) {
                         visited.insert(ptr);
                         is_contain(v);
                     }
-                } else {
-                    if depth == 0 {
-                        is_not_contain(index);
-                    }
+                } else if depth == 0 {
+                    is_not_contain(index);
                 }
             }
             Value::Array(vec) => {
@@ -167,7 +162,7 @@ impl<'a> ValueWalker {
                     is_not_contain(index);
                 }
                 vec.iter().for_each(|v| {
-                    Self::walk_dedup(&v, key, visited, index, is_contain, is_not_contain, depth + 1);
+                    Self::walk_dedup(v, key, visited, index, is_contain, is_not_contain, depth + 1);
                 })
             }
             _ => {

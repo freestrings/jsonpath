@@ -35,7 +35,7 @@ impl<'a> ExprTerm<'a> {
             C: Cmp,
     {
         match other {
-            ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(&n2))),
+            ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(utils::to_f64(n1), utils::to_f64(n2))),
             ExprTerm::Json(_, _, _) => unreachable!(),
             _ => ExprTerm::Bool(cmp_fn.default()),
         }
@@ -54,7 +54,7 @@ impl<'a> ExprTerm<'a> {
 
     fn cmp_json_string<C>(s2: &str,
                           fk1: &Option<FilterKey>,
-                          vec1: &Vec<&'a Value>,
+                          vec1: &[&'a Value],
                           cmp_fn: &C) -> Vec<&'a Value>
         where
             C: Cmp
@@ -78,7 +78,7 @@ impl<'a> ExprTerm<'a> {
 
     fn cmp_json_number<C>(n2: &Number,
                           fk1: &Option<FilterKey>,
-                          vec1: &Vec<&'a Value>,
+                          vec1: &[&'a Value],
                           cmp_fn: &C) -> Vec<&'a Value>
         where
             C: Cmp
@@ -100,7 +100,7 @@ impl<'a> ExprTerm<'a> {
 
     fn cmp_json_bool<C1>(b2: &bool,
                          fk1: &Option<FilterKey>,
-                         vec1: &Vec<&'a Value>,
+                         vec1: &[&'a Value],
                          cmp_fn: &C1) -> Vec<&'a Value>
         where
             C1: Cmp
@@ -121,8 +121,8 @@ impl<'a> ExprTerm<'a> {
 
     fn cmp_json_json<C1>(rel: &Option<Vec<&'a Value>>,
                          parent: &Option<Vec<&'a Value>>,
-                         vec1: &Vec<&'a Value>,
-                         vec2: &Vec<&'a Value>,
+                         vec1: &[&'a Value],
+                         vec2: &[&'a Value],
                          cmp_fn: &C1) -> Vec<&'a Value>
         where
             C1: Cmp
@@ -150,10 +150,10 @@ impl<'a> ExprTerm<'a> {
     {
         let ret: Vec<&Value> = match other {
             ExprTerm::String(s2) => Self::cmp_json_string(s2, &fk1, vec1, cmp_fn),
-            ExprTerm::Number(n2) => Self::cmp_json_number(&n2, &fk1, vec1, cmp_fn),
-            ExprTerm::Bool(b2) => Self::cmp_json_bool(&b2, &fk1, vec1, cmp_fn),
+            ExprTerm::Number(n2) => Self::cmp_json_number(n2, &fk1, vec1, cmp_fn),
+            ExprTerm::Bool(b2) => Self::cmp_json_bool(b2, &fk1, vec1, cmp_fn),
             ExprTerm::Json(parent, _, vec2) => {
-                Self::cmp_json_json(&rel, &parent, vec1, &vec2, cmp_fn)
+                Self::cmp_json_json(&rel, parent, vec1, vec2, cmp_fn)
             }
         };
 
@@ -167,7 +167,9 @@ impl<'a> ExprTerm<'a> {
 
         if rel.is_some() {
             if let ExprTerm::Json(_, _, _) = &other {
-                return ExprTerm::Json(Some(rel.unwrap()), None, ret);
+                if let Some(rel) = rel {
+                    return ExprTerm::Json(Some(rel), None, ret);
+                }
             }
         }
 
@@ -418,7 +420,7 @@ impl<'a> FilterTerms<'a> {
             let mut visited = HashSet::new();
             let mut acc = Vec::new();
 
-            let ref path_key = utils::to_path_str(key);
+            let path_key = &utils::to_path_str(key);
 
             ValueWalker::walk_dedup_all(vec,
                                         path_key.get_key(),
