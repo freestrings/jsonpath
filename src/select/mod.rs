@@ -460,7 +460,7 @@ where
         }
     }
 
-    fn compute_paths(&self, mut result: Vec<&T>) -> Vec<Vec<String>> {
+    fn compute_paths(&self, result: &mut Vec<&T>) -> Vec<Vec<String>> {
         fn _walk<T: SelectValue>(
             origin: &T,
             target: &mut Vec<&T>,
@@ -521,7 +521,7 @@ where
             let mut tokens = Vec::new();
             _walk(
                 origin,
-                &mut result,
+                result,
                 &mut tokens,
                 &mut visited,
                 &mut visited_order,
@@ -532,8 +532,14 @@ where
     }
 
     pub fn select_with_paths<F: FnMut(&'a T) -> bool>(&mut self, mut filter: F) -> Result<Vec<Vec<String>>, JsonPathError> {
-        let nodes = self.select()?.drain(..).filter(|v| filter(*v)).collect();
-        Ok(self.compute_paths(nodes))
+        let mut nodes = self.select()?.drain(..).filter(|v| filter(*v)).collect();
+        Ok(self.compute_paths(&mut nodes))
+    }
+
+    pub fn select_values_with_paths(&mut self) -> Result<Vec<(&'a T,Vec<String>)>, JsonPathError> {
+        let mut nodes = self.select()?;
+        let paths = self.compute_paths(&mut nodes);
+        Ok(nodes.into_iter().zip(paths.into_iter()).collect::<Vec<(&'a T,Vec<String>)>>())
     }
 
     fn compute_absolute_path_filter(&mut self, token: &ParseToken<'c>) -> bool {
