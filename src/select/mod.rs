@@ -519,7 +519,7 @@ where
 
         let mut visited = HashSet::new();
         let mut visited_order = Vec::new();
-        let mut found_result = Vec::new();
+        let mut found_result = Vec::with_capacity(result.len());
 
         if let Some(origin) = self.value.as_deref() {
             let mut tokens = Vec::new();
@@ -533,8 +533,7 @@ where
             );
         }
 
-        //No path was computed for missing targets
-        result.clear();
+        // The returned value vector is ordered according to the returned path vector
         found_result.drain(..).for_each(|t|{result.push(t);});
 
         visited_order
