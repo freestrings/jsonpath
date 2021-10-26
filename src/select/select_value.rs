@@ -36,19 +36,6 @@ pub trait SelectValue:
     fn get_bool(&self) -> bool;
     fn get_long(&self) -> i64;
     fn get_double(&self) -> f64;
-
-    fn get_type_name(&self) -> &str {
-        // Default implementation
-        match self.get_type() {
-            SelectValueType::Null => "null",
-            SelectValueType::Bool => "boolean",
-            SelectValueType::Long => "integer",
-            SelectValueType::Double => "number",
-            SelectValueType::String => "string",
-            SelectValueType::Array => "array",
-            SelectValueType::Object => "object",
-        }
-    }
 }
 
 pub trait ValueUpdater<T: SelectValue> {
