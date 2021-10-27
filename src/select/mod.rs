@@ -533,6 +533,7 @@ where
             );
         }
 
+        assert!(result.is_empty());
         // The returned value vector is ordered according to the returned path vector
         found_result.drain(..).for_each(|t|{result.push(t);});
 
