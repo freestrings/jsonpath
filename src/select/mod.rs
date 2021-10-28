@@ -460,10 +460,11 @@ where
         }
     }
 
-    fn compute_paths(&self, mut result: Vec<&T>) -> Vec<Vec<String>> {
-        fn _walk<T: SelectValue>(
+    fn compute_paths(&self, result: &mut Vec<&T>) -> Vec<Vec<String>> {
+        fn _walk<'inner, 'outer:'inner, T: SelectValue>(
             origin: &T,
-            target: &mut Vec<&T>,
+            target: &mut Vec<&'outer T>,
+            found_result: &mut Vec<&'inner T>,
             tokens: &mut Vec<String>,
             visited: &mut HashSet<*const T>,
             visited_order: &mut Vec<Vec<String>>,
@@ -476,6 +477,7 @@ where
                 if std::ptr::eq(origin, *t) {
                     if visited.insert(*t) {
                         visited_order.push(tokens.to_vec());
+                        found_result.push(*t);
                     }
                     false
                 } else {
@@ -487,7 +489,7 @@ where
                 SelectValueType::Array => {
                     for (i, v) in origin.values().unwrap().enumerate() {
                         tokens.push(i.to_string());
-                        if _walk(v, target, tokens, visited, visited_order) {
+                        if _walk(v, target, found_result, tokens, visited, visited_order) {
                             return true;
                         }
                         tokens.pop();
@@ -499,6 +501,7 @@ where
                         if _walk(
                             v,
                             target,
+                            found_result,
                             tokens,
                             visited,
                             visited_order,
@@ -516,24 +519,37 @@ where
 
         let mut visited = HashSet::new();
         let mut visited_order = Vec::new();
+        let mut found_result = Vec::with_capacity(result.len());
 
         if let Some(origin) = self.value.as_deref() {
             let mut tokens = Vec::new();
             _walk(
                 origin,
-                &mut result,
+                result,
+                &mut found_result,
                 &mut tokens,
                 &mut visited,
                 &mut visited_order,
             );
         }
 
+        assert!(result.is_empty());
+        // The returned value vector is ordered according to the returned path vector
+        found_result.drain(..).for_each(|t|{result.push(t);});
+
         visited_order
     }
 
     pub fn select_with_paths<F: FnMut(&'a T) -> bool>(&mut self, mut filter: F) -> Result<Vec<Vec<String>>, JsonPathError> {
-        let nodes = self.select()?.drain(..).filter(|v| filter(*v)).collect();
-        Ok(self.compute_paths(nodes))
+        let mut nodes = self.select()?.drain(..).filter(|v| filter(*v)).collect();
+        Ok(self.compute_paths(&mut nodes))
+    }
+
+    pub fn select_values_with_paths(&mut self) -> Result<Vec<(&'a T,Vec<String>)>, JsonPathError> {
+        let mut nodes = self.select()?;
+        let paths = self.compute_paths(&mut nodes);
+        let res= nodes.into_iter().zip(paths.into_iter()).collect::<Vec<(&'a T,Vec<String>)>>();
+        Ok(res)
     }
 
     fn compute_absolute_path_filter(&mut self, token: &ParseToken<'c>) -> bool {
