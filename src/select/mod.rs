@@ -767,7 +767,8 @@ where
 
     fn visit_keys(&mut self, keys: &[String]) {
         if !self.selector_filter.is_term_empty() {
-            unimplemented!("keys in filter");
+            //unimplemented!("keys in filter");  // TODO: Filter Enhancement
+            return;
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
@@ -825,7 +826,8 @@ where
 
     fn visit_range(&mut self, from: &Option<isize>, to: &Option<isize>, step: &Option<usize>) {
         if !self.selector_filter.is_term_empty() {
-            unimplemented!("range syntax in filter");
+            //unimplemented!("range syntax in filter");  // TODO: Filter Enhancement
+            return;
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
@@ -864,7 +866,8 @@ where
 
     fn visit_union(&mut self, indices: &[isize]) {
         if !self.selector_filter.is_term_empty() {
-            unimplemented!("union syntax in filter");
+            //unimplemented!("union syntax in filter");  // TODO: Filter Enhancement
+            return;
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {

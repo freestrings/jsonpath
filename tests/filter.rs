@@ -278,3 +278,52 @@ fn bugs38_array_notation_in_filter() {
         json!([{"seq": 2, "subKey": "subKey2"}]),
     );
 }
+
+#[test]
+fn unimplemented_in_filter() {
+    setup();
+
+    let json = json!([{
+        "store": {
+            "book": [
+              {"authors": [
+                  {"firstName": "Nigel",
+                    "lastName": "Rees"},
+                  {"firstName": "Evelyn",
+                    "lastName": "Waugh"}
+                ],
+                "title": "SayingsoftheCentury"},
+              {"authors": [
+                  {"firstName": "Herman",
+                    "lastName": "Melville"},
+                  {"firstName": "Somebody",
+                    "lastName": "Else"}
+                ],
+                "title": "MobyDick"}
+            ]}
+     }]);
+
+    // Should not panic
+    //  unimplemented!("range syntax in filter")
+    select_and_then_compare(
+        "$.store.book[?(@.authors[0:1])]",
+        json.clone(),
+        json!([]),
+    );
+
+    // Should not panic
+    //  unimplemented!("union syntax in filter")
+    select_and_then_compare(
+        "$.store.book[?(@.authors[0,1])]",
+        json.clone(),
+        json!([]),
+    );
+
+    // Should not panic
+    //  unimplemented!("keys in filter");
+    select_and_then_compare(
+        "$.store[?(@.book['authors', 'title'])]",
+        json.clone(),
+        json!([]),
+    );
+}
