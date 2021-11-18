@@ -137,6 +137,14 @@ pub use parser::Parser;
 #[allow(deprecated)]
 pub use select::{Selector, SelectorMut};
 
+pub use paths::{
+    tokens::ParseToken,
+    ParserTokenHandler,
+    ParserNodeVisitor,
+    StrRange,
+    PathParser
+};
+
 #[deprecated(
 since = "0.4.0",
 note = "It will be move to common module. since 0.5"
@@ -144,7 +152,6 @@ note = "It will be move to common module. since 0.5"
 pub use select::JsonPathError;
 
 pub use selector::{JsonSelector, JsonSelectorMut};
-pub use paths::PathParser;
 use std::rc::Rc;
 
 #[doc(hidden)]
