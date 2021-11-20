@@ -21,7 +21,7 @@ pub trait ParserNodeVisitor<'a> {
             | ParseToken::Bool(_) => {
                 token_handler.handle(&parse_node.token, parse_value_reader);
             }
-            ParseToken::In | ParseToken::Leaves => {
+            ParseToken::In | ParseToken::Leaves | ParseToken::Parent => {
                 if let Some(n) = &parse_node.left {
                     self.visit(&*n, token_handler, parse_value_reader);
                 }

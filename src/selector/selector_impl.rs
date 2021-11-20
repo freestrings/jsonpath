@@ -440,6 +440,14 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
             ParseToken::In | ParseToken::Leaves | ParseToken::Array => {
                 self.tokens.push(token.clone());
             }
+            ParseToken::Parent => {
+                //TODO retrieve parents from a Map<child_ptr -> &parent_value>
+                let mut vec:Vec<&Value> = Vec::new();
+                self.current = Some(vec);
+
+                //TODO push token only if last is not a parent already
+                self.tokens.push(token.clone());
+            }
             ParseToken::ArrayEof => self.visit_array_eof(),
             ParseToken::All => self.visit_all(),
             ParseToken::Bool(b) => {

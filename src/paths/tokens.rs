@@ -25,6 +25,7 @@ pub enum Token {
     And(StrRange),
     Or(StrRange),
     Whitespace(StrRange),
+    Caret(StrRange)
 }
 
 impl Token {
@@ -53,6 +54,7 @@ impl Token {
             Token::And(_) => matches!(other, Token::And(_)),
             Token::Or(_) => matches!(other, Token::Or(_)),
             Token::Whitespace(_) => matches!(other, Token::Whitespace(_)),
+            Token::Caret(_) => matches!(other, Token::Caret(_)),
         }
     }
 
@@ -81,6 +83,7 @@ impl Token {
             Token::And(_) => Token::And(new_span),
             Token::Or(_) => Token::Or(new_span),
             Token::Whitespace(_) => Token::Whitespace(new_span),
+            Token::Caret(_) => Token::Caret(new_span),
         }
     }
 }
@@ -97,6 +100,8 @@ pub enum ParseToken {
     Leaves,
     // '*'
     All,
+    // '^'
+    Parent,
 
     Key(StrRange),
     Keys(Vec<StrRange>),
