@@ -282,7 +282,7 @@ impl<'a> JsonSelector<'a> {
                 self.tokens.pop();
                 self.current = self.selector_filter.collect_all(&mut self.parents, self.current.take());
             }
-            Some(ParseToken::In) => {
+            Some(ParseToken::In) | Some(ParseToken::Parent) => {
                 self.tokens.pop();
                 self.current = self.selector_filter.collect_next_all(&mut self.parents, self.current.take());
             }
@@ -304,10 +304,7 @@ impl<'a> JsonSelector<'a> {
                     ParseToken::Leaves => {
                         self.current = self.selector_filter.collect_all_with_str(&mut self.parents, self.current.take(), key)
                     }
-                    ParseToken::In => {
-                        self.current = self.selector_filter.collect_next_with_str(&mut self.parents, self.current.take(), &[key])
-                    }
-                    ParseToken::Parent => {
+                    ParseToken::In | ParseToken::Parent => {
                         self.current = self.selector_filter.collect_next_with_str(&mut self.parents, self.current.take(), &[key])
                     }
                     _ => {}
@@ -462,8 +459,10 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
                 self.tokens.push(token.clone());
             }
             ParseToken::Parent => {
-                //TODO push token only if last is not a parent already
-                self.tokens.push(token.clone());
+                match self.tokens.last() {
+                    Some(ParseToken::Parent) => {}
+                    _ => self.tokens.push(token.clone())
+                }
                 self.visit_parent()
             }
             ParseToken::ArrayEof => self.visit_array_eof(),
