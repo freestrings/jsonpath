@@ -129,13 +129,8 @@ impl<'a> ParserImpl<'a> {
     fn path_caret(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
         debug!("#path_caret");
         match self.token_reader.peek_token() {
-            Ok(Token::Caret(_)) => {
-                Ok(ParserNode {
-                    token: ParseToken::Parent,
-                    left: Some(Box::new(prev)),
-                    right: None,
-                })
-            }
+            Ok(Token::Caret(_)) => self.path_parent_parent(prev),
+            Ok(Token::Asterisk(_)) => self.path_parent_all(prev),
             Ok(Token::Key(_)) => self.path_parent_key(prev),
             Ok(Token::OpenArray(_)) => {
                 self.eat_token();
@@ -198,6 +193,27 @@ impl<'a> ParserImpl<'a> {
             token: ParseToken::In,
             left: Some(Box::new(prev)),
             right: Some(Box::new(self.key()?)),
+        })
+    }
+
+    #[allow(clippy::unnecessary_wraps)]
+    fn path_parent_all(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+        debug!("#path_parent_key");
+        self.eat_token();
+        Ok(ParserNode {
+            token: ParseToken::Parent,
+            left: Some(Box::new(prev)),
+            right: Some(Box::new(self.create_node(ParseToken::All))),
+        })
+    }
+
+    #[allow(clippy::unnecessary_wraps)]
+    fn path_parent_parent(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+        debug!("#path_parent_parent");
+        Ok(ParserNode {
+            token: ParseToken::Parent,
+            left: Some(Box::new(prev)),
+            right: None,
         })
     }
 
