@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use serde_json::{Number, Value};
@@ -18,6 +19,7 @@ pub struct JsonSelector<'a> {
     current: Option<Vec<&'a Value>>,
     selectors: Vec<JsonSelector<'a>>,
     selector_filter: FilterTerms<'a>,
+    parents: HashMap<*const Value, &'a Value>
 }
 
 impl<'a> JsonSelector<'a> {
@@ -29,6 +31,7 @@ impl<'a> JsonSelector<'a> {
             current: None,
             selectors: Vec::new(),
             selector_filter: FilterTerms(Vec::new()),
+            parents: HashMap::new()
         }
     }
 
@@ -40,6 +43,7 @@ impl<'a> JsonSelector<'a> {
             current: None,
             selectors: Vec::new(),
             selector_filter: FilterTerms(Vec::new()),
+            parents: HashMap::new()
         }
     }
 
@@ -156,6 +160,7 @@ impl<'a> JsonSelector<'a> {
                     current: Some(vec![value]),
                     selectors: Vec::new(),
                     selector_filter: FilterTerms(Vec::new()),
+                    parents: HashMap::new()
                 };
                 self.selectors.push(selector);
             }
@@ -172,18 +177,31 @@ impl<'a> JsonSelector<'a> {
             let array_token = self.tokens.pop();
             if let Some(ParseToken::Leaves) = self.tokens.last() {
                 self.tokens.pop();
-                self.current = self.selector_filter.collect_all(self.current.take());
+                self.current = self.selector_filter.collect_all(&mut self.parents, self.current.take());
             }
             self.tokens.push(array_token.unwrap());
         }
         self.selector_filter.new_filter_context();
     }
 
+    fn visit_parent(&mut self) {
+        let mut vec:Vec<&Value> = Vec::new();
+        if let Some(current) = &self.current {
+            for v in current {
+                let ptr = *v as *const Value;
+                if let Some(parent) = self.parents.get(&ptr) {
+                    vec.push(parent);
+                }
+            }
+        }
+        self.current = Some(vec);
+    }
+
     fn visit_array_eof(&mut self) {
         if self.is_last_before_token_match(ParseToken::Array) {
             if let Some(Some(e)) = self.selector_filter.pop_term() {
                 if let ExprTerm::String(key) = e {
-                    self.current = self.selector_filter.filter_next_with_str(self.current.take(), key);
+                    self.current = self.selector_filter.filter_next_with_str(&mut self.parents, self.current.take(), key);
                     self.tokens.pop();
                     return;
                 }
@@ -198,12 +216,12 @@ impl<'a> JsonSelector<'a> {
             if let Some(Some(e)) = self.selector_filter.pop_term() {
                 let selector_filter_consumed = match e {
                     ExprTerm::Number(n) => {
-                        self.current = self.selector_filter.collect_all_with_num(self.current.take(), utils::to_f64(&n));
+                        self.current = self.selector_filter.collect_all_with_num(&mut self.parents, self.current.take(), utils::to_f64(&n));
                         self.selector_filter.pop_term();
                         true
                     }
                     ExprTerm::String(key) => {
-                        self.current = self.selector_filter.collect_all_with_str(self.current.take(), key);
+                        self.current = self.selector_filter.collect_all_with_str(&mut self.parents, self.current.take(), key);
                         self.selector_filter.pop_term();
                         true
                     }
@@ -222,10 +240,10 @@ impl<'a> JsonSelector<'a> {
         if let Some(Some(e)) = self.selector_filter.pop_term() {
             match e {
                 ExprTerm::Number(n) => {
-                    self.current = self.selector_filter.collect_next_with_num(self.current.take(), utils::to_f64(&n));
+                    self.current = self.selector_filter.collect_next_with_num(&mut self.parents, self.current.take(), utils::to_f64(&n));
                 }
                 ExprTerm::String(key) => {
-                    self.current = self.selector_filter.collect_next_with_str(self.current.take(), &[key]);
+                    self.current = self.selector_filter.collect_next_with_str(&mut self.parents, self.current.take(), &[key]);
                 }
                 ExprTerm::Json(rel, _, v) => {
                     if v.is_empty() {
@@ -262,14 +280,14 @@ impl<'a> JsonSelector<'a> {
         match self.tokens.last() {
             Some(ParseToken::Leaves) => {
                 self.tokens.pop();
-                self.current = self.selector_filter.collect_all(self.current.take());
+                self.current = self.selector_filter.collect_all(&mut self.parents, self.current.take());
             }
             Some(ParseToken::In) => {
                 self.tokens.pop();
-                self.current = self.selector_filter.collect_next_all(self.current.take());
+                self.current = self.selector_filter.collect_next_all(&mut self.parents, self.current.take());
             }
             _ => {
-                self.current = self.selector_filter.collect_next_all(self.current.take());
+                self.current = self.selector_filter.collect_next_all(&mut self.parents, self.current.take());
             }
         }
     }
@@ -284,20 +302,23 @@ impl<'a> JsonSelector<'a> {
             if self.selector_filter.is_term_empty() {
                 match t {
                     ParseToken::Leaves => {
-                        self.current = self.selector_filter.collect_all_with_str(self.current.take(), key)
+                        self.current = self.selector_filter.collect_all_with_str(&mut self.parents, self.current.take(), key)
                     }
                     ParseToken::In => {
-                        self.current = self.selector_filter.collect_next_with_str(self.current.take(), &[key])
+                        self.current = self.selector_filter.collect_next_with_str(&mut self.parents, self.current.take(), &[key])
+                    }
+                    ParseToken::Parent => {
+                        self.current = self.selector_filter.collect_next_with_str(&mut self.parents, self.current.take(), &[key])
                     }
                     _ => {}
                 }
             } else {
                 match t {
                     ParseToken::Leaves => {
-                        self.current = self.selector_filter.filter_all_with_str(self.current.take(), key);
+                        self.current = self.selector_filter.filter_all_with_str(&mut self.parents, self.current.take(), key);
                     }
                     ParseToken::In => {
-                        self.current = self.selector_filter.filter_next_with_str(self.current.take(), key);
+                        self.current = self.selector_filter.filter_next_with_str(&mut self.parents, self.current.take(), key);
                     }
                     _ => {}
                 }
@@ -311,7 +332,7 @@ impl<'a> JsonSelector<'a> {
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
-            self.current = self.selector_filter.collect_next_with_str(self.current.take(), keys);
+            self.current = self.selector_filter.collect_next_with_str(&mut self.parents, self.current.take(), keys);
         } else {
             unreachable!();
         }
@@ -441,12 +462,9 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
                 self.tokens.push(token.clone());
             }
             ParseToken::Parent => {
-                //TODO retrieve parents from a Map<child_ptr -> &parent_value>
-                let mut vec:Vec<&Value> = Vec::new();
-                self.current = Some(vec);
-
                 //TODO push token only if last is not a parent already
                 self.tokens.push(token.clone());
+                self.visit_parent()
             }
             ParseToken::ArrayEof => self.visit_array_eof(),
             ParseToken::All => self.visit_all(),
