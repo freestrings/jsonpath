@@ -132,10 +132,7 @@ impl<'a> ParserImpl<'a> {
             Ok(Token::Caret(_)) => self.path_parent_parent(prev),
             Ok(Token::Asterisk(_)) => self.path_parent_all(prev),
             Ok(Token::Key(_)) => self.path_parent_key(prev),
-            Ok(Token::OpenArray(_)) => {
-                self.eat_token();
-                self.array(prev)
-            }
+            Ok(Token::OpenArray(_)) => self.path_parent_array(prev),
             _ => Err(self.token_reader.to_error()),
         }
     }
@@ -225,6 +222,18 @@ impl<'a> ParserImpl<'a> {
             left: Some(Box::new(prev)),
             right: Some(Box::new(self.key()?)),
         })
+    }
+
+    #[allow(clippy::unnecessary_wraps)]
+    fn path_parent_array(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+        debug!("#path_parent_array");
+        self.eat_token();
+        let prev = ParserNode {
+            token: ParseToken::Parent,
+            left: Some(Box::new(prev)),
+            right: None,
+        };
+        self.array(prev)
     }
 
     fn key(&mut self) -> Result<ParserNode, TokenError> {
