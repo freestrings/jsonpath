@@ -14,18 +14,14 @@ impl<'a> ValueWalker {
                 Value::Object(map) => {
                     map.values().into_iter().for_each(|v_el| {
                         let ptr_el = v_el as *const Value;
-                        if !parents.contains_key(&ptr_el) {
-                            parents.insert(ptr_el, v);
-                        }
+                        parents.entry(ptr_el).or_insert(v);
                         acc.push(v_el)
                     })
                 },
                 Value::Array(vec) => {
                     vec.iter().for_each(|v_el| {
                         let ptr_el = v_el as *const Value;
-                        if !parents.contains_key(&ptr_el) {
-                            parents.insert(ptr_el, v);
-                        }
+                        parents.entry(ptr_el).or_insert(v);
                         acc.push(v_el)
                     })
                 }
@@ -40,9 +36,7 @@ impl<'a> ValueWalker {
             if let Value::Object(map) = v {
                 if let Some(v_el) = map.get(key) {
                     let ptr_el = v_el as *const Value;
-                    if !parents.contains_key(&ptr_el) {
-                        parents.insert(ptr_el, v);
-                    }
+                    parents.entry(ptr_el).or_insert(v);
                     acc.push(v_el);
                 }
             }
@@ -55,9 +49,7 @@ impl<'a> ValueWalker {
             if let Value::Array(vec) = v {
                 if let Some(v_el) = vec.get(utils::abs_index(index as isize, vec.len())) {
                     let ptr_el = v_el as *const Value;
-                    if !parents.contains_key(&ptr_el) {
-                        parents.insert(ptr_el, v);
-                    }
+                    parents.entry(ptr_el).or_insert(v);
                     acc.push(v_el);
                 }
             }
@@ -90,9 +82,7 @@ impl<'a> ValueWalker {
             if let Value::Object(map) = v {
                 path_keys.iter().for_each(|pk| if let Some(v_el) = map.get(pk.get_key()) {
                     let ptr_el = v_el as *const Value;
-                    if !parents.contains_key(&ptr_el) {
-                        parents.insert(ptr_el, v);
-                    }
+                    parents.entry(ptr_el).or_insert(v);
                     acc.push(v_el)
                 });
             }
@@ -132,18 +122,14 @@ impl<'a> ValueWalker {
             Value::Array(vec) => {
                 vec.iter().for_each(|v_el| {
                     let ptr_el = v_el as *const Value;
-                    if !parents.contains_key(&ptr_el) {
-                        parents.insert(ptr_el, v);
-                    }
+                    parents.entry(ptr_el).or_insert(v);
                     Self::_walk(parents, v_el, acc, fun)
                 });
             }
             Value::Object(map) => {
                 map.values().into_iter().for_each(|v_el| {
                     let ptr_el = v_el as *const Value;
-                    if !parents.contains_key(&ptr_el) {
-                        parents.insert(ptr_el, v);
-                    }
+                    parents.entry(ptr_el).or_insert(v);
                     Self::_walk(parents, v_el, acc, fun)
                 });
             }
@@ -207,9 +193,7 @@ impl<'a> ValueWalker {
                 }
                 vec.iter().for_each(|v_el| {
                     let ptr_el = v_el as *const Value;
-                    if !parents.contains_key(&ptr_el) {
-                        parents.insert(ptr_el, v);
-                    }
+                    parents.entry(ptr_el).or_insert(v);
                     Self::walk_dedup(parents, v_el, key, visited, index, is_contain, is_not_contain, depth + 1);
                 })
             }
