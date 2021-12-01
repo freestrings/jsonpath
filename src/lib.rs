@@ -165,7 +165,8 @@ impl From<&paths::TokenError> for JsonPathError {
     fn from(e: &paths::TokenError) -> Self {
         match e {
             paths::TokenError::Eof => JsonPathError::Path("Eof".to_string()),
-            paths::TokenError::Position(pos) => JsonPathError::Path(["Position:", &pos.to_string()].concat())
+            paths::TokenError::Position(pos) => JsonPathError::Path(["Position:", &pos.to_string()].concat()),
+            paths::TokenError::Unknown => JsonPathError::Path("Not supported token".to_string()),
         }
     }
 }

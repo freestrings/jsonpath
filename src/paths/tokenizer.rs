@@ -1,32 +1,325 @@
+use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::result::Result;
 
 use super::str_reader::{ReaderError, StrRange, StrReader};
 use super::tokens::Token;
 
-const CH_DOLLA: char = '$';
-const CH_DOT: char = '.';
-const CH_ASTERISK: char = '*';
-const CH_LARRAY: char = '[';
-const CH_RARRAY: char = ']';
-const CH_LPAREN: char = '(';
-const CH_RPAREN: char = ')';
-const CH_AT: char = '@';
-const CH_QUESTION: char = '?';
-const CH_COMMA: char = ',';
-const CH_SEMICOLON: char = ':';
-const CH_EQUAL: char = '=';
-const CH_AMPERSAND: char = '&';
-const CH_PIPE: char = '|';
-const CH_LITTLE: char = '<';
-const CH_GREATER: char = '>';
-const CH_EXCLAMATION: char = '!';
-const CH_SINGLE_QUOTE: char = '\'';
-const CH_DOUBLE_QUOTE: char = '"';
+trait TokenRule {
+    fn token_char(&self) -> char;
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, ch: char) -> Result<Token, TokenError>;
+}
+
+impl Debug for dyn TokenRule {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("TokenRule '{}'", self.token_char()))
+    }
+}
+
+struct DollaToken;
+
+impl TokenRule for DollaToken {
+    fn token_char(&self) -> char {
+        '$'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, _: StrRange, _: char) -> Result<Token, TokenError> {
+        let read = input.take_while(|c| match c {
+            _ if !c.is_alphanumeric() => false,
+            _ => !c.is_whitespace(),
+        }).map_err(to_token_error)?;
+
+        if read.offset == 0 {
+            Ok(Token::Absolute(read))
+        } else {
+            Ok(Token::Key(read))
+        }
+    }
+}
+
+trait QuotaToken {
+    fn quote(&self, input: &mut StrReader<'_>, ch: char) -> Result<StrRange, TokenError> {
+        let span = input.take_while(|c| *c != ch).map_err(to_token_error)?;
+        let val = input.read(&span);
+        if let Some('\\') = val.chars().last() {
+            input.next_char().map_err(to_token_error)?;
+            let remain_span = input.take_while(|c| *c != ch).map_err(to_token_error)?;
+            input.next_char().map_err(to_token_error)?;
+            Ok(StrRange::new(span.pos, remain_span.offset))
+        } else {
+            input.next_char().map_err(to_token_error)?;
+            Ok(span)
+        }
+    }
+}
+
+struct SingleQuotaToken;
+
+impl QuotaToken for SingleQuotaToken {}
+
+impl TokenRule for SingleQuotaToken {
+    fn token_char(&self) -> char {
+        '\''
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, _: StrRange, ch: char) -> Result<Token, TokenError> {
+        Ok(Token::SingleQuoted(self.quote(input, ch)?))
+    }
+}
+
+struct DoubleQuotaToken;
+
+impl QuotaToken for DoubleQuotaToken {}
+
+impl TokenRule for DoubleQuotaToken {
+    fn token_char(&self) -> char {
+        '"'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, _: StrRange, ch: char) -> Result<Token, TokenError> {
+        Ok(Token::DoubleQuoted(self.quote(input, ch)?))
+    }
+}
+
+struct EqualToken;
+
+impl TokenRule for EqualToken {
+    fn token_char(&self) -> char {
+        '='
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        let ch = input.peek_char().map_err(to_token_error)?;
+        match ch {
+            '=' => {
+                input.next_char().map_err(to_token_error)?;
+                Ok(Token::Equal(span))
+            }
+            _ => Err(TokenError::Position(span.pos)),
+        }
+    }
+}
+
+struct ExclamationToken;
+
+impl TokenRule for ExclamationToken {
+    fn token_char(&self) -> char {
+        '!'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        let ch = input.peek_char().map_err(to_token_error)?;
+        match ch {
+            '=' => {
+                input.next_char().map_err(to_token_error)?;
+                Ok(Token::NotEqual(span))
+            }
+            _ => Err(TokenError::Position(span.pos)),
+        }
+    }
+}
+
+struct LittleToken;
+
+impl TokenRule for LittleToken {
+    fn token_char(&self) -> char {
+        '<'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        let ch = input.peek_char().map_err(to_token_error)?;
+        match ch {
+            '=' => {
+                input.next_char().map_err(to_token_error)?;
+                Ok(Token::LittleOrEqual(span))
+            }
+            _ => Ok(Token::Little(span)),
+        }
+    }
+}
+
+struct GreaterToken;
+
+impl TokenRule for GreaterToken {
+    fn token_char(&self) -> char {
+        '>'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        let ch = input.peek_char().map_err(to_token_error)?;
+        match ch {
+            '=' => {
+                input.next_char().map_err(to_token_error)?;
+                Ok(Token::GreaterOrEqual(span))
+            }
+            _ => Ok(Token::Greater(span)),
+        }
+    }
+}
+
+struct AmpersandToken;
+
+impl TokenRule for AmpersandToken {
+    fn token_char(&self) -> char {
+        '&'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        let ch = input.peek_char().map_err(to_token_error)?;
+        match ch {
+            '&' => {
+                let _ = input.next_char().map_err(to_token_error);
+                Ok(Token::And(span))
+            }
+            _ => Err(TokenError::Position(span.pos)),
+        }
+    }
+}
+
+struct PipeToken;
+
+impl TokenRule for PipeToken {
+    fn token_char(&self) -> char {
+        '|'
+    }
+
+    fn token(&self, input: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        let ch = input.peek_char().map_err(to_token_error)?;
+        match ch {
+            '|' => {
+                input.next_char().map_err(to_token_error)?;
+                Ok(Token::Or(span))
+            }
+            _ => Err(TokenError::Position(span.pos)),
+        }
+    }
+}
+
+struct DotToken;
+
+impl TokenRule for DotToken {
+    fn token_char(&self) -> char {
+        '.'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::Dot(span))
+    }
+}
+
+struct AsteriskToken;
+
+impl TokenRule for AsteriskToken {
+    fn token_char(&self) -> char {
+        '*'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::Asterisk(span))
+    }
+}
+
+struct LArrayToken;
+
+impl TokenRule for LArrayToken {
+    fn token_char(&self) -> char {
+        '['
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::OpenArray(span))
+    }
+}
+
+struct RArrayToken;
+
+impl TokenRule for RArrayToken {
+    fn token_char(&self) -> char {
+        ']'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::CloseArray(span))
+    }
+}
+
+struct LParaenToken;
+
+impl TokenRule for LParaenToken {
+    fn token_char(&self) -> char {
+        '('
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::OpenParenthesis(span))
+    }
+}
+
+struct RParaenToken;
+
+impl TokenRule for RParaenToken {
+    fn token_char(&self) -> char {
+        ')'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::CloseParenthesis(span))
+    }
+}
+
+struct AtToken;
+
+impl TokenRule for AtToken {
+    fn token_char(&self) -> char {
+        '@'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::At(span))
+    }
+}
+
+struct QuestionToken;
+
+impl TokenRule for QuestionToken {
+    fn token_char(&self) -> char {
+        '?'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::Question(span))
+    }
+}
+
+struct CommaToken;
+
+impl TokenRule for CommaToken {
+    fn token_char(&self) -> char {
+        ','
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::Comma(span))
+    }
+}
+
+struct SemicolonToken;
+
+impl TokenRule for SemicolonToken {
+    fn token_char(&self) -> char {
+        ':'
+    }
+
+    fn token(&self, _: &mut StrReader<'_>, span: StrRange, _: char) -> Result<Token, TokenError> {
+        Ok(Token::Split(span))
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenError {
     Eof,
     Position(usize),
+    Unknown
 }
 
 fn to_token_error(read_err: ReaderError) -> TokenError {
@@ -35,134 +328,82 @@ fn to_token_error(read_err: ReaderError) -> TokenError {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(super) struct Tokenizer<'a> {
     input: StrReader<'a>,
+    token_rules: HashMap<char, Box<dyn TokenRule>>
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
         trace!("input: {}", input);
-        Tokenizer {
+        let mut instance = Tokenizer {
             input: StrReader::new(input),
-        }
-    }
-
-    fn dolla(&mut self) -> Result<Token, TokenError> {
-        let fun = |c: &char| match c {
-            &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
-            _ => !c.is_whitespace(),
+            token_rules: HashMap::new()
         };
-        let read = self.input.take_while(fun).map_err(to_token_error)?;
-        if read.offset == 0 {
-            Ok(Token::Absolute(read))
-        } else {
-            Ok(Token::Key(read))
-        }
+
+        let token_rule = DollaToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = SingleQuotaToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = DoubleQuotaToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = EqualToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = ExclamationToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = LittleToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = GreaterToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = AmpersandToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = PipeToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = DotToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = AsteriskToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = LArrayToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = RArrayToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = LParaenToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = RParaenToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = AtToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = QuestionToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = CommaToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        let token_rule = SemicolonToken {};
+        instance.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
+
+        instance
     }
 
-    fn quote(&mut self, ch: char) -> Result<StrRange, TokenError> {
-        let span = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
-        let val = self.input.read(&span);
-        if let Some('\\') = val.chars().last() {
-            self.input.next_char().map_err(to_token_error)?;
-            let remain_span = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
-            self.input.next_char().map_err(to_token_error)?;
-            Ok(StrRange::new(span.pos, remain_span.offset))
-        } else {
-            self.input.next_char().map_err(to_token_error)?;
-            Ok(span)
-        }
-    }
-
-    fn single_quote(&mut self, ch: char) -> Result<Token, TokenError> {
-        Ok(Token::SingleQuoted(self.quote(ch)?))
-    }
-
-    fn double_quote(&mut self, ch: char) -> Result<Token, TokenError> {
-        Ok(Token::DoubleQuoted(self.quote(ch)?))
-    }
-
-    fn equal(&mut self, span: StrRange) -> Result<Token, TokenError> {
-        let ch = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_EQUAL => {
-                self.input.next_char().map_err(to_token_error)?;
-                Ok(Token::Equal(span))
-            }
-            _ => Err(TokenError::Position(span.pos)),
-        }
-    }
-
-    fn not_equal(&mut self, span: StrRange) -> Result<Token, TokenError> {
-        let ch = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_EQUAL => {
-                self.input.next_char().map_err(to_token_error)?;
-                Ok(Token::NotEqual(span))
-            }
-            _ => Err(TokenError::Position(span.pos)),
-        }
-    }
-
-    fn little(&mut self, span: StrRange) -> Result<Token, TokenError> {
-        let ch = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_EQUAL => {
-                self.input.next_char().map_err(to_token_error)?;
-                Ok(Token::LittleOrEqual(span))
-            }
-            _ => Ok(Token::Little(span)),
-        }
-    }
-
-    fn greater(&mut self, span: StrRange) -> Result<Token, TokenError> {
-        let ch = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_EQUAL => {
-                self.input.next_char().map_err(to_token_error)?;
-                Ok(Token::GreaterOrEqual(span))
-            }
-            _ => Ok(Token::Greater(span)),
-        }
-    }
-
-    fn and(&mut self, span: StrRange) -> Result<Token, TokenError> {
-        let ch = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_AMPERSAND => {
-                let _ = self.input.next_char().map_err(to_token_error);
-                Ok(Token::And(span))
-            }
-            _ => Err(TokenError::Position(span.pos)),
-        }
-    }
-
-    fn or(&mut self, span: StrRange) -> Result<Token, TokenError> {
-        let ch = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_PIPE => {
-                self.input.next_char().map_err(to_token_error)?;
-                Ok(Token::Or(span))
-            }
-            _ => Err(TokenError::Position(span.pos)),
-        }
+    fn add_token_rule<T>(&mut self, token_rule: T) where T: TokenRule + 'static {
+        self.token_rules.insert(token_rule.token_char(), Box::new(token_rule));
     }
 
     fn whitespace(&mut self) -> Result<Token, TokenError> {
@@ -174,54 +415,23 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn other(&mut self) -> Result<Token, TokenError> {
-        let fun = |c: &char| match c {
-            &CH_DOLLA
-            | &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
-            _ => !c.is_whitespace(),
+        let fun = |c: &char| {
+            match c {
+                _ if !c.is_alphanumeric() => false,
+                _ => !c.is_whitespace(),
+            }
         };
         let span = self.input.take_while(fun).map_err(to_token_error)?;
         Ok(Token::Key(span))
     }
 
     fn read_token(&mut self, span: StrRange, ch: char) -> Result<Token, TokenError> {
-        match ch {
-            CH_DOLLA => self.dolla(),
-            CH_DOT => Ok(Token::Dot(span)),
-            CH_ASTERISK => Ok(Token::Asterisk(span)),
-            CH_LARRAY => Ok(Token::OpenArray(span)),
-            CH_RARRAY => Ok(Token::CloseArray(span)),
-            CH_LPAREN => Ok(Token::OpenParenthesis(span)),
-            CH_RPAREN => Ok(Token::CloseParenthesis(span)),
-            CH_AT => Ok(Token::At(span)),
-            CH_QUESTION => Ok(Token::Question(span)),
-            CH_COMMA => Ok(Token::Comma(span)),
-            CH_SEMICOLON => Ok(Token::Split(span)),
-            CH_SINGLE_QUOTE => self.single_quote(ch),
-            CH_DOUBLE_QUOTE => self.double_quote(ch),
-            CH_EQUAL => self.equal(span),
-            CH_GREATER => self.greater(span),
-            CH_LITTLE => self.little(span),
-            CH_AMPERSAND => self.and(span),
-            CH_PIPE => self.or(span),
-            CH_EXCLAMATION => self.not_equal(span),
-            _ if ch.is_whitespace() => self.whitespace(),
-            _ => self.other(),
+        if let Some(rule) = self.token_rules.get(&ch) {
+            rule.token(&mut self.input, span, ch)
+        } else if ch.is_whitespace() {
+            self.whitespace()
+        } else {
+            self.other()
         }
     }
 
@@ -242,7 +452,7 @@ impl<'a> Tokenizer<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(super) struct TokenReader<'a> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,

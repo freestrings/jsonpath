@@ -6,7 +6,7 @@ use super::str_reader::StrRange;
 use super::tokenizer::{TokenError, TokenReader};
 use super::tokens::{FilterToken, ParseToken, Token};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PathParser<'a> {
     parser: ParserImpl<'a>,
 }
@@ -39,7 +39,7 @@ impl<'a> PathParser<'a> {
 
 impl<'a> ParserNodeVisitor<'a> for PathParser<'a> {}
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct ParserImpl<'a> {
     token_reader: TokenReader<'a>,
     parse_node: Option<ParserNode>,
