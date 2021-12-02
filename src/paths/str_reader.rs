@@ -1,3 +1,4 @@
+use std::cmp::{max, min};
 use std::result::Result;
 use std::str::Chars;
 
@@ -15,6 +16,13 @@ pub struct StrRange {
 impl StrRange {
     pub fn new(pos: usize, offset: usize) -> Self {
         StrRange { pos, offset }
+    }
+
+    pub fn merge(&self, other: &StrRange) -> Self {
+        StrRange {
+            pos: min(self.pos, other.pos),
+            offset: max(self.offset, other.offset)
+        }
     }
 }
 
@@ -64,8 +72,8 @@ impl<'a> StrReader<'a> {
         Ok((StrRange::new(pos, len), ch))
     }
 
-    pub fn read(&self, span: &StrRange) -> &'a str {
-        &self.input[span.pos..(span.pos + span.offset)]
+    pub fn read(&self, range: &StrRange) -> &'a str {
+        &self.input[range.pos..(range.pos + range.offset)]
     }
 
     pub fn current_pos(&self) -> usize {

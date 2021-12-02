@@ -11,17 +11,17 @@ use super::utils;
 use super::terms::*;
 
 #[derive(Debug, Default)]
-pub struct JsonSelector<'a> {
-    parser: Option<Rc<PathParser<'a>>>,
+pub struct JsonSelector<'a, 'b> {
+    parser: Option<Rc<PathParser<'a, 'b>>>,
     value: Option<&'a Value>,
     tokens: Vec<ParseToken>,
     current: Option<Vec<&'a Value>>,
-    selectors: Vec<JsonSelector<'a>>,
+    selectors: Vec<JsonSelector<'a, 'b>>,
     selector_filter: FilterTerms<'a>,
 }
 
-impl<'a> JsonSelector<'a> {
-    pub fn new(parser: PathParser<'a>) -> Self {
+impl<'a, 'b> JsonSelector<'a, 'b> {
+    pub fn new(parser: PathParser<'a, 'b>) -> Self {
         JsonSelector {
             parser: Some(Rc::new(parser)),
             value: None,
@@ -32,7 +32,7 @@ impl<'a> JsonSelector<'a> {
         }
     }
 
-    pub fn new_ref(parser: Rc<PathParser<'a>>) -> Self {
+    pub fn new_ref(parser: Rc<PathParser<'a, 'b>>) -> Self {
         JsonSelector {
             parser: Some(parser),
             value: None,
@@ -43,12 +43,12 @@ impl<'a> JsonSelector<'a> {
         }
     }
 
-    pub fn reset_parser(&mut self, parser: PathParser<'a>) -> &mut Self {
+    pub fn reset_parser(&mut self, parser: PathParser<'a, 'b>) -> &mut Self {
         self.parser = Some(Rc::new(parser));
         self
     }
 
-    pub fn reset_parser_ref(&mut self, parser: Rc<PathParser<'a>>) -> &mut Self {
+    pub fn reset_parser_ref(&mut self, parser: Rc<PathParser<'a, 'b>>) -> &mut Self {
         self.parser = Some(parser);
         self
     }
@@ -145,7 +145,7 @@ impl<'a> JsonSelector<'a> {
     }
 }
 
-impl<'a> JsonSelector<'a> {
+impl<'a, 'b> JsonSelector<'a, 'b> {
     fn visit_absolute(&mut self) {
         if self.current.is_some() {
             if let Some(value) = self.value {
@@ -423,7 +423,7 @@ impl<'a> JsonSelector<'a> {
     }
 }
 
-impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
+impl<'a, 'b> ParserTokenHandler<'a> for JsonSelector<'a, 'b> {
     fn handle<F>(&mut self, token: &ParseToken, parse_value_reader: &F)
         where
             F: Fn(&StrRange) -> &'a str
@@ -467,29 +467,29 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
 }
 
 #[derive(Default)]
-pub struct JsonSelectorMut<'a> {
+pub struct JsonSelectorMut<'a, 'b> {
     value: Option<Value>,
-    parser: Option<Rc<PathParser<'a>>>,
+    parser: Option<Rc<PathParser<'a, 'b>>>,
 }
 
-impl<'a> JsonSelectorMut<'a> {
-    pub fn new(parser: PathParser<'a>) -> Self {
+impl<'a, 'b> JsonSelectorMut<'a, 'b> {
+    pub fn new(parser: PathParser<'a, 'b>) -> Self {
         Self::new_ref(Rc::new(parser))
     }
 
-    pub fn new_ref(parser: Rc<PathParser<'a>>) -> Self {
+    pub fn new_ref(parser: Rc<PathParser<'a, 'b>>) -> Self {
         JsonSelectorMut {
             value: None,
             parser: Some(parser),
         }
     }
 
-    pub fn reset_parser(&mut self, parser: PathParser<'a>) -> &mut Self {
+    pub fn reset_parser(&mut self, parser: PathParser<'a, 'b>) -> &mut Self {
         self.parser = Some(Rc::new(parser));
         self
     }
 
-    pub fn reset_parser_ref(&mut self, parser: Rc<PathParser<'a>>) -> &mut Self {
+    pub fn reset_parser_ref(&mut self, parser: Rc<PathParser<'a, 'b>>) -> &mut Self {
         self.parser = Some(parser);
         self
     }

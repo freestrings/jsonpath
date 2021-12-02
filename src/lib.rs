@@ -627,11 +627,11 @@ impl Compiled {
 /// ]);
 /// ```
 #[derive(Clone, Debug)]
-pub struct PathCompiled<'a> {
-    parser: Rc<PathParser<'a>>,
+pub struct PathCompiled<'a, 'b> {
+    parser: Rc<PathParser<'a, 'b>>,
 }
 
-impl<'a> PathCompiled<'a> {
+impl<'a, 'b> PathCompiled<'a, 'b> {
     /// Compile a path expression and return a compiled instance.
     ///
     /// If parsing the path fails, it will return an error.

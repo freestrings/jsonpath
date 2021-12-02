@@ -6,6 +6,7 @@ pub use self::tokenizer::TokenError;
 
 mod str_reader;
 mod tokenizer;
+mod tokenizer_ext;
 pub mod tokens;
 mod parser_token_handler;
 mod parser_node_visitor;
