@@ -5,6 +5,7 @@ use super::tokens::Token;
 
 const CH_DOLLA: char = '$';
 const CH_DOT: char = '.';
+const CH_CARET: char = '^';
 const CH_ASTERISK: char = '*';
 const CH_LARRAY: char = '[';
 const CH_RARRAY: char = ']';
@@ -51,6 +52,7 @@ impl<'a> Tokenizer<'a> {
     fn dolla(&mut self) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
             &CH_DOT
+            | &CH_CARET
             | &CH_ASTERISK
             | &CH_LARRAY
             | &CH_RARRAY
@@ -177,6 +179,7 @@ impl<'a> Tokenizer<'a> {
         let fun = |c: &char| match c {
             &CH_DOLLA
             | &CH_DOT
+            | &CH_CARET
             | &CH_ASTERISK
             | &CH_LARRAY
             | &CH_RARRAY
@@ -203,6 +206,7 @@ impl<'a> Tokenizer<'a> {
         match ch {
             CH_DOLLA => self.dolla(),
             CH_DOT => Ok(Token::Dot(span)),
+            CH_CARET => Ok(Token::Caret(span)),
             CH_ASTERISK => Ok(Token::Asterisk(span)),
             CH_LARRAY => Ok(Token::OpenArray(span)),
             CH_RARRAY => Ok(Token::CloseArray(span)),

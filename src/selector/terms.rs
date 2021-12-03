@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 use serde_json::{Number, Value};
 
@@ -335,18 +336,19 @@ impl<'a> FilterTerms<'a> {
         self.0.pop()
     }
 
-    fn filter_json_term<F>(&mut self, e: ExprTerm<'a>, fun: F)
+    fn filter_json_term<F>(&mut self, parents: &mut HashMap<*const Value, &'a Value>, e: ExprTerm<'a>, fun: F)
         where
-            F: Fn(&Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
+            F: Fn(&mut HashMap<*const Value, &'a Value>, &Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
     {
         debug!("filter_json_term: {:?}", e);
 
         if let ExprTerm::Json(rel, fk, vec) = e {
             let mut not_matched = Some(HashSet::new());
             let filter_result = if let Some(FilterKey::String(key)) = fk {
-                fun(&ValueWalker::next_with_str(&vec, key), &mut not_matched)
+                let vec:Vec<&Value> = ValueWalker::next_with_str(parents, &vec, key);
+                fun(parents, &vec, &mut not_matched)
             } else {
-                fun(&vec, &mut not_matched)
+                fun(parents, &vec, &mut not_matched)
             };
 
             if rel.is_some() {
@@ -369,14 +371,14 @@ impl<'a> FilterTerms<'a> {
         }
     }
 
-    fn push_json_term<F>(&mut self, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
+    fn push_json_term<F>(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
         where
-            F: Fn(&Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
+            F: Fn(&mut HashMap<*const Value, &'a Value>, &Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
     {
         debug!("push_json_term: {:?}", &current);
 
         if let Some(current) = &current {
-            let filter_result = fun(current, &mut None);
+            let filter_result = fun(parents, current, &mut None);
             self.push_term(Some(ExprTerm::Json(
                 None,
                 Some(filter_result.key),
@@ -386,28 +388,29 @@ impl<'a> FilterTerms<'a> {
         current
     }
 
-    fn filter<F>(&mut self, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
+    fn filter<F>(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, fun: F) -> Option<Vec<&'a Value>>
         where
-            F: Fn(&Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
+            F: Fn(&mut HashMap<*const Value, &'a Value>, &Vec<&'a Value>, &mut Option<HashSet<usize>>) -> FilterResult<'a>,
     {
+        println!("filter");
         let peek = self.pop_term();
 
         if let Some(None) = peek {
-            return self.push_json_term(current, fun);
+            return self.push_json_term(parents, current, fun);
         }
 
         if let Some(Some(e)) = peek {
-            self.filter_json_term(e, fun);
+            self.filter_json_term(parents, e, fun);
         }
 
         current
     }
 
-    pub fn filter_all_with_str(&mut self, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
-        let current = self.filter(current, |vec, _| {
+    pub fn filter_all_with_str(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
+        let current = self.filter(parents, current, |parents, vec, _| {
             FilterResult {
                 key: FilterKey::All,
-                collected: ValueWalker::all_with_str(vec, key)
+                collected: ValueWalker::all_with_str(parents, vec, key)
             }
         });
 
@@ -415,14 +418,15 @@ impl<'a> FilterTerms<'a> {
         current
     }
 
-    pub fn filter_next_with_str(&mut self, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
-        let current = self.filter(current, |vec, not_matched| {
+    pub fn filter_next_with_str(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
+        let current = self.filter(parents, current, |parents, vec, not_matched| {
             let mut visited = HashSet::new();
             let mut acc = Vec::new();
 
             let path_key = &utils::to_path_str(key);
 
-            ValueWalker::walk_dedup_all(vec,
+            ValueWalker::walk_dedup_all(parents,
+                                        vec,
                                         path_key.get_key(),
                                         &mut visited,
                                         &mut |v| {
@@ -446,7 +450,7 @@ impl<'a> FilterTerms<'a> {
         current
     }
 
-    pub fn collect_next_with_num(&mut self, current: Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
+    pub fn collect_next_with_num(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!("collect_next_with_num : {:?}, {:?}", &index, &current);
             return current;
@@ -473,7 +477,7 @@ impl<'a> FilterTerms<'a> {
             }
         }
 
-        let acc = ValueWalker::next_with_num(&current.unwrap(), index);
+        let acc = ValueWalker::next_with_num(parents, &current.unwrap(), index);
 
         if acc.is_empty() {
             self.pop_term();
@@ -482,7 +486,7 @@ impl<'a> FilterTerms<'a> {
         Some(acc)
     }
 
-    pub fn collect_next_with_str(&mut self, current: Option<Vec<&'a Value>>, keys: &[&'a str]) -> Option<Vec<&'a Value>> {
+    pub fn collect_next_with_str(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, keys: &[&'a str]) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!(
                 "collect_next_with_str : {:?}, {:?}",
@@ -491,7 +495,7 @@ impl<'a> FilterTerms<'a> {
             return current;
         }
 
-        let acc = ValueWalker::all_with_strs(current.as_ref().unwrap(), keys);
+        let acc = ValueWalker::all_with_strs(parents, current.as_ref().unwrap(), keys);
 
         if acc.is_empty() {
             self.pop_term();
@@ -500,37 +504,37 @@ impl<'a> FilterTerms<'a> {
         Some(acc)
     }
 
-    pub fn collect_next_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+    pub fn collect_next_all(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!("collect_next_all : {:?}", &current);
             return current;
         }
 
-        Some(ValueWalker::next_all(&current.unwrap()))
+        Some(ValueWalker::next_all(parents, &current.unwrap()))
     }
 
-    pub fn collect_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+    pub fn collect_all(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!("collect_all: {:?}", &current);
             return current;
         }
 
-        Some(ValueWalker::all(current.as_ref().unwrap()))
+        Some(ValueWalker::all(parents, current.as_ref().unwrap()))
     }
 
-    pub fn collect_all_with_str(&mut self, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
+    pub fn collect_all_with_str(&mut self, parents: &mut HashMap<*const Value, &'a Value>, current: Option<Vec<&'a Value>>, key: &'a str) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!("collect_all_with_str: {}, {:?}", key, &current);
             return current;
         }
 
-        let ret = ValueWalker::all_with_str(current.as_ref().unwrap(), key);
+        let ret = ValueWalker::all_with_str(parents, current.as_ref().unwrap(), key);
         Some(ret)
     }
 
-    pub fn collect_all_with_num(&mut self, mut current: Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
+    pub fn collect_all_with_num(&mut self, parents: &mut HashMap<*const Value, &'a Value>, mut current: Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
         if let Some(current) = current.take() {
-            let ret = ValueWalker::all_with_num(&current, index);
+            let ret = ValueWalker::all_with_num(parents, &current, index);
             if !ret.is_empty() {
                 return Some(ret);
             }

@@ -240,3 +240,17 @@ fn give_me_every_thing() {
         read_json("./benchmark/giveme_every_thing_result.json"),
     );
 }
+
+#[test]
+fn all_titles_of_books_in_store_ranked_as_5() {
+    setup();
+
+    select_and_then_compare(
+        r#"$.store.book[*].reviews[?(@.vote == 5)]^^title"#,
+        read_json("./benchmark/example_deeper.json"),
+        json!([
+            "Sword of Honour",
+            "The Lord of the Rings",
+        ]),
+    );
+}
