@@ -128,6 +128,7 @@ extern crate core;
 extern crate log;
 extern crate serde;
 extern crate serde_json;
+extern crate ijson;
 
 use serde_json::Value;
 
