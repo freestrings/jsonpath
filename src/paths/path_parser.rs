@@ -1,4 +1,6 @@
 use std::str::FromStr;
+use paths::parser_node_visitor::_ParserNodeVisitor;
+use paths::parser_token_handler::_ParserTokenHandler;
 
 use paths::tokenizer::{StdTokenRules, TokenRules};
 use paths::tokens::*;
@@ -23,7 +25,7 @@ impl<'a, 'b> PathParser<'a, 'b> {
 
     pub(crate) fn parse<F>(&self, parse_token_handler: &mut F) -> Result<(), String>
         where
-            F: ParserTokenHandler<'a>,
+            F: _ParserTokenHandler<'a, 'b>,
     {
         if self.parser.parse_node.is_none() {
             unreachable!()
@@ -40,112 +42,124 @@ impl<'a, 'b> PathParser<'a, 'b> {
     }
 }
 
-impl<'a, 'b> ParserNodeVisitor<'a> for PathParser<'a, 'b> {}
+impl<'a, 'b> _ParserNodeVisitor<'a, 'b> for PathParser<'a, 'b> {}
 
 struct _ParserImpl<'a, 'b> {
     token_reader: TokenReader<'a, 'b>,
-    parse_node: Option<_ParseNode<'b>>,
+    parse_node: Option<_ParserNode<'b>>,
 }
 
 impl<'a, 'b> _ParserImpl<'a, 'b> {
     pub fn compile(&mut self) -> Result<&mut Self, TokenError> {
-        let node = JsonPathParseNodeHandler {}.handle(&mut self.token_reader, None)?;
+        let node = JsonPathParserNodeBuilder {}._parse(&mut self.token_reader, None)?;
         self.parse_node = Some(node);
         Ok(self)
     }
 }
 
-const P_TOK_ABSOLUTE: &str = "Absolute";
-const P_TOK_LEAVES: &str = "Leaves";
-const P_TOK_IN: &str = "In";
-const P_TOK_ALL: &str = "All";
-const P_TOK_RANGE: &str = "Range";
-const P_TOK_RANGE_TO: &str = "RangeTo";
-const P_TOK_RANGE_FROM: &str = "RangeFrom";
-const P_TOK_UNION: &str = "Union";
-const P_TOK_ARRAY: &str = "Array";
-const P_TOK_AND: &str = "And";
-const P_TOK_OR: &str = "Or";
-const P_TOK_RELATIVE: &str = "Relative";
-const P_TOK_EOF: &str = "Eof";
-const P_TOK_KEY: &str = "Key";
-const P_TOK_KEYS: &str = "Keys";
-const P_TOK_NUMBER: &str = "Number";
-const P_TOK_BOOL: &str = "Bool";
-const P_TOK_EQUAL: &str = "FilterEqual";
-const P_TOK_NOT_EQUAL: &str = "FilterNotEqual";
-const P_TOK_LITTLE: &str = "FilterLittle";
-const P_TOK_LITTLE_OR_EQUAL: &str = "FilterLittleOrEqual";
-const P_TOK_GREATER: &str = "FilterGreater";
-const P_TOK_GREATER_OR_EQUAL: &str = "GreaterOrEqual";
+pub const P_TOK_ABSOLUTE: &str = "Absolute";
+pub const P_TOK_RELATIVE: &str = "Relative";
+pub const P_TOK_LEAVES: &str = "Leaves";
+pub const P_TOK_IN: &str = "In";
+pub const P_TOK_ALL: &str = "All";
+pub const P_TOK_RANGE: &str = "Range";
+pub const P_TOK_RANGE_TO: &str = "RangeTo";
+pub const P_TOK_RANGE_FROM: &str = "RangeFrom";
+pub const P_TOK_UNION: &str = "Union";
+pub const P_TOK_ARRAY: &str = "Array";
+pub const P_TOK_ARRAY_END: &str = "ArrayEnd";
+pub const P_TOK_END: &str = "Eof";
+pub const P_TOK_KEY: &str = "Key";
+pub const P_TOK_KEYS: &str = "Keys";
+pub const P_TOK_NUMBER: &str = "Number";
+pub const P_TOK_BOOL: &str = "Bool";
+pub const P_TOK_FILTER_AND: &str = "And";
+pub const P_TOK_FILTER_OR: &str = "Or";
+pub const P_TOK_FILTER_EQUAL: &str = "FilterEqual";
+pub const P_TOK_FILTER_NOT_EQUAL: &str = "FilterNotEqual";
+pub const P_TOK_FILTER_LITTLE: &str = "FilterLittle";
+pub const P_TOK_FILTER_LITTLE_OR_EQUAL: &str = "FilterLittleOrEqual";
+pub const P_TOK_FILTER_GREATER: &str = "FilterGreater";
+pub const P_TOK_FILTER_GREATER_OR_EQUAL: &str = "GreaterOrEqual";
 
-trait ParseNodeHandler<'a> {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError>;
+trait ParserNodeBuilder<'a> {
+    fn build(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
+        let node = self._parse(token_reader, prev)?;
+        self._validate(token_reader, &node.token)?;
+        Ok(node)
+    }
+
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError>;
+
+    fn _validate(&mut self, _: &mut TokenReader, _: &_ParserToken<'a>) -> Result<(), TokenError> {
+        Ok(())
+    }
 }
 
-struct JsonPathParseNodeHandler;
+struct JsonPathParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for JsonPathParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for JsonPathParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#json_path");
         match token_reader.next_token() {
             Ok(_Token { key: TOK_ABSOLUTE, .. }) => {
-                PathsParseNodeHandler {}.handle(token_reader, Some(_ParseNode::new_token_only(P_TOK_ABSOLUTE)))
+                PathsParserNodeBuilder {}.build(token_reader, Some(_ParserNode::new_token_only(P_TOK_ABSOLUTE)))
             }
             _ => Err(token_reader.to_error()),
         }
     }
 }
 
-struct PathsParseNodeHandler;
+struct PathsParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathsParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathsParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#paths");
         match token_reader.peek_token() {
             Ok(_Token { key: TOK_DOT, .. }) => {
                 token_reader.eat_token();
-                PathDotParseNodeHandler {}.handle(token_reader, prev)
+                PathDotParserNodeBuilder {}.build(token_reader, prev)
             }
             Ok(_Token { key: TOK_OPEN_ARRAY, .. }) => {
                 token_reader.eat_token();
                 token_reader.eat_whitespace();
-                let node = ArrayParseNodeHandler {}.handle(token_reader, prev)?;
-                self.handle(token_reader, Some(node))
+                let node = ArrayParserNodeBuilder {}.build(token_reader, prev)?;
+                self.build(token_reader, Some(node))
             }
             _ => Ok(prev.unwrap()),
         }
     }
 }
 
-struct PathDotParseNodeHandler;
+struct PathDotParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathDotParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
-        let node = PathParseNodeHandler {}.handle(token_reader, prev)?;
-        PathsParseNodeHandler {}.handle(token_reader, Some(node))
+impl<'a> ParserNodeBuilder<'a> for PathDotParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
+        debug!("#paths_dot");
+        let node = PathParserNodeBuilder {}.build(token_reader, prev)?;
+        PathsParserNodeBuilder {}.build(token_reader, Some(node))
     }
 }
 
-struct ArrayParseNodeHandler;
+struct ArrayParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ArrayParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ArrayParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#array");
-        let ret = ArrayStartParseNodeHandler {}.handle(token_reader, prev)?;
+        let ret = ArrayStartParserNodeBuilder {}.build(token_reader, prev)?;
         token_reader.eat_whitespace();
-        Ok(CloseParseNodeHandler {
+        Ok(CloseParserNodeBuilder {
             close_token: _Token::new(TOK_CLOSE_ARRAY, StrRange::new(0, 0))
-        }.handle(token_reader, Some(ret))?)
+        }.build(token_reader, Some(ret))?)
     }
 }
 
-struct CloseParseNodeHandler<'a> {
+struct CloseParserNodeBuilder<'a> {
     close_token: _Token<'a>
 }
 
-impl<'a> ParseNodeHandler<'a> for CloseParseNodeHandler<'a> {
-    fn handle(&mut self, token_reader: &mut TokenReader, ret: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for CloseParserNodeBuilder<'a> {
+    fn _parse(&mut self, token_reader: &mut TokenReader, ret: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#close_token");
         match token_reader.next_token() {
             Ok(ref t) if t.is_type_matched(&self.close_token) => Ok(ret.unwrap()),
@@ -154,195 +168,197 @@ impl<'a> ParseNodeHandler<'a> for CloseParseNodeHandler<'a> {
     }
 }
 
-struct PathParseNodeHandler;
+struct PathParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#path");
         match token_reader.peek_token() {
-            Ok(_Token { key: TOK_DOT, .. }) => Ok(PathLeavesParseNodeHandler {}.handle(token_reader, prev)?),
-            Ok(_Token { key: TOK_ASTERISK, .. }) => Ok(PathInAllParseNodeHandler {}.handle(token_reader, prev)?),
-            Ok(_Token { key: TOK_KEY, .. }) => Ok(PathInAllParseNodeHandler {}.handle(token_reader, prev)?),
+            Ok(_Token { key: TOK_DOT, .. }) => Ok(PathLeavesParserNodeBuilder {}.build(token_reader, prev)?),
+            Ok(_Token { key: TOK_ASTERISK, .. }) => {
+                Ok(PathInAllParserNodeBuilder {}.build(token_reader, prev)?)
+            },
+            Ok(_Token { key: TOK_KEY, .. }) => Ok(PathInKeyParserNodeBuilder {}.build(token_reader, prev)?),
             Ok(_Token { key: TOK_OPEN_ARRAY, .. }) => {
                 token_reader.eat_token();
-                Ok(ArrayParseNodeHandler {}.handle(token_reader, prev)?)
+                Ok(ArrayParserNodeBuilder {}.build(token_reader, prev)?)
             }
             _ => Err(token_reader.to_error()),
         }
     }
 }
 
-struct PathInAllParseNodeHandler;
+struct PathInAllParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathInAllParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathInAllParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#path_in_all");
         token_reader.eat_token();
-        let mut node = _ParseNode::new_token_only(P_TOK_IN);
+        let mut node = _ParserNode::new_token_only(P_TOK_IN);
         node.left = Some(Box::new(prev.unwrap()));
-        node.right = Some(Box::new(_ParseNode::new_token_only(P_TOK_ALL)));
+        node.right = Some(Box::new(_ParserNode::new_token_only(P_TOK_ALL)));
         Ok(node)
     }
 }
 
-struct PathInKeyParseNodeHandler;
+struct PathInKeyParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathInKeyParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathInKeyParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#path_in_key");
-        let mut node = _ParseNode::new_token_only(P_TOK_IN);
+        let mut node = _ParserNode::new_token_only(P_TOK_IN);
         node.left = Some(Box::new(prev.unwrap()));
-        node.right = Some(Box::new(KeyParseNodeHandler {}.handle(token_reader, None)?));
+        node.right = Some(Box::new(KeyParserNodeBuilder {}.build(token_reader, None)?));
         Ok(node)
     }
 }
 
-struct PathLeavesParseNodeHandler;
+struct PathLeavesParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathLeavesParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathLeavesParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#path_leaves");
         token_reader.eat_token();
         match token_reader.peek_token() {
-            Ok(_Token { key: TOK_ASTERISK, .. }) => Ok(PathLeavesAllParseNodeHandler {}.handle(token_reader, prev)?),
+            Ok(_Token { key: TOK_ASTERISK, .. }) => Ok(PathLeavesAllParserNodeBuilder {}.build(token_reader, prev)?),
             Ok(_Token { key: TOK_OPEN_ARRAY, .. }) => {
-                let mut leaves_node = _ParseNode::new_token_only(P_TOK_LEAVES);
+                let mut leaves_node = _ParserNode::new_token_only(P_TOK_LEAVES);
                 leaves_node.left = Some(Box::new(prev.unwrap()));
-                Ok(PathsParseNodeHandler {}.handle(token_reader, Some(leaves_node))?)
+                Ok(PathsParserNodeBuilder {}.build(token_reader, Some(leaves_node))?)
             }
-            _ => Ok(PathLeavesKeyParseNodeHandler {}.handle(token_reader, prev)?),
+            _ => Ok(PathLeavesKeyParserNodeBuilder {}.build(token_reader, prev)?),
         }
     }
 }
 
-struct PathLeavesAllParseNodeHandler;
+struct PathLeavesAllParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathLeavesAllParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathLeavesAllParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#path_leaves_all");
         token_reader.eat_token();
-        let mut node = _ParseNode::new_token_only(P_TOK_LEAVES);
+        let mut node = _ParserNode::new_token_only(P_TOK_LEAVES);
         node.left = Some(Box::new(prev.unwrap()));
-        node.right = Some(Box::new(_ParseNode::new_token_only(P_TOK_ALL)));
+        node.right = Some(Box::new(_ParserNode::new_token_only(P_TOK_ALL)));
         Ok(node)
     }
 }
 
-struct PathLeavesKeyParseNodeHandler;
+struct PathLeavesKeyParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for PathLeavesKeyParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for PathLeavesKeyParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#path_leaves_key");
-        let mut node = _ParseNode::new_token_only(P_TOK_LEAVES);
+        let mut node = _ParserNode::new_token_only(P_TOK_LEAVES);
         node.left = Some(Box::new(prev.unwrap()));
-        node.right = Some(Box::new(KeyParseNodeHandler {}.handle(token_reader, None)?));
+        node.right = Some(Box::new(KeyParserNodeBuilder {}.build(token_reader, None)?));
         Ok(node)
     }
 }
 
-struct KeyParseNodeHandler;
+struct KeyParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for KeyParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for KeyParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#key");
         match token_reader.next_token() {
             Ok(_Token { key: TOK_KEY, range }) => {
-                Ok(_ParseNode::new_with_token_params(P_TOK_KEY, vec![range]))
+                Ok(_ParserNode::new_with_token_params(P_TOK_KEY, vec![range]))
             },
             _ => Err(token_reader.to_error()),
         }
     }
 }
 
-struct ArrayStartParseNodeHandler;
+struct ArrayStartParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ArrayStartParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ArrayStartParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#array_start");
-        let mut node = _ParseNode::new_token_only(P_TOK_ARRAY);
+        let mut node = _ParserNode::new_token_only(P_TOK_ARRAY);
         node.left = Some(Box::new(prev.unwrap()));
         match token_reader.peek_token() {
             Ok(_Token { key: TOK_QUESTION, .. }) => {
                 token_reader.eat_token();
-                node.right = Some(Box::new(FilterParseNodeHandler {}.handle(token_reader, None)?));
+                node.right = Some(Box::new(FilterParserNodeBuilder {}.build(token_reader, None)?));
                 Ok(node)
             }
             Ok(_Token { key: TOK_ASTERISK, .. }) => {
                 token_reader.eat_token();
-                node.right = Some(Box::new(_ParseNode::new_token_only(P_TOK_ALL)));
+                node.right = Some(Box::new(_ParserNode::new_token_only(P_TOK_ALL)));
                 Ok(node)
             }
             _ => {
-                node.right = Some(Box::new(ArrayValueParseNodeHandler {}.handle(token_reader, None)?));
+                node.right = Some(Box::new(ArrayValueParserNodeBuilder {}.build(token_reader, None)?));
                 Ok(node)
             },
         }
     }
 }
 
-struct FilterParseNodeHandler;
+struct FilterParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for FilterParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for FilterParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#filter");
         match token_reader.next_token() {
             Ok(_Token { key: TOK_OPEN_PARENTHESIS, .. }) => {
-                let ret = ExprsParseNodeHandler {}.handle(token_reader, None)?;
+                let ret = ExprsParserNodeBuilder {}.build(token_reader, None)?;
                 token_reader.eat_whitespace();
-                Ok(CloseParseNodeHandler {
+                Ok(CloseParserNodeBuilder {
                     close_token: _Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(0, 0))
-                }.handle(token_reader, Some(ret))?)
+                }.build(token_reader, Some(ret))?)
             }
             _ => Err(token_reader.to_error()),
         }
     }
 }
 
-struct ExprsParseNodeHandler;
+struct ExprsParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ExprsParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ExprsParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         token_reader.eat_whitespace();
         debug!("#exprs");
         let node = match token_reader.peek_token() {
             Ok(_Token { key: TOK_OPEN_PARENTHESIS, .. }) => {
                 token_reader.eat_token();
                 trace!("\t-exprs - open_parenthesis");
-                let ret = self.handle(token_reader, None)?;
+                let ret = self.build(token_reader, None)?;
                 token_reader.eat_whitespace();
-                CloseParseNodeHandler {
+                CloseParserNodeBuilder {
                     close_token: _Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(0, 0))
-                }.handle(token_reader, Some(ret))?
+                }._parse(token_reader, Some(ret))?
             }
             _ => {
                 trace!("\t-exprs - else");
-                ExprParseNodeHandler {}.handle(token_reader, None)?
+                ExprParserNodeBuilder {}.build(token_reader, None)?
             }
         };
         token_reader.eat_whitespace();
-        Ok(ConditionExprParseNodeHandler {}.handle(token_reader, Some(node))?)
+        Ok(ConditionExprParserNodeBuilder {}.build(token_reader, Some(node))?)
     }
 }
 
-struct ConditionExprParseNodeHandler;
+struct ConditionExprParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ConditionExprParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ConditionExprParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#condition_expr");
 
         match token_reader.peek_token() {
             Ok(_Token { key: TOK_AND, .. }) => {
                 token_reader.eat_token();
-                let mut node = _ParseNode::new_token_only(P_TOK_AND);
+                let mut node = _ParserNode::new_token_only(P_TOK_FILTER_AND);
                 node.left = Some(Box::new(prev.unwrap()));
-                node.right = Some(Box::new(ExprsParseNodeHandler {}.handle(token_reader, None)?));
+                node.right = Some(Box::new(ExprsParserNodeBuilder {}.build(token_reader, None)?));
                 Ok(node)
             }
             Ok(_Token { key: TOK_OR, .. }) => {
                 token_reader.eat_token();
-                let mut node = _ParseNode::new_token_only(P_TOK_OR);
+                let mut node = _ParserNode::new_token_only(P_TOK_FILTER_OR);
                 node.left = Some(Box::new(prev.unwrap()));
-                node.right = Some(Box::new(ExprsParseNodeHandler {}.handle(token_reader, None)?));
+                node.right = Some(Box::new(ExprsParserNodeBuilder {}.build(token_reader, None)?));
                 Ok(node)
             }
             _ => Ok(prev.unwrap()),
@@ -350,15 +366,15 @@ impl<'a> ParseNodeHandler<'a> for ConditionExprParseNodeHandler {
     }
 }
 
-struct ExprParseNodeHandler;
+struct ExprParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ExprParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ExprParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#expr");
 
         let has_prop_candidate = matches!(token_reader.peek_token(), Ok(_Token { key: TOK_AT, .. }));
 
-        let node = TermParseNodeHandler {}.handle(token_reader, None);
+        let node = TermParserNodeBuilder {}.build(token_reader, None);
         token_reader.eat_whitespace();
 
         if matches!(token_reader.peek_token(),
@@ -369,7 +385,7 @@ impl<'a> ParseNodeHandler<'a> for ExprParseNodeHandler {
             | Ok(_Token { key: TOK_GREATER, .. })
             | Ok(_Token { key: TOK_GREATER_OR_EQUAL, .. }))
         {
-            OpParseNodeHandler {}.handle(token_reader, Some(node?))
+            OpParserNodeBuilder {}.build(token_reader, Some(node?))
         } else if has_prop_candidate {
             node
         } else {
@@ -378,18 +394,18 @@ impl<'a> ParseNodeHandler<'a> for ExprParseNodeHandler {
     }
 }
 
-struct OpParseNodeHandler;
+struct OpParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for OpParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, prev: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for OpParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, prev: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#op");
         let mut node = match token_reader.next_token() {
-            Ok(_Token { key: TOK_EQUAL, .. }) => _ParseNode::new_token_only(P_TOK_EQUAL),
-            Ok(_Token { key: TOK_NOT_EQUAL, .. }) => _ParseNode::new_token_only(P_TOK_NOT_EQUAL),
-            Ok(_Token { key: TOK_LITTLE, .. }) => _ParseNode::new_token_only(P_TOK_LITTLE),
-            Ok(_Token { key: TOK_LITTLE_OR_EQUAL, .. }) => _ParseNode::new_token_only(P_TOK_LITTLE_OR_EQUAL),
-            Ok(_Token { key: TOK_GREATER, .. }) => _ParseNode::new_token_only(P_TOK_GREATER),
-            Ok(_Token { key: TOK_GREATER_OR_EQUAL, .. }) => _ParseNode::new_token_only(P_TOK_GREATER_OR_EQUAL),
+            Ok(_Token { key: TOK_EQUAL, .. }) => _ParserNode::new_token_only(P_TOK_FILTER_EQUAL),
+            Ok(_Token { key: TOK_NOT_EQUAL, .. }) => _ParserNode::new_token_only(P_TOK_FILTER_NOT_EQUAL),
+            Ok(_Token { key: TOK_LITTLE, .. }) => _ParserNode::new_token_only(P_TOK_FILTER_LITTLE),
+            Ok(_Token { key: TOK_LITTLE_OR_EQUAL, .. }) => _ParserNode::new_token_only(P_TOK_FILTER_LITTLE_OR_EQUAL),
+            Ok(_Token { key: TOK_GREATER, .. }) => _ParserNode::new_token_only(P_TOK_FILTER_GREATER),
+            Ok(_Token { key: TOK_GREATER_OR_EQUAL, .. }) => _ParserNode::new_token_only(P_TOK_FILTER_GREATER_OR_EQUAL),
             _ => {
                 return Err(token_reader.to_error());
             }
@@ -398,15 +414,15 @@ impl<'a> ParseNodeHandler<'a> for OpParseNodeHandler {
         token_reader.eat_whitespace();
 
         node.left = Some(Box::new(prev.unwrap()));
-        node.right = Some(Box::new(TermParseNodeHandler {}.handle(token_reader, None)?));
+        node.right = Some(Box::new(TermParserNodeBuilder {}.build(token_reader, None)?));
         Ok(node)
     }
 }
 
-struct TermParseNodeHandler;
+struct TermParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for TermParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for TermParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#term");
 
         if token_reader.peek_token().is_err() {
@@ -422,8 +438,8 @@ impl<'a> ParseNodeHandler<'a> for TermParseNodeHandler {
         if let Some(s) = has_term_key {
             let key = token_reader.read_value(&s);
             return match key.as_bytes()[0] {
-                b'-' | b'0'..=b'9' => TermNumParseNodeHandler {}.handle(token_reader, None),
-                _ => BoolParseNodeHandler {}.handle(token_reader, None),
+                b'-' | b'0'..=b'9' => TermNumParserNodeBuilder {}.build(token_reader, None),
+                _ => BoolParserNodeBuilder {}._parse(token_reader, None),
             };
         }
 
@@ -431,20 +447,20 @@ impl<'a> ParseNodeHandler<'a> for TermParseNodeHandler {
             Ok(_Token { key: TOK_AT, .. }) => {
                 token_reader.eat_token();
 
-                let node = _ParseNode::new_token_only(P_TOK_RELATIVE);
+                let node = _ParserNode::new_token_only(P_TOK_RELATIVE);
                 match token_reader.peek_token() {
                     Ok(_Token { key: TOK_WHITESPACE, .. }) => {
                         token_reader.eat_whitespace();
                         Ok(node)
                     }
-                    _ => PathsParseNodeHandler {}.handle(token_reader, Some(node)),
+                    _ => PathsParserNodeBuilder {}.build(token_reader, Some(node)),
                 }
             }
             Ok(_Token { key: TOK_ABSOLUTE, .. }) => {
-                JsonPathParseNodeHandler {}.handle(token_reader, None)
+                JsonPathParserNodeBuilder {}._parse(token_reader, None)
             }
             Ok(_Token { key: TOK_DOUBLE_QUOTED, .. }) | Ok(_Token { key: TOK_SINGLE_QUOTED, .. }) => {
-                ArrayQuoteValueParseNodeHandler {}.handle(token_reader, None)
+                ArrayQuoteValueParserNodeBuilder {}.build(token_reader, None)
             }
             _ => {
                 Err(token_reader.to_error())
@@ -453,17 +469,17 @@ impl<'a> ParseNodeHandler<'a> for TermParseNodeHandler {
     }
 }
 
-struct ArrayQuoteValueParseNodeHandler;
+struct ArrayQuoteValueParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ArrayQuoteValueParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ArrayQuoteValueParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#array_quote_value");
         match token_reader.next_token() {
             Ok(_Token { key: TOK_SINGLE_QUOTED, range }) | Ok(_Token { key: TOK_DOUBLE_QUOTED, range }) => {
                 if let Ok(_Token { key: TOK_COMMA, .. }) = token_reader.peek_token() {
-                    ArrayKeysParseNodeHandler { range: Some(range) }.handle(token_reader, None)
+                    ArrayKeysParserNodeBuilder { range: Some(range) }.build(token_reader, None)
                 } else {
-                    Ok(_ParseNode::new_with_token_params(P_TOK_KEY, vec![range]))
+                    Ok(_ParserNode::new_with_token_params(P_TOK_KEY, vec![range]))
                 }
             }
             _ => Err(token_reader.to_error()),
@@ -471,12 +487,12 @@ impl<'a> ParseNodeHandler<'a> for ArrayQuoteValueParseNodeHandler {
     }
 }
 
-struct ArrayKeysParseNodeHandler {
+struct ArrayKeysParserNodeBuilder {
     range: Option<StrRange>
 }
 
-impl<'a> ParseNodeHandler<'a> for ArrayKeysParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ArrayKeysParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         let mut keys = if let Some(range) = self.range.take() {
             vec![range]
         } else {
@@ -497,30 +513,30 @@ impl<'a> ParseNodeHandler<'a> for ArrayKeysParseNodeHandler {
             token_reader.eat_whitespace();
         }
 
-        Ok(_ParseNode::new_with_token_params(P_TOK_KEYS, keys))
+        Ok(_ParserNode::new_with_token_params(P_TOK_KEYS, keys))
     }
 }
 
 ///
 /// TODO Range를 넘기면,, 파서트리 수준에서 값체크를 못하기 때문에 에러를 낼수없다.
 ///
-struct BoolParseNodeHandler;
+struct BoolParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for BoolParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for BoolParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#boolean");
         if let Ok(_Token { key: TOK_KEY, range }) = token_reader.next_token() {
-            return Ok(_ParseNode::new_with_token_params(P_TOK_BOOL, vec![range]));
+            return Ok(_ParserNode::new_with_token_params(P_TOK_BOOL, vec![range]));
         }
 
         Err(token_reader.to_error())
     }
 }
 
-struct TermNumParseNodeHandler;
+struct TermNumParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for TermNumParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for TermNumParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#term_num");
         match token_reader.next_token() {
             Ok(_Token { key: TOK_KEY, range: exp_range }) => {
@@ -530,12 +546,12 @@ impl<'a> ParseNodeHandler<'a> for TermNumParseNodeHandler {
                         token_reader.eat_token();
                         match token_reader.next_token() {
                             Ok(_Token { key: TOK_KEY, range: frac_range }) => {
-                                Ok(_ParseNode::new_with_token_params(P_TOK_NUMBER, vec![exp_range.merge(&frac_range)]))
+                                Ok(_ParserNode::new_with_token_params(P_TOK_NUMBER, vec![exp_range.merge(&frac_range)]))
                             }
                             _ => Err(token_reader.to_error()),
                         }
                     },
-                    _ => Ok(_ParseNode::new_with_token_params(P_TOK_NUMBER, vec![exp_range]))
+                    _ => Ok(_ParserNode::new_with_token_params(P_TOK_NUMBER, vec![exp_range]))
                 }
             }
             _ => Err(token_reader.to_error()),
@@ -543,23 +559,26 @@ impl<'a> ParseNodeHandler<'a> for TermNumParseNodeHandler {
     }
 }
 
-struct ArrayValueParseNodeHandler;
+struct ArrayValueParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ArrayValueParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ArrayValueParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#array_value");
         match token_reader.peek_token() {
             Ok(_Token { key: TOK_KEY, .. }) => {
-                Ok(ArrayValueKeyParseNodeHandler {}.handle(token_reader, None)?)
+                Ok(ArrayValueKeyParserNodeBuilder {}.build(token_reader, None)?)
             },
             Ok(_Token { key: TOK_SPLIT, .. }) => {
                 token_reader.eat_token();
-                RangeToParseNodeHandler {}.handle(token_reader, None)
+                _RangeParserNodeBuilder {
+                    range_parser_type: _RangeParserNodeBuilder::TYPE2_HAVING_STEP,
+                    range: None
+                }.build(token_reader, None)
             }
             Ok(_Token { key: TOK_DOUBLE_QUOTED, .. }) | Ok(_Token { key: TOK_SINGLE_QUOTED, .. }) => {
-                ArrayQuoteValueParseNodeHandler {}.handle(token_reader, None)
+                ArrayQuoteValueParserNodeBuilder {}.build(token_reader, None)
             }
-            Err(TokenError::Eof) => Ok(_ParseNode::new_token_only(P_TOK_EOF)),
+            Err(TokenError::Eof) => Ok(_ParserNode::new_token_only(P_TOK_END)),
             _ => {
                 token_reader.eat_token();
                 Err(token_reader.to_error())
@@ -568,19 +587,22 @@ impl<'a> ParseNodeHandler<'a> for ArrayValueParseNodeHandler {
     }
 }
 
-struct ArrayValueKeyParseNodeHandler;
+struct ArrayValueKeyParserNodeBuilder;
 
-impl<'a> ParseNodeHandler<'a> for ArrayValueKeyParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for ArrayValueKeyParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#array_value_key");
 
         if let Ok(_Token { key: TOK_KEY, range }) = token_reader.next_token() {
             token_reader.eat_whitespace();
 
             match token_reader.peek_token() {
-                Ok(_Token { key: TOK_COMMA, .. }) => UnionParseNodeHandler { range: Some(range) }.handle(token_reader, None),
-                Ok(_Token { key: TOK_SPLIT, .. }) => RangeFromParseNodeHandler { range: Some(range) }.handle(token_reader, None),
-                _ => Ok(_ParseNode::new_with_token_params(P_TOK_NUMBER, vec![range])),
+                Ok(_Token { key: TOK_COMMA, .. }) => UnionParserNodeBuilder { range: Some(range) }.build(token_reader, None),
+                Ok(_Token { key: TOK_SPLIT, .. }) => _RangeParserNodeBuilder {
+                    range_parser_type: _RangeParserNodeBuilder::TYPE1_HAVING_FROM,
+                    range: Some(range)
+                }.build(token_reader, None),
+                _ => Ok(_ParserNode::new_with_token_params(P_TOK_NUMBER, vec![range])),
             }
         } else {
             Err(token_reader.to_error())
@@ -588,12 +610,102 @@ impl<'a> ParseNodeHandler<'a> for ArrayValueKeyParseNodeHandler {
     }
 }
 
-struct UnionParseNodeHandler {
+struct _RangeParserNodeBuilder {
+    range_parser_type: u8,
+    range: Option<StrRange>,
+}
+
+impl _RangeParserNodeBuilder {
+    const TYPE1_HAVING_FROM: u8 = 1;
+    const TYPE2_HAVING_STEP: u8 = 2;
+    const TYPE3_FULL_ARGUMENTS: u8 = 3;
+}
+
+impl RangeParserValueReader for _RangeParserNodeBuilder {}
+
+impl<'a> ParserNodeBuilder<'a> for _RangeParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
+        debug!("#range {}", match self.range_parser_type {
+            _RangeParserNodeBuilder::TYPE1_HAVING_FROM => "from",
+            _RangeParserNodeBuilder::TYPE2_HAVING_STEP => "to",
+            _RangeParserNodeBuilder::TYPE3_FULL_ARGUMENTS => "",
+            _ => "range_unknown"
+        });
+
+        match self.range_parser_type {
+            _RangeParserNodeBuilder::TYPE1_HAVING_FROM => {
+                token_reader.eat_token();
+                token_reader.eat_whitespace();
+
+                let from_range = if let Some(from) = self.range.take() {
+                    from
+                } else {
+                    panic!("From is mandatory!");
+                };
+
+                match token_reader.peek_token() {
+                    Ok(_Token { key: TOK_KEY, .. }) => {
+                        _RangeParserNodeBuilder {
+                            range_parser_type: _RangeParserNodeBuilder::TYPE3_FULL_ARGUMENTS,
+                            range: Some(from_range)
+                        }.build(token_reader, None)
+                    },
+                    Ok(_Token { key: TOK_SPLIT, .. }) => match self.get_str_range(token_reader) {
+                        Some(step) => Ok(_ParserNode::new_with_token_params(P_TOK_RANGE_TO, vec![from_range, step])),
+                        _ => Ok(_ParserNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range])),
+                    },
+                    _ => Ok(_ParserNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range])),
+                }
+            },
+            _RangeParserNodeBuilder::TYPE2_HAVING_STEP => {
+                if let Some(step_range) = self.get_str_range(token_reader) {
+                    return Ok(_ParserNode::new_with_token_params(P_TOK_RANGE, vec![step_range]));
+                }
+
+                if let Ok(_Token { key: TOK_CLOSE_ARRAY, .. }) = token_reader.peek_token() {
+                    return Ok(_ParserNode::new_token_only(P_TOK_RANGE));
+                }
+
+                match token_reader.next_token() {
+                    Ok(_Token { key: TOK_KEY, range: to_range }) => {
+                        if let Some(step_range) = self.get_str_range(token_reader) {
+                            Ok(_ParserNode::new_with_token_params(P_TOK_RANGE, vec![to_range, step_range]))
+                        } else {
+                            Err(token_reader.to_error())
+                        }
+                    }
+                    _ => Err(token_reader.to_error()),
+                }
+            },
+            _RangeParserNodeBuilder::TYPE3_FULL_ARGUMENTS => {
+                let from_range = if let Some(range) = self.range.take() {
+                    range
+                } else {
+                    panic!("From is mandatory!");
+                };
+
+                match token_reader.next_token() {
+                    Ok(_Token { key: TOK_KEY, range: to_range }) => {
+                        if let Some(step_range) = self.get_str_range(token_reader) {
+                            Ok(_ParserNode::new_with_token_params(P_TOK_RANGE, vec![from_range, to_range, step_range]))
+                        } else {
+                            Err(token_reader.to_error())
+                        }
+                    }
+                    _ => Err(token_reader.to_error()),
+                }
+            },
+            _ => panic!("Unexpected range parser type: {}", self.range_parser_type)
+        }
+    }
+}
+
+struct UnionParserNodeBuilder {
     range: Option<StrRange>
 }
 
-impl<'a> ParseNodeHandler<'a> for UnionParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
+impl<'a> ParserNodeBuilder<'a> for UnionParserNodeBuilder {
+    fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#union");
         let mut values = if let Some(range) = self.range.take() {
             vec![range]
@@ -615,11 +727,11 @@ impl<'a> ParseNodeHandler<'a> for UnionParseNodeHandler {
             }
         }
 
-        Ok(_ParseNode::new_with_token_params(P_TOK_UNION, values))
+        Ok(_ParserNode::new_with_token_params(P_TOK_UNION, values))
     }
 }
 
-trait RangeParseValueReader {
+trait RangeParserValueReader {
     fn get_str_range(&mut self, token_reader: &mut TokenReader) -> Option<StrRange> {
         token_reader.eat_whitespace();
 
@@ -651,99 +763,99 @@ trait RangeParseValueReader {
     }
 }
 
-struct RangeFromParseNodeHandler {
-    range: Option<StrRange>
-}
+// struct RangeCandidatesParserNodeBuilder {
+//     range: Option<StrRange>
+// }
+//
+// impl RangeParseValueReader for RangeCandidatesParserNodeBuilder {}
+//
+// impl<'a> ParserNodeBuilder<'a> for RangeCandidatesParserNodeBuilder {
+//     fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
+//         debug!("#range_candidates");
+//         token_reader.eat_token();
+//         token_reader.eat_whitespace();
+//
+//         let from_range = if let Some(from) = self.range.take() {
+//             from
+//         } else {
+//             panic!("From is mandatory!");
+//         };
+//
+//         match token_reader.peek_token() {
+//             Ok(_Token { key: TOK_KEY, .. }) => {
+//                 RangeParserNodeBuilder { range: Some(from_range) }.build(token_reader, None)
+//             },
+//             Ok(_Token { key: TOK_SPLIT, .. }) => match self.get_str_range(token_reader) {
+//                 Some(step) => Ok(_ParserNode::new_with_token_params(P_TOK_RANGE_TO, vec![from_range, step])),
+//                 _ => Ok(_ParserNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range])),
+//             },
+//             _ => Ok(_ParserNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range])),
+//         }
+//     }
+// }
 
-impl RangeParseValueReader for RangeFromParseNodeHandler {}
+// struct RangeToParserNodeBuilder;
+//
+// impl RangeParseValueReader for RangeToParserNodeBuilder {}
+//
+// impl<'a> ParserNodeBuilder<'a> for RangeToParserNodeBuilder {
+//     fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
+//         debug!("#range_to");
+//
+//         if let Some(step_range) = self.get_str_range(token_reader) {
+//             return Ok(_ParserNode::new_with_token_params(P_TOK_RANGE, vec![step_range]));
+//         }
+//
+//         if let Ok(_Token { key: TOK_CLOSE_ARRAY, .. }) = token_reader.peek_token() {
+//             return Ok(_ParserNode::new_token_only(P_TOK_RANGE));
+//         }
+//
+//         match token_reader.next_token() {
+//             Ok(_Token { key: TOK_KEY, range: to_range }) => {
+//                 if let Some(step_range) = self.get_str_range(token_reader) {
+//                     Ok(_ParserNode::new_with_token_params(P_TOK_RANGE, vec![to_range, step_range]))
+//                 } else {
+//                     Err(token_reader.to_error())
+//                 }
+//             }
+//             _ => Err(token_reader.to_error()),
+//         }
+//     }
+// }
 
-impl<'a> ParseNodeHandler<'a> for RangeFromParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
-        debug!("#range_from");
-        token_reader.eat_token();
-        token_reader.eat_whitespace();
-
-        let from_range = if let Some(from) = self.range.take() {
-            from
-        } else {
-            panic!("From is mandatory!");
-        };
-
-        match token_reader.peek_token() {
-            Ok(_Token { key: TOK_KEY, .. }) => {
-                RangeParseNodeHandler { range: Some(from_range) }.handle(token_reader, None)
-            },
-            Ok(_Token { key: TOK_SPLIT, .. }) => match self.get_str_range(token_reader) {
-                Some(step) => Ok(_ParseNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range, step])),
-                _ => Ok(_ParseNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range])),
-            },
-            _ => Ok(_ParseNode::new_with_token_params(P_TOK_RANGE_FROM, vec![from_range])),
-        }
-    }
-}
-
-struct RangeToParseNodeHandler;
-
-impl RangeParseValueReader for RangeToParseNodeHandler {}
-
-impl<'a> ParseNodeHandler<'a> for RangeToParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
-        debug!("#range_to");
-
-        if let Some(step_range) = self.get_str_range(token_reader) {
-            return Ok(_ParseNode::new_with_token_params(P_TOK_RANGE_TO, vec![step_range]));
-        }
-
-        if let Ok(_Token { key: TOK_CLOSE_ARRAY, .. }) = token_reader.peek_token() {
-            return Ok(_ParseNode::new_token_only(P_TOK_RANGE_TO));
-        }
-
-        match token_reader.next_token() {
-            Ok(_Token { key: TOK_KEY, range: to_range }) => {
-                if let Some(step_range) = self.get_str_range(token_reader) {
-                    Ok(_ParseNode::new_with_token_params(P_TOK_RANGE_TO, vec![to_range, step_range]))
-                } else {
-                    Err(token_reader.to_error())
-                }
-            }
-            _ => Err(token_reader.to_error()),
-        }
-    }
-}
-
-struct RangeParseNodeHandler {
-    range: Option<StrRange>
-}
-
-impl RangeParseValueReader for RangeParseNodeHandler {}
-
-impl<'a> ParseNodeHandler<'a> for RangeParseNodeHandler {
-    fn handle(&mut self, token_reader: &mut TokenReader, _: Option<_ParseNode<'a>>) -> Result<_ParseNode<'a>, TokenError> {
-        debug!("#range");
-
-        let from_range = if let Some(range) = self.range.take() {
-            range
-        } else {
-            panic!("From is mandatory!");
-        };
-
-        match token_reader.next_token() {
-            Ok(_Token { key: TOK_KEY, range: to_range }) => {
-                if let Some(step_range) = self.get_str_range(token_reader) {
-                    Ok(_ParseNode::new_with_token_params(P_TOK_RANGE, vec![from_range, to_range, step_range]))
-                } else {
-                    Err(token_reader.to_error())
-                }
-            }
-            _ => Err(token_reader.to_error()),
-        }
-    }
-}
+// struct RangeParserNodeBuilder {
+//     range: Option<StrRange>
+// }
+//
+// impl RangeParseValueReader for RangeParserNodeBuilder {}
+//
+// impl<'a> ParserNodeBuilder<'a> for RangeParserNodeBuilder {
+//     fn _parse(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
+//         debug!("#range");
+//
+//         let from_range = if let Some(range) = self.range.take() {
+//             range
+//         } else {
+//             panic!("From is mandatory!");
+//         };
+//
+//         match token_reader.next_token() {
+//             Ok(_Token { key: TOK_KEY, range: to_range }) => {
+//                 if let Some(step_range) = self.get_str_range(token_reader) {
+//                     Ok(_ParserNode::new_with_token_params(P_TOK_RANGE, vec![from_range, to_range, step_range]))
+//                 } else {
+//                     Err(token_reader.to_error())
+//                 }
+//             }
+//             _ => Err(token_reader.to_error()),
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 struct ParserImpl<'a, 'b> {
     token_reader: TokenReader<'a, 'b>,
-    parse_node: Option<ParserNode>,
+    parse_node: Option<_ParserNode<'b>>,
 }
 
 impl<'a, 'b> ParserImpl<'a, 'b> {
@@ -765,7 +877,8 @@ impl<'a, 'b> ParserImpl<'a, 'b> {
     }
 
     pub fn compile(&mut self) -> Result<&mut Self, TokenError> {
-        self.parse_node = Some(self.json_path()?);
+        self.parse_node = Some(JsonPathParserNodeBuilder {}.build(&mut self.token_reader, None)?);
+        // self.parse_node = Some(self.json_path()?);
         Ok(self)
     }
 
@@ -1316,26 +1429,26 @@ impl<'a, 'b> ParserImpl<'a, 'b> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct _ParseNode<'a> {
-    pub left: Option<Box<_ParseNode<'a>>>,
-    pub right: Option<Box<_ParseNode<'a>>>,
-    pub token: _ParseToken<'a>,
+pub(crate) struct _ParserNode<'a> {
+    pub left: Option<Box<_ParserNode<'a>>>,
+    pub right: Option<Box<_ParserNode<'a>>>,
+    pub token: _ParserToken<'a>,
 }
 
-impl<'a> _ParseNode<'a> {
+impl<'a> _ParserNode<'a> {
     pub fn new_token_only(token: &'a str) -> Self {
-        _ParseNode {
+        _ParserNode {
             left: None,
             right: None,
-            token: _ParseToken::new(token),
+            token: _ParserToken::new(token),
         }
     }
 
     pub fn new_with_token_params(token: &'a str, params: Vec<StrRange>) -> Self {
-        _ParseNode {
+        _ParserNode {
             left: None,
             right: None,
-            token: _ParseToken { key: token, data_range: Some(params) },
+            token: _ParserToken { key: token, data_range: Some(params) },
         }
     }
 }
@@ -1349,17 +1462,17 @@ pub struct ParserNode {
 
 #[cfg(test)]
 mod path_parser_tests {
-    use paths::ParserTokenHandler;
-    use paths::path_parser::PathParser;
+    use paths::_ParserTokenHandler;
+    use paths::path_parser::*;
     use paths::str_reader::StrRange;
-    use paths::tokens::{FilterToken, ParseToken};
+    use paths::tokens::*;
 
-    struct NodeVisitorTestImpl<'a> {
+    struct NodeVisitorTestImpl<'a, 'b> {
         input: &'a str,
-        stack: Vec<ParseToken>,
+        stack: Vec<_ParserToken<'b>>,
     }
 
-    impl<'a> NodeVisitorTestImpl<'a> {
+    impl<'a, 'b> NodeVisitorTestImpl<'a, 'b> {
         fn new(input: &'a str) -> Self {
             NodeVisitorTestImpl {
                 input,
@@ -1367,15 +1480,15 @@ mod path_parser_tests {
             }
         }
 
-        fn start(&mut self) -> Result<Vec<ParseToken>, String> {
+        fn start(&mut self) -> Result<Vec<_ParserToken<'b>>, String> {
             let parser = PathParser::compile(self.input).map_err(|_| "Token Error")?;
             let _ = parser.parse(self);
             Ok(self.stack.split_off(0))
         }
     }
 
-    impl<'a> ParserTokenHandler<'a> for NodeVisitorTestImpl<'a> {
-        fn handle<F>(&mut self, token: &ParseToken, _: &F)
+    impl<'a, 'b> _ParserTokenHandler<'a, 'b> for NodeVisitorTestImpl<'a, 'b> {
+        fn handle<F>(&mut self, token: &_ParserToken<'b>, _: &F)
             where
                 F: Fn(&StrRange) -> &'a str
         {
@@ -1388,7 +1501,7 @@ mod path_parser_tests {
         let _ = env_logger::try_init();
     }
 
-    fn run(input: &str) -> Result<Vec<ParseToken>, String> {
+    fn run(input: &str) -> Result<Vec<_ParserToken>, String> {
         let mut interpreter = NodeVisitorTestImpl::new(input);
         interpreter.start()
     }
@@ -1427,78 +1540,127 @@ mod path_parser_tests {
 
         assert_eq!(
             run("$.aa"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "aa".len()))
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "aa".len()))
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "aa".len())]) }
             ])
         );
 
         assert_eq!(
             run("$.00.a"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "00".len())),
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(5, "a".len()))
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "00".len())),
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(5, "a".len()))
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "00".len())]) },
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(5, "a".len())]) },
             ])
         );
 
         assert_eq!(
             run("$.00.韓창.seok"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "00".len())),
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(5, "韓창".chars().map(|c| c.len_utf8()).sum())),
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(12, "seok".len()))
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "00".len())),
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(5, "韓창".chars().map(|c| c.len_utf8()).sum())),
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(12, "seok".len()))
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "00".len())]) },
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(5, "韓창".chars().map(|c| c.len_utf8()).sum())]) },
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(12, "seok".len())]) },
             ])
         );
 
         assert_eq!(
             run("$.*"),
-            Ok(vec![ParseToken::Absolute, ParseToken::In, ParseToken::All])
+            // Ok(vec![ParseToken::Absolute, ParseToken::In, ParseToken::All])
+            Ok(vec![
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken::new(P_TOK_ALL),
+            ])
         );
 
         assert_eq!(
             run("$..*"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Leaves,
+            //     ParseToken::All
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Leaves,
-                ParseToken::All
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_LEAVES),
+                _ParserToken::new(P_TOK_ALL),
             ])
         );
 
         assert_eq!(
             run("$..[0]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Leaves,
+            //     ParseToken::Array,
+            //     ParseToken::Number(0.0),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Leaves,
-                ParseToken::Array,
-                ParseToken::Number(0.0),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_LEAVES),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(4, "0".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.$a"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "$a".len()))
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "$a".len()))
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "$a".len())]) },
             ])
         );
 
         assert_eq!(
             run("$.['$a']"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Key(StrRange::new(3, "'$a'".len())),
+            //     ParseToken::ArrayEof,
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Key(StrRange::new(3, "'$a'".len())),
-                ParseToken::ArrayEof,
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(3, "'$a'".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
@@ -1521,15 +1683,25 @@ mod path_parser_tests {
 
         assert_eq!(
             run("$.book[?(@.isbn)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "book".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Relative,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(11, "isbn".len())),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "book".len())),
-                ParseToken::Array,
-                ParseToken::Relative,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(11, "isbn".len())),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "book".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(11, "isbn".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
@@ -1538,337 +1710,593 @@ mod path_parser_tests {
         //
         assert_eq!(
             run("$.[*]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::All,
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::All,
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ALL),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[*]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::All,
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::All,
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ALL),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[*].가"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::All,
+            //     ParseToken::ArrayEof,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(7, '가'.len_utf8()))
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::All,
-                ParseToken::ArrayEof,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(7, '가'.len_utf8()))
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ALL),
+                _ParserToken::new(P_TOK_ARRAY_END),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(7, '가'.len_utf8())]) },
             ])
         );
 
         assert_eq!(
             run("$.a[0][1]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Number(0_f64),
+            //     ParseToken::ArrayEof,
+            //     ParseToken::Array,
+            //     ParseToken::Number(1_f64),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Number(0_f64),
-                ParseToken::ArrayEof,
-                ParseToken::Array,
-                ParseToken::Number(1_f64),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(4, "0".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(7, "1".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[1,2]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Union(vec![1, 2]),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Union(vec![1, 2]),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_UNION, data_range: Some(vec![StrRange::new(4, "1".len()), StrRange::new(6, "2".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[10:]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Range(Some(10), None, None),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Range(Some(10), None, None),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_RANGE_FROM, data_range: Some(vec![StrRange::new(4, "10".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[:11]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Range(None, Some(11), None),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Range(None, Some(11), None),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_RANGE_TO, data_range: Some(vec![StrRange::new(5, "11".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[-12:13]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Range(Some(-12), Some(13), None),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Range(Some(-12), Some(13), None),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_RANGE_TO, data_range: Some(vec![StrRange::new(4, "-12".len()), StrRange::new(8, "13".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$[0:3:2]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Range(Some(0), Some(3), Some(2)),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Range(Some(0), Some(3), Some(2)),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken {
+                    key: P_TOK_RANGE,
+                    data_range: Some(vec![
+                        StrRange::new(2, "0".len()),
+                        StrRange::new(4, "3".len()),
+                        StrRange::new(6, "2".len())
+                    ])
+                },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$[:3:2]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Range(None, Some(3), Some(2)),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Range(None, Some(3), Some(2)),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken {
+                    key: P_TOK_RANGE_TO,
+                    data_range: Some(vec![
+                        StrRange::new(3, "3".len()),
+                        StrRange::new(6, "2".len())
+                    ])
+                },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$[:]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Range(None, None, None),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Range(None, None, None),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RANGE_TO),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$[::]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Range(None, None, None),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Range(None, None, None),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RANGE),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$[::2]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Range(None, None, Some(2)),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Range(None, None, Some(2)),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken {
+                    key: P_TOK_RANGE_TO,
+                    data_range: Some(vec![
+                        StrRange::new(4, "2".len())
+                    ])
+                },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$["a", 'b']"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Keys(vec![StrRange::new(2, "\"a\"".len()), StrRange::new(7, "'b'".len())]),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Keys(vec![StrRange::new(2, "\"a\"".len()), StrRange::new(7, "'b'".len())]),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken {
+                    key: P_TOK_KEYS,
+                    data_range: Some(vec![
+                        StrRange::new(2, "\"a\"".len()),
+                        StrRange::new(7, "'b'".len())
+                    ])
+                },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[?(1>2)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Number(1_f64),
+            //     ParseToken::Number(2_f64),
+            //     ParseToken::Filter(FilterToken::Greater),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Number(1_f64),
-                ParseToken::Number(2_f64),
-                ParseToken::Filter(FilterToken::Greater),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(6, "1".len())]) },
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(8, "2".len())]) },
+                _ParserToken::new(P_TOK_FILTER_GREATER),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[?($.b>3)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(8, "b".len())),
+            //     ParseToken::Number(3_f64),
+            //     ParseToken::Filter(FilterToken::Greater),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(8, "b".len())),
-                ParseToken::Number(3_f64),
-                ParseToken::Filter(FilterToken::Greater),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(8, "b".len())]) },
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(11, "3".len())]) },
+                _ParserToken::new(P_TOK_FILTER_GREATER),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$[?($.c>@.d && 1==2)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(6, "c".len())),
+            //     ParseToken::Relative,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(10, "c".len())),
+            //     ParseToken::Filter(FilterToken::Greater),
+            //     ParseToken::Number(1_f64),
+            //     ParseToken::Number(2_f64),
+            //     ParseToken::Filter(FilterToken::Equal),
+            //     ParseToken::Filter(FilterToken::And),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(6, "c".len())),
-                ParseToken::Relative,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(10, "c".len())),
-                ParseToken::Filter(FilterToken::Greater),
-                ParseToken::Number(1_f64),
-                ParseToken::Number(2_f64),
-                ParseToken::Filter(FilterToken::Equal),
-                ParseToken::Filter(FilterToken::And),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(6, "c".len())]) },
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(10, "c".len())]) },
+                _ParserToken::new(P_TOK_FILTER_GREATER),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(15, "1".len())]) },
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(18, "2".len())]) },
+                _ParserToken::new(P_TOK_FILTER_EQUAL),
+                _ParserToken::new(P_TOK_FILTER_AND),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$[?($.c>@.d&&(1==2||3>=4))]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(6, "c".len())),
+            //     ParseToken::Relative,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(10, "d".len())),
+            //     ParseToken::Filter(FilterToken::Greater),
+            //     ParseToken::Number(1_f64),
+            //     ParseToken::Number(2_f64),
+            //     ParseToken::Filter(FilterToken::Equal),
+            //     ParseToken::Number(3_f64),
+            //     ParseToken::Number(4_f64),
+            //     ParseToken::Filter(FilterToken::GreaterOrEqual),
+            //     ParseToken::Filter(FilterToken::Or),
+            //     ParseToken::Filter(FilterToken::And),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(6, "c".len())),
-                ParseToken::Relative,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(10, "d".len())),
-                ParseToken::Filter(FilterToken::Greater),
-                ParseToken::Number(1_f64),
-                ParseToken::Number(2_f64),
-                ParseToken::Filter(FilterToken::Equal),
-                ParseToken::Number(3_f64),
-                ParseToken::Number(4_f64),
-                ParseToken::Filter(FilterToken::GreaterOrEqual),
-                ParseToken::Filter(FilterToken::Or),
-                ParseToken::Filter(FilterToken::And),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(6, "c".len())]) },
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(10, "c".len())]) },
+                _ParserToken::new(P_TOK_FILTER_GREATER),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(15, "1".len())]) },
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(18, "2".len())]) },
+                _ParserToken::new(P_TOK_FILTER_EQUAL),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(20, "3".len())]) },
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(23, "4".len())]) },
+                _ParserToken::new(P_TOK_FILTER_GREATER_OR_EQUAL),
+                _ParserToken::new(P_TOK_FILTER_OR),
+                _ParserToken::new(P_TOK_FILTER_AND),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$[?(@.a<@.b)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Relative,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(6, "a".len())),
+            //     ParseToken::Relative,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(10, "b".len())),
+            //     ParseToken::Filter(FilterToken::Little),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Relative,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(6, "a".len())),
-                ParseToken::Relative,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(10, "b".len())),
-                ParseToken::Filter(FilterToken::Little),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(6, "c".len())]) },
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(10, "b".len())]) },
+                _ParserToken::new(P_TOK_FILTER_LITTLE),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$[*][*][*]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::All,
+            //     ParseToken::ArrayEof,
+            //     ParseToken::Array,
+            //     ParseToken::All,
+            //     ParseToken::ArrayEof,
+            //     ParseToken::Array,
+            //     ParseToken::All,
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::All,
-                ParseToken::ArrayEof,
-                ParseToken::Array,
-                ParseToken::All,
-                ParseToken::ArrayEof,
-                ParseToken::Array,
-                ParseToken::All,
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ALL),
+                _ParserToken::new(P_TOK_ARRAY_END),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ALL),
+                _ParserToken::new(P_TOK_ARRAY_END),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_ALL),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$['a']['bb']"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Key(StrRange::new(2, "'a'".len())),
+            //     ParseToken::ArrayEof,
+            //     ParseToken::Array,
+            //     ParseToken::Key(StrRange::new(7, "'bb'".len())),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Key(StrRange::new(2, "'a'".len())),
-                ParseToken::ArrayEof,
-                ParseToken::Array,
-                ParseToken::Key(StrRange::new(7, "'bb'".len())),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "'a'".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(7, "'bb'".len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$.a[?(@.e==true)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(2, "a".len())),
+            //     ParseToken::Array,
+            //     ParseToken::Relative,
+            //     ParseToken::In,
+            //     ParseToken::Key(StrRange::new(8, "e".len())),
+            //     ParseToken::Bool(true),
+            //     ParseToken::Filter(FilterToken::Equal),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(2, "a".len())),
-                ParseToken::Array,
-                ParseToken::Relative,
-                ParseToken::In,
-                ParseToken::Key(StrRange::new(8, "e".len())),
-                ParseToken::Bool(true),
-                ParseToken::Filter(FilterToken::Equal),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, "a".len())]) },
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken::new(P_TOK_IN),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(8, "e".len())]) },
+                _ParserToken { key: P_TOK_BOOL, data_range: Some(vec![StrRange::new(11, "true".len())]) },
+                _ParserToken::new(P_TOK_FILTER_EQUAL),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$[?(@ > 1)]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Relative,
+            //     ParseToken::Number(1_f64),
+            //     ParseToken::Filter(FilterToken::Greater),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Relative,
-                ParseToken::Number(1_f64),
-                ParseToken::Filter(FilterToken::Greater),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RELATIVE),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(8, "1".len())]) },
+                _ParserToken::new(P_TOK_FILTER_GREATER),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run("$[:]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Range(None, None, None),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Range(None, None, None),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken::new(P_TOK_RANGE_TO),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$['single\'quote']"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Key(StrRange::new(2, r#"'single\'quote'"#.len())),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Key(StrRange::new(2, r#"'single\'quote'"#.len())),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, r#"'single\'quote'"#.len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 
         assert_eq!(
             run(r#"$["single\"quote"]"#),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Key(StrRange::new(2, r#""single\"quote""#.len())),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Key(StrRange::new(2, r#""single\"quote""#.len())),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_KEY, data_range: Some(vec![StrRange::new(2, r#""single\"quote""#.len())]) },
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
     }
@@ -1879,13 +2307,21 @@ mod path_parser_tests {
 
         assert_eq!(
             run("$[?(1.1<2.1)]"),
+            // Ok(vec![
+            //     ParseToken::Absolute,
+            //     ParseToken::Array,
+            //     ParseToken::Number(1.1),
+            //     ParseToken::Number(2.1),
+            //     ParseToken::Filter(FilterToken::Little),
+            //     ParseToken::ArrayEof
+            // ])
             Ok(vec![
-                ParseToken::Absolute,
-                ParseToken::Array,
-                ParseToken::Number(1.1),
-                ParseToken::Number(2.1),
-                ParseToken::Filter(FilterToken::Little),
-                ParseToken::ArrayEof
+                _ParserToken::new(P_TOK_ABSOLUTE),
+                _ParserToken::new(P_TOK_ARRAY),
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(4, "1.1".len())]) },
+                _ParserToken { key: P_TOK_NUMBER, data_range: Some(vec![StrRange::new(8, "2.1".len())]) },
+                _ParserToken::new(P_TOK_FILTER_LITTLE),
+                _ParserToken::new(P_TOK_ARRAY_END),
             ])
         );
 

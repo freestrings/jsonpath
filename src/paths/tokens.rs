@@ -45,14 +45,14 @@ impl<'a> _Token<'a> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct _ParseToken<'a> {
+pub(crate) struct _ParserToken<'a> {
     pub key: &'a str,
     pub data_range: Option<Vec<StrRange>>
 }
 
-impl<'a> _ParseToken<'a> {
+impl<'a> _ParserToken<'a> {
     pub fn new(key: &'a str) -> Self {
-        _ParseToken {
+        _ParserToken {
             key,
             data_range: None
         }

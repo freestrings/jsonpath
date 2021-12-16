@@ -19,9 +19,16 @@ impl StrRange {
     }
 
     pub fn merge(&self, other: &StrRange) -> Self {
+        let pos = min(self.pos, other.pos);
+        let offset = if self.pos < other.pos {
+            other.pos - self.pos + other.offset
+        } else {
+            self.pos - other.pos + self.offset
+        };
+
         StrRange {
-            pos: min(self.pos, other.pos),
-            offset: max(self.offset, other.offset)
+            pos,
+            offset
         }
     }
 }

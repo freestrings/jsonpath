@@ -5,7 +5,7 @@ use serde_json::{Number, Value};
 use serde_json::map::Entry;
 
 use JsonPathError;
-use paths::{ParserTokenHandler, PathParser, StrRange, tokens::*};
+use paths::{_ParserTokenHandler, ParserTokenHandler, PathParser, StrRange, tokens::*, path_parser::*};
 use super::utils;
 
 use super::terms::*;
@@ -111,13 +111,41 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
         }
     }
 
-    fn compute_absolute_path_filter<F>(&mut self, token: &ParseToken, parse_value_reader: &F) -> bool
+    fn compute_absolute_path_filter<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) -> bool
         where
             F: Fn(&StrRange) -> &'a str
     {
         if !self.selectors.is_empty() {
-            match token {
-                ParseToken::Absolute | ParseToken::Relative | ParseToken::Filter(_) => {
+            // match token {
+            //     ParseToken::Absolute | ParseToken::Relative | ParseToken::Filter(_) => {
+            //         let selector = self.selectors.pop().unwrap();
+            //
+            //         if let Some(current) = &selector.current {
+            //             let term = current.into();
+            //
+            //             if let Some(s) = self.selectors.last_mut() {
+            //                 s.selector_filter.push_term(Some(term));
+            //             } else {
+            //                 self.selector_filter.push_term(Some(term));
+            //             }
+            //         } else {
+            //             unreachable!()
+            //         }
+            //     }
+            //     _ => {}
+            // }
+            match &token.key {
+                &P_TOK_ABSOLUTE
+                | &P_TOK_RELATIVE
+                | &P_TOK_FILTER_OR
+                | &P_TOK_FILTER_AND
+                | &P_TOK_FILTER_GREATER
+                | &P_TOK_FILTER_EQUAL
+                | &P_TOK_FILTER_LITTLE
+                | &P_TOK_FILTER_GREATER_OR_EQUAL
+                | &P_TOK_FILTER_LITTLE_OR_EQUAL
+                | &P_TOK_FILTER_NOT_EQUAL
+                => {
                     let selector = self.selectors.pop().unwrap();
 
                     if let Some(current) = &selector.current {
@@ -131,7 +159,7 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
                     } else {
                         unreachable!()
                     }
-                }
+                },
                 _ => {}
             }
         }
@@ -423,46 +451,52 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> ParserTokenHandler<'a> for JsonSelector<'a, 'b> {
-    fn handle<F>(&mut self, token: &ParseToken, parse_value_reader: &F)
-        where
-            F: Fn(&StrRange) -> &'a str
-    {
-        debug!("token: {:?}, stack: {:?}", token, self.tokens);
+// impl<'a, 'b> ParserTokenHandler<'a> for JsonSelector<'a, 'b> {
+//     fn handle<F>(&mut self, token: &ParseToken, parse_value_reader: &F)
+//         where
+//             F: Fn(&StrRange) -> &'a str
+//     {
+//         debug!("token: {:?}, stack: {:?}", token, self.tokens);
+//
+//         if self.compute_absolute_path_filter(token, parse_value_reader) {
+//             return;
+//         }
+//
+//         match token {
+//             ParseToken::Absolute => self.visit_absolute(),
+//             ParseToken::Relative => self.visit_relative(),
+//             ParseToken::In | ParseToken::Leaves | ParseToken::Array => {
+//                 self.tokens.push(token.clone());
+//             }
+//             ParseToken::ArrayEof => self.visit_array_eof(),
+//             ParseToken::All => self.visit_all(),
+//             ParseToken::Bool(b) => {
+//                 self.selector_filter.push_term(Some(ExprTerm::Bool(*b)));
+//             }
+//             ParseToken::Key(s) => {
+//                 let key = parse_value_reader(s);
+//                 self.visit_key(key);
+//             }
+//             ParseToken::Keys(keys) => {
+//                 let keys: Vec<&str> = keys.iter().map(|s| { parse_value_reader(s) }).collect();
+//                 self.visit_keys(&keys)
+//             }
+//             ParseToken::Number(v) => {
+//                 self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
+//             }
+//             ParseToken::Filter(ref ft) => self.visit_filter(ft),
+//             ParseToken::Range(from, to, step) => self.visit_range(from, to, step),
+//             ParseToken::Union(indices) => self.visit_union(indices),
+//             ParseToken::Eof => {
+//                 debug!("visit_token eof");
+//             }
+//         }
+//     }
+// }
 
-        if self.compute_absolute_path_filter(token, parse_value_reader) {
-            return;
-        }
-
-        match token {
-            ParseToken::Absolute => self.visit_absolute(),
-            ParseToken::Relative => self.visit_relative(),
-            ParseToken::In | ParseToken::Leaves | ParseToken::Array => {
-                self.tokens.push(token.clone());
-            }
-            ParseToken::ArrayEof => self.visit_array_eof(),
-            ParseToken::All => self.visit_all(),
-            ParseToken::Bool(b) => {
-                self.selector_filter.push_term(Some(ExprTerm::Bool(*b)));
-            }
-            ParseToken::Key(s) => {
-                let key = parse_value_reader(s);
-                self.visit_key(key);
-            }
-            ParseToken::Keys(keys) => {
-                let keys: Vec<&str> = keys.iter().map(|s| { parse_value_reader(s) }).collect();
-                self.visit_keys(&keys)
-            }
-            ParseToken::Number(v) => {
-                self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
-            }
-            ParseToken::Filter(ref ft) => self.visit_filter(ft),
-            ParseToken::Range(from, to, step) => self.visit_range(from, to, step),
-            ParseToken::Union(indices) => self.visit_union(indices),
-            ParseToken::Eof => {
-                debug!("visit_token eof");
-            }
-        }
+impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
+    fn handle<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) where F: Fn(&StrRange) -> &'a str {
+        todo!()
     }
 }
 
