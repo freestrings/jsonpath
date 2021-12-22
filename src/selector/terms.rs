@@ -6,6 +6,12 @@ use super::cmp::*;
 use super::utils;
 use super::value_walker::ValueWalker;
 
+//
+// TODO
+// Number(Int)
+// Number(PositiveInt)
+// Number(Float)
+//
 #[derive(Debug, PartialEq)]
 pub enum ExprTerm<'a> {
     String(&'a str),
