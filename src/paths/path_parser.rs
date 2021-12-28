@@ -460,7 +460,8 @@ impl<'a> ParserNodeBuilder<'a> for ArrayQuoteValueParserNodeBuilder {
     fn build(&mut self, token_reader: &mut TokenReader, _: Option<_ParserNode<'a>>) -> Result<_ParserNode<'a>, TokenError> {
         debug!("#array_quote_value");
         match token_reader.next_token() {
-            Ok(_Token { key: TOK_SINGLE_QUOTED, range }) | Ok(_Token { key: TOK_DOUBLE_QUOTED, range }) => {
+            Ok(_Token { key: TOK_SINGLE_QUOTED, range })
+            | Ok(_Token { key: TOK_DOUBLE_QUOTED, range }) => {
                 if let Ok(_Token { key: TOK_COMMA, .. }) = token_reader.peek_token() {
                     ArrayKeysParserNodeBuilder { range: Some(range) }.build(token_reader, None)
                 } else {

@@ -483,9 +483,15 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                 self.tokens.push(token.clone());
             }
             _ParserToken { key: P_TOK_ARRAY_END, .. } => {
-                //
-                // if last before token is 'array'
-                if let Some(&_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.get(self.tokens.len() - 2) {
+
+                fn get_last_before<'a>(tokens: &'a Vec<_ParserToken<'a>>) -> Option<&'a _ParserToken<'a>>{
+                    if tokens.len() > 1 {
+                        tokens.get(tokens.len() - 2)
+                    } else {
+                        None
+                    }
+                }
+                if let Some(&_ParserToken { key: P_TOK_ARRAY, .. }) = get_last_before(&self.tokens) {
                     if let Some(Some(e)) = self.selector_filter.pop_term() {
                         if let ExprTerm::String(key) = e {
                             self.current = self.selector_filter.filter_next_with_str(self.current.take(), key);
@@ -497,9 +503,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     }
                 }
 
-                //
-                // if last before token is 'leaves'
-                if let Some(&_ParserToken { key: P_TOK_LEAVES, .. }) = self.tokens.get(self.tokens.len() - 2) {
+                if let Some(&_ParserToken { key: P_TOK_LEAVES, .. }) = get_last_before(&self.tokens) {
                     self.tokens.pop();
                     self.tokens.pop();
                     if let Some(Some(e)) = self.selector_filter.pop_term() {
