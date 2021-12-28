@@ -684,6 +684,7 @@ impl<'a> ParserNodeBuilder<'a> for _RangeParserNodeBuilder {
         //
         // from
         //  1. $.a[10:]
+        //  2. $[1::2]
         //
         // to
         //  0. $[:]
@@ -717,10 +718,13 @@ impl<'a> ParserNodeBuilder<'a> for _RangeParserNodeBuilder {
             [None, Some(to), Some(step)] => {
                 Ok(_ParserNode::new_with_token_values(P_TOK_RANGE, validate_all(vec![to, step], token_reader)?))
             }
+            [Some(from), None, Some(step)] => {
+                Ok(_ParserNode::new_with_token_values(P_TOK_RANGE_FROM, validate_all(vec![from, step], token_reader)?))
+            }
             [Some(from), Some(to), Some(step)] => {
                 Ok(_ParserNode::new_with_token_values(P_TOK_RANGE, validate_all(vec![from, to, step], token_reader)?))
             }
-            _ => panic!("Unexpected range types")
+            _ => panic!("Unexpected range types: {:?}", params)
         }
     }
 }
@@ -1093,6 +1097,7 @@ mod path_parser_tests {
 
         // from
         //  1. $.a[10:]
+        //  2. $[1::2]
         //
         // to
         //  0. $[:]

@@ -159,7 +159,7 @@ pub(crate) enum _TokenValue<'a> {
 }
 
 impl<'a> _TokenValue<'a> {
-    pub fn is_string(&self) -> bool {
+    pub fn is_str(&self) -> bool {
         if let Self::String(_) = self {
             true
         } else {
@@ -167,7 +167,7 @@ impl<'a> _TokenValue<'a> {
         }
     }
 
-    pub fn as_string(&self) -> Option<&'a str> {
+    pub fn get_str(&self) -> Option<&'a str> {
         if let Self::String(v) = self {
             Some(v)
         } else {
@@ -184,6 +184,18 @@ impl<'a> _TokenValue<'a> {
     }
 
     pub fn as_int(&self) -> Option<isize> {
+        if let Self::String(v) = self {
+            if let Ok(v) = v.parse::<isize>() {
+                Some(v)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_int(&self) -> Option<isize> {
         if let Self::Int(v) = self {
             Some(*v)
         } else {
@@ -200,6 +212,18 @@ impl<'a> _TokenValue<'a> {
     }
 
     pub fn as_float(&self) -> Option<f64> {
+        if let Self::String(v) = self {
+            if let Ok(v) = v.parse::<f64>() {
+                Some(v)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_float(&self) -> Option<f64> {
         if let Self::Float(v) = self {
             Some(*v)
         } else {
@@ -216,6 +240,19 @@ impl<'a> _TokenValue<'a> {
     }
 
     pub fn as_bool(&self) -> Option<bool> {
+        if let Self::String(v) = self {
+            let v = v.to_lowercase(); // FIXME
+            if let Ok(v) = v.parse::<bool>() {
+                Some(v)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
             Some(*v)
         } else {
