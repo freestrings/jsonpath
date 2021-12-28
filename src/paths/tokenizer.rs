@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::result::Result;
 
-use paths::tokens::*;
-
 use super::str_reader::{ReaderError, StrRange, StrReader};
+use super::tokens::{
+    *,
+    constants::*,
+};
 
-pub(super) trait TokenRules {
+pub(crate) trait TokenRules {
     fn get_token(&self, ch: &char) -> Option<&Box<dyn TokenRule>>;
 }
 
@@ -92,7 +94,7 @@ impl TokenRules for StdTokenRules {
     }
 }
 
-pub(super) trait TokenRule {
+pub(crate) trait TokenRule {
     fn match_char(&self) -> char;
     fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, ch: char) -> Result<_Token<'a>, TokenError>;
 }
@@ -102,26 +104,6 @@ impl Debug for dyn TokenRule {
         f.write_str(&format!("TokenRule '{}'", self.match_char()))
     }
 }
-
-const CH_DOLLA: char = '$';
-const CH_DOT: char = '.';
-const CH_ASTERISK: char = '*';
-const CH_LARRAY: char = '[';
-const CH_RARRAY: char = ']';
-const CH_LPAREN: char = '(';
-const CH_RPAREN: char = ')';
-const CH_AT: char = '@';
-const CH_QUESTION: char = '?';
-const CH_COMMA: char = ',';
-const CH_SEMICOLON: char = ':';
-const CH_EQUAL: char = '=';
-const CH_AMPERSAND: char = '&';
-const CH_PIPE: char = '|';
-const CH_LITTLE: char = '<';
-const CH_GREATER: char = '>';
-const CH_EXCLAMATION: char = '!';
-const CH_SINGLE_QUOTE: char = '\'';
-const CH_DOUBLE_QUOTE: char = '"';
 
 struct DollaTokenRule;
 
@@ -512,7 +494,7 @@ impl<'a, 'b> Tokenizer<'a> {
 }
 
 #[derive(Debug)]
-pub(super) struct TokenReader<'a, 'b> {
+pub(crate) struct TokenReader<'a, 'b> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,
     err: Option<TokenError>,
@@ -601,6 +583,7 @@ mod tokenizer_tests {
     use paths::str_reader::StrRange;
     use paths::tokenizer::{TokenError, TokenReader};
     use paths::tokens::*;
+    use paths::tokens::constants::*;
 
     fn setup() {
         let _ = env_logger::try_init();

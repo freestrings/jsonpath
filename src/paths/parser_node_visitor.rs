@@ -1,9 +1,21 @@
-use paths::{ParserTokenHandler, StrRange};
-use paths::parser_token_handler::_ParserTokenHandler;
-use paths::path_parser::*;
-use paths::tokens::*;
+use super::parser_token_handler::{
+    _ParserTokenHandler,
+    ParserTokenHandler,
+};
+use super::path_parser::{
+    _ParserNode,
+    ParserNode,
+};
+use super::str_reader::StrRange;
+use super::tokens::{
+    _ParserToken,
+    _TokenType,
+    _TokenValue,
+    ParseToken,
+    constants::*
+};
 
-pub trait ParserNodeVisitor<'a> {
+pub(crate) trait ParserNodeVisitor<'a> {
     fn visit<F, F1>(&self, parse_node: &ParserNode, token_handler: &mut F, parse_value_reader: &F1)
         where
             F: ParserTokenHandler<'a>,
@@ -62,11 +74,11 @@ pub trait ParserNodeVisitor<'a> {
     }
 }
 
-pub(crate) trait _ParserNodeVisitor<'a, 'b> {
+pub(super) trait _ParserNodeVisitor<'a, 'b> {
     fn visit<F, F1>(&self, parse_node: &_ParserNode<'b>, token_handler: &mut F, parse_value_reader: &F1)
         where
             F: _ParserTokenHandler<'a, 'b>,
-            F1: Fn(&StrRange) -> &'a str
+            F1: Fn(&_TokenType) -> _TokenValue<'a>
     {
         trace!("visit {:?}", parse_node);
         match &parse_node.token.key {

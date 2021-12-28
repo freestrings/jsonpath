@@ -1,17 +1,22 @@
 use std::collections::HashSet;
 use std::rc::Rc;
-use std::str::FromStr;
 
 use serde_json::{Number, Value};
 use serde_json::map::Entry;
 
-use JsonPathError;
-use paths::{_ParserTokenHandler,
-            // ParserTokenHandler,
-            PathParser, StrRange, tokens::*, path_parser::*};
-use super::utils;
+use ::{JsonPathError, PathParser};
+use paths::{
+    _ParserTokenHandler,
+    tokens::{
+        _ParserToken,
+        _TokenType,
+        _TokenValue,
+        constants::*,
+    }
+};
 
 use super::terms::*;
+use super::utils;
 
 #[derive(Debug, Default)]
 pub struct JsonSelector<'a, 'b> {
@@ -116,27 +121,9 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
 
     fn compute_absolute_path_filter<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) -> bool
         where
-            F: Fn(&StrRange) -> &'a str
+            F: Fn(&'_ _TokenType) -> _TokenValue<'a>
     {
         if !self.selectors.is_empty() {
-            // match token {
-            //     ParseToken::Absolute | ParseToken::Relative | ParseToken::Filter(_) => {
-            //         let selector = self.selectors.pop().unwrap();
-            //
-            //         if let Some(current) = &selector.current {
-            //             let term = current.into();
-            //
-            //             if let Some(s) = self.selectors.last_mut() {
-            //                 s.selector_filter.push_term(Some(term));
-            //             } else {
-            //                 self.selector_filter.push_term(Some(term));
-            //             }
-            //         } else {
-            //             unreachable!()
-            //         }
-            //     }
-            //     _ => {}
-            // }
             match &token.key {
                 &P_TOK_ABSOLUTE
                 | &P_TOK_RELATIVE
@@ -454,51 +441,8 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
     // }
 }
 
-// impl<'a, 'b> ParserTokenHandler<'a> for JsonSelector<'a, 'b> {
-//     fn handle<F>(&mut self, token: &ParseToken, parse_value_reader: &F)
-//         where
-//             F: Fn(&StrRange) -> &'a str
-//     {
-//         debug!("token: {:?}, stack: {:?}", token, self.tokens);
-//
-//         if self.compute_absolute_path_filter(token, parse_value_reader) {
-//             return;
-//         }
-//
-//         match token {
-//             ParseToken::Absolute => self.visit_absolute(),
-//             ParseToken::Relative => self.visit_relative(),
-//             ParseToken::In | ParseToken::Leaves | ParseToken::Array => {
-//                 self.tokens.push(token.clone());
-//             }
-//             ParseToken::ArrayEof => self.visit_array_eof(),
-//             ParseToken::All => self.visit_all(),
-//             ParseToken::Bool(b) => {
-//                 self.selector_filter.push_term(Some(ExprTerm::Bool(*b)));
-//             }
-//             ParseToken::Key(s) => {
-//                 let key = parse_value_reader(s);
-//                 self.visit_key(key);
-//             }
-//             ParseToken::Keys(keys) => {
-//                 let keys: Vec<&str> = keys.iter().map(|s| { parse_value_reader(s) }).collect();
-//                 self.visit_keys(&keys)
-//             }
-//             ParseToken::Number(v) => {
-//                 self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
-//             }
-//             ParseToken::Filter(ref ft) => self.visit_filter(ft),
-//             ParseToken::Range(from, to, step) => self.visit_range(from, to, step),
-//             ParseToken::Union(indices) => self.visit_union(indices),
-//             ParseToken::Eof => {
-//                 debug!("visit_token eof");
-//             }
-//         }
-//     }
-// }
-
 impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
-    fn handle<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) where F: Fn(&StrRange) -> &'a str {
+    fn handle<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) where F: Fn(&_TokenType) -> _TokenValue<'a> {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
         match &token {
@@ -627,22 +571,30 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     }
                 }
             }
-            _ParserToken { key: P_TOK_BOOL, value_range, .. } => {
-                if let Some(ranges) = value_range {
-                    assert_eq!(ranges.len(), 1, "Invalid bool token size: {}", ranges.len());
-                    let b = parse_value_reader(&ranges[0]).to_lowercase().parse::<bool>().unwrap();
-                    self.selector_filter.push_term(Some(ExprTerm::Bool(b)));
+            _ParserToken { key: P_TOK_BOOL, token_type } => {
+                if let Some(types) = token_type {
+                    assert_eq!(types.len(), 1, "Invalid bool token size: {}", types.len());
+                    if let Some(b) = parse_value_reader(&types[0]).as_bool() {
+                        self.selector_filter.push_term(Some(ExprTerm::Bool(b)));
+                    } else {
+                        panic!("Not a bool {:?}", token_type);
+                    }
                 } else {
                     panic!("Empty bool token value");
                 }
 
                 // self.selector_filter.push_term(Some(ExprTerm::Bool(*b)));
             }
-            _ParserToken { key: P_TOK_KEY, value_range, .. } => {
-                if let Some(ranges) = value_range {
-                    assert_eq!(ranges.len(), 1, "Invalid key token size: {}", ranges.len());
+            _ParserToken { key: P_TOK_KEY, token_type } => {
+                if let Some(types) = token_type {
+                    assert_eq!(types.len(), 1, "Invalid key token size: {}", types.len());
 
-                    let key = parse_value_reader(&ranges[0]);
+                    let key = if let Some(v) = parse_value_reader(&types[0]).as_string() {
+                        v
+                    } else {
+                        panic!("Not a string {:?}", types)
+                    };
+
                     if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
                         self.selector_filter.push_term(Some(ExprTerm::String(key)));
                         return;
@@ -675,12 +627,12 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     panic!("Empty key token value");
                 }
             }
-            _ParserToken { key: P_TOK_KEYS, value_range, .. } => {
+            _ParserToken { key: P_TOK_KEYS, token_type, .. } => {
                 if !self.selector_filter.is_term_empty() {
                     unimplemented!("keys in filter");
                 }
 
-                if let Some(ranges) = value_range {
+                if let Some(ranges) = token_type {
                     let keys = ranges.iter().fold(Vec::new(), |acc, range| {
                         parse_value_reader(range);
                         acc
@@ -697,21 +649,20 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     panic!("Empty keys token value");
                 }
             }
-            _ParserToken { key: P_TOK_NUMBER, value_range, value_type } => {
-                if let Some(ranges) = value_range {
-                    assert_eq!(ranges.len(), 1, "Invalid number token size: {}", ranges.len());
-                    let v = parse_value_reader(&ranges[0]);
+            _ParserToken { key: P_TOK_NUMBER, token_type } => {
+                if let Some(types) = token_type {
+                    assert_eq!(types.len(), 1, "Invalid number token size: {}", types.len());
+                    let v = parse_value_reader(&types[0]);
                     // FIXME
-                    let v = v.parse::<f64>().unwrap();
-                    match value_type {
-                        Some(_TokenValueType::Int) => {
+                    match v {
+                        _TokenValue::Int(v) => {
+                            self.selector_filter.push_term(Some(ExprTerm::Number(Number::from(v))));
+                        }
+                        _TokenValue::Float(v) => {
                             self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(v).unwrap())));
                         }
-                        Some(_TokenValueType::Float) => {
-                            self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(v).unwrap())));
-                        }
-                        _ => panic!("Unexpected value type")
-                    };
+                        _ => panic!("Not a number")
+                    }
                 } else {
                     panic!("Empty number token value");
                 }
@@ -775,33 +726,31 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
 
                 self.selector_filter.push_term(Some(expr));
             }
-            _ParserToken { key: P_TOK_RANGE, value_range, .. }
-            | _ParserToken { key: P_TOK_RANGE_TO, value_range, .. }
-            | _ParserToken { key: P_TOK_RANGE_FROM, value_range, .. } => {
+            _ParserToken { key: P_TOK_RANGE, token_type }
+            | _ParserToken { key: P_TOK_RANGE_TO, token_type }
+            | _ParserToken { key: P_TOK_RANGE_FROM, token_type } => {
                 if !self.selector_filter.is_term_empty() {
                     unimplemented!("range syntax in filter");
                 }
 
-                if value_range.is_none() {
+                if token_type.is_none() {
                     panic!("Unexpected range params");
                 }
 
-                fn string_to_num<F, S: FromStr>(string: &str, msg_handler: F) -> Result<S, String>
-                    where
-                        F: Fn() -> String,
-                {
-                    match string.parse() {
-                        Ok(n) => Ok(n),
-                        _ => Err(msg_handler()),
+                let to_int = |t| -> isize {
+                    if let _TokenValue::Int(v) = parse_value_reader(t) {
+                        v
+                    } else {
+                        panic!("expected int {:?}", &t)
                     }
-                }
+                };
 
                 if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
                     let mut tmp = Vec::new();
                     if let Some(current) = &self.current {
                         for v in current {
                             if let Value::Array(vec) = v {
-                                if let Some(value_range) = &value_range {
+                                if let Some(types) = token_type {
                                     let params = match &token.key {
                                         // step
                                         //  0. $[::]
@@ -809,7 +758,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                                         //  2. $[:3:2]
                                         //  3. $[0:3:2]
                                         &P_TOK_RANGE => {
-                                            match value_range.len() {
+                                            match types.len() {
                                                 0 => {
                                                     (0, vec.len(), 1)
                                                 }
@@ -817,21 +766,21 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                                                     (
                                                         0,
                                                         vec.len(),
-                                                        parse_value_reader(&value_range[0]).parse::<usize>().unwrap()
+                                                        to_int(&types[0]) as usize // FIXME
                                                     )
                                                 }
                                                 2 => {
                                                     (
                                                         0,
-                                                        utils::abs_index(parse_value_reader(&value_range[0]).parse::<isize>().unwrap(), vec.len()),
-                                                        parse_value_reader(&value_range[1]).parse::<usize>().unwrap()
+                                                        utils::abs_index(to_int(&types[0]), vec.len()),
+                                                        to_int(&types[1]) as usize // FIXME
                                                     )
                                                 }
                                                 3 => {
                                                     (
-                                                        utils::abs_index(parse_value_reader(&value_range[0]).parse::<isize>().unwrap(), vec.len()),
-                                                        utils::abs_index(parse_value_reader(&value_range[1]).parse::<isize>().unwrap(), vec.len()),
-                                                        parse_value_reader(&value_range[2]).parse::<usize>().unwrap()
+                                                        utils::abs_index(to_int(&types[0]), vec.len()),
+                                                        utils::abs_index(to_int(&types[1]), vec.len()),
+                                                        to_int(&types[2]) as usize // FIXME
                                                     )
                                                 }
                                                 _ => panic!("Unexpected range param types")
@@ -842,21 +791,21 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                                         //  1. $.a[:11]
                                         //  2. $.a[-12:13]
                                         &P_TOK_RANGE_TO => {
-                                            match value_range.len() {
+                                            match types.len() {
                                                 0 => {
                                                     (0, vec.len(), 1)
                                                 }
                                                 1 => {
                                                     (
                                                         0,
-                                                        utils::abs_index(parse_value_reader(&value_range[0]).parse::<isize>().unwrap(), vec.len()),
+                                                        utils::abs_index(to_int(&types[0]), vec.len()),
                                                         1
                                                     )
                                                 }
                                                 2 => {
                                                     (
-                                                        utils::abs_index(parse_value_reader(&value_range[0]).parse::<isize>().unwrap(), vec.len()),
-                                                        utils::abs_index(parse_value_reader(&value_range[1]).parse::<isize>().unwrap(), vec.len()),
+                                                        utils::abs_index(to_int(&types[0]), vec.len()),
+                                                        utils::abs_index(to_int(&types[1]), vec.len()),
                                                         1
                                                     )
                                                 }
@@ -866,10 +815,10 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                                         // from
                                         //  1. $.a[10:]
                                         &P_TOK_RANGE_FROM => {
-                                            match value_range.len() {
+                                            match types.len() {
                                                 1 => {
                                                     (
-                                                        utils::abs_index(parse_value_reader(&value_range[0]).parse::<isize>().unwrap(), vec.len()),
+                                                        utils::abs_index(to_int(&types[0]), vec.len()),
                                                         vec.len(),
                                                         1
                                                     )
@@ -890,24 +839,6 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                                         }
                                     }
                                 }
-
-                                // let from = if let Some(from) = from {
-                                //     utils::abs_index(*from, vec.len())
-                                // } else {
-                                //     0
-                                // };
-                                //
-                                // let to = if let Some(to) = to {
-                                //     utils::abs_index(*to, vec.len())
-                                // } else {
-                                //     vec.len()
-                                // };
-
-                                // for i in (from..to).step_by(step) {
-                                //     if let Some(v) = vec.get(i) {
-                                //         tmp.push(v);
-                                //     }
-                                // }
                             }
                         }
                     }
@@ -916,18 +847,18 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     unreachable!();
                 }
             }
-            _ParserToken { key: P_TOK_UNION, value_range, .. } => {
+            _ParserToken { key: P_TOK_UNION, token_type } => {
                 if !self.selector_filter.is_term_empty() {
                     unimplemented!("union syntax in filter");
                 }
 
-                if value_range.is_none() {
+                if token_type.is_none() {
                     panic!("Unexpected range params");
                 }
 
-                let indices = if let Some(ranges) = value_range {
-                    ranges.iter().fold(Vec::new(), |mut acc, range| {
-                        acc.push(parse_value_reader(range).parse::<isize>().unwrap());
+                let indices = if let Some(types) = token_type {
+                    types.iter().fold(Vec::new(), |mut acc, t| {
+                        acc.push(parse_value_reader(t).as_int().unwrap());
                         acc
                     })
                 } else {
@@ -944,6 +875,9 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                                         tmp.push(v);
                                     }
                                 }
+                            }
+                            else if let Value::Object(_) = v {
+                                // TODO
                             }
                         }
                     }

@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use paths::str_reader::StrReader;
-use paths::{StrRange, TokenError};
+use super::TokenError;
+use super::str_reader::StrRange;
+use super::str_reader::StrReader;
 
-use paths::tokenizer::{StdTokenRules, TokenRule, TokenRules};
-use paths::tokens::*;
+use super::tokenizer::{StdTokenRules, TokenRule, TokenRules};
+use super::tokens::*;
 
 ///
 /// order of priority:

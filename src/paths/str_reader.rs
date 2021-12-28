@@ -8,7 +8,7 @@ pub enum ReaderError {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct StrRange {
+pub(crate) struct StrRange {
     pub pos: usize,
     pub offset: usize,
 }
