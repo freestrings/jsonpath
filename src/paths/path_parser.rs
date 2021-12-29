@@ -1,4 +1,3 @@
-use paths::tokens::{_ParserToken, ParseToken};
 use super::parser_node_visitor::_ParserNodeVisitor;
 use super::parser_token_handler::_ParserTokenHandler;
 use super::str_reader::StrRange;
@@ -9,9 +8,11 @@ use super::tokenizer::{
     TokenRules
 };
 use super::tokens::{
+    _ParserToken,
     _Token,
     _TokenType,
     _TokenValue,
+    ParseToken
 };
 use super::tokens::constants::*;
 

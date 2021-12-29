@@ -167,6 +167,10 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
     fn handle<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) where F: Fn(&_TokenType) -> _TokenValue<'a> {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
+        if self.compute_absolute_path_filter(token, parse_value_reader) {
+            return;
+        }
+
         match &token {
             _ParserToken { key: P_TOK_ABSOLUTE, .. } => {
                 if self.current.is_some() {
@@ -181,10 +185,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                         };
                         self.selectors.push(selector);
                     }
-                    return;
-                }
-
-                if let Some(v) = &self.value {
+                } else if let Some(v) = &self.value {
                     self.current = Some(vec![v]);
                 }
             }
@@ -348,6 +349,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                             }
                         }
                     }
+
                 } else {
                     panic!("Empty key token value");
                 }
@@ -429,13 +431,13 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                 };
 
                 let expr = match &token.key {
-                    &P_TOK_FILTER_AND => left.and(right),
                     &P_TOK_FILTER_EQUAL => left.eq_(right),
+                    &P_TOK_FILTER_NOT_EQUAL => left.ne_(right),
                     &P_TOK_FILTER_GREATER => left.gt(right),
                     &P_TOK_FILTER_GREATER_OR_EQUAL => left.ge(right),
                     &P_TOK_FILTER_LITTLE => left.lt(right),
                     &P_TOK_FILTER_LITTLE_OR_EQUAL => left.le(right),
-                    &P_TOK_FILTER_NOT_EQUAL => left.le(right),
+                    &P_TOK_FILTER_AND => left.and(right),
                     &P_TOK_FILTER_OR => left.or(right),
                     _ => panic!("Unexpected operator {}", &token.key),
                 };

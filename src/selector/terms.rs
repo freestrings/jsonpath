@@ -498,10 +498,10 @@ impl<'a> FilterTerms<'a> {
         }
 
         let acc = ValueWalker::all_with_strs(current.as_ref().unwrap(), keys);
-
         if acc.is_empty() {
             self.pop_term();
         }
+
 
         Some(acc)
     }

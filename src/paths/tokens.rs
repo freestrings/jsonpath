@@ -1,5 +1,5 @@
-use paths::tokenizer::TokenReader;
 use super::str_reader::StrRange;
+use super::tokenizer::TokenReader;
 
 pub(crate) mod constants {
     pub const CH_DOLLA: char = '$';
