@@ -1,15 +1,23 @@
-use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::result::Result;
 
-use super::str_reader::{ReaderError, StrRange, StrReader};
+use super::str_reader::{
+    ReaderError,
+    StrRange,
+    StrReader
+};
 use super::tokens::{
     *,
     constants::*,
 };
 
 pub(crate) trait TokenRules {
-    fn get_token(&self, ch: &char) -> Option<&Box<dyn TokenRule>>;
+    fn read_token<'a>(
+        &self,
+        ch: &char,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+    ) -> Option<Result<_Token<'a>, TokenError>>;
 }
 
 impl Debug for dyn TokenRules {
@@ -18,101 +26,60 @@ impl Debug for dyn TokenRules {
     }
 }
 
-#[derive(Debug)]
-pub(super) struct StdTokenRules {
-    pub rules: HashMap<char, Box<dyn TokenRule>>
-}
-
-impl StdTokenRules {
-    pub fn new() -> Self {
-        let mut rules: HashMap<char, Box<dyn TokenRule>> = HashMap::new();
-
-        let rule = DollaTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = SingleQuotaTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = DoubleQuotaTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = EqualTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = ExclamationTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = LittleTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = GreaterTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = AmpersandTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = PipeTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = DotTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = AsteriskTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = LArrayTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = RArrayTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = LParaenTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = RParaenTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = AtTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = QuestionTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = CommaTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        let rule = SemicolonTokenRule {};
-        rules.insert(rule.match_char(), Box::new(rule));
-
-        StdTokenRules { rules }
-    }
-}
+#[derive(Debug, Default)]
+pub(super) struct StdTokenRules;
 
 impl TokenRules for StdTokenRules {
-    fn get_token(&self, ch: &char) -> Option<&Box<dyn TokenRule>> {
-        self.rules.get(ch)
+    fn read_token<'a>(
+        &self,
+        ch: &char,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+    ) -> Option<Result<_Token<'a>, TokenError>> {
+        match ch {
+            &CH_DOLLA => Some(DollaTokenRule {}.compute_token(input, range, ch)),
+            &CH_SINGLE_QUOTE => Some(SingleQuotaTokenRule {}.compute_token(input, range, ch)),
+            &CH_DOUBLE_QUOTE => Some(DoubleQuotaTokenRule {}.compute_token(input, range, ch)),
+            &CH_EQUAL => Some(EqualTokenRule {}.compute_token(input, range, ch)),
+            &CH_EXCLAMATION => Some(ExclamationTokenRule {}.compute_token(input, range, ch)),
+            &CH_LITTLE => Some(LittleTokenRule {}.compute_token(input, range, ch)),
+            &CH_GREATER => Some(GreaterTokenRule {}.compute_token(input, range, ch)),
+            &CH_AMPERSAND => Some(AmpersandTokenRule {}.compute_token(input, range, ch)),
+            &CH_PIPE => Some(PipeTokenRule {}.compute_token(input, range, ch)),
+            &CH_DOT => Some(DotTokenRule {}.compute_token(input, range, ch)),
+            &CH_ASTERISK => Some(AsteriskTokenRule {}.compute_token(input, range, ch)),
+            &CH_LARRAY => Some(LArrayTokenRule {}.compute_token(input, range, ch)),
+            &CH_RARRAY => Some(RArrayTokenRule {}.compute_token(input, range, ch)),
+            &CH_LPAREN => Some(LParaenTokenRule {}.compute_token(input, range, ch)),
+            &CH_RPAREN => Some(RParaenTokenRule {}.compute_token(input, range, ch)),
+            &CH_AT => Some(AtTokenRule {}.compute_token(input, range, ch)),
+            &CH_QUESTION => Some(QuestionTokenRule {}.compute_token(input, range, ch)),
+            &CH_COMMA => Some(CommaTokenRule {}.compute_token(input, range, ch)),
+            &CH_SEMICOLON => Some(SemicolonTokenRule {}.compute_token(input, range, ch)),
+            _ => None
+        }
     }
 }
 
 pub(crate) trait TokenRule {
-    fn match_char(&self) -> char;
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, ch: char) -> Result<_Token<'a>, TokenError>;
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        ch: &char,
+    ) -> Result<_Token<'a>, TokenError>;
 }
 
-impl Debug for dyn TokenRule {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("TokenRule '{}'", self.match_char()))
-    }
-}
-
+// CH_DOLLA
 struct DollaTokenRule;
 
 impl TokenRule for DollaTokenRule {
-    fn match_char(&self) -> char {
-        CH_DOLLA
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, _: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        _: StrRange,
+        _: &char,
+    ) -> Result<_Token<'a>, TokenError> {
         let read = input.take_while(|c| match c {
             _ if !c.is_alphanumeric() => false,
             _ => !c.is_whitespace(),
@@ -127,12 +94,16 @@ impl TokenRule for DollaTokenRule {
 }
 
 trait QuotaToken {
-    fn quote(&self, input: &mut StrReader<'_>, ch: char) -> Result<StrRange, TokenError> {
-        let range = input.take_while(|c| *c != ch).map_err(to_token_error)?;
+    fn quote(
+        &self,
+        input: &mut StrReader<'_>,
+        ch: &char,
+    ) -> Result<StrRange, TokenError> {
+        let range = input.take_while(|c| c != ch).map_err(to_token_error)?;
         let val = input.read(&range);
         if let Some('\\') = val.chars().last() {
             input.next_char().map_err(to_token_error)?;
-            let remain_range = input.take_while(|c| *c != ch).map_err(to_token_error)?;
+            let remain_range = input.take_while(|c| c != ch).map_err(to_token_error)?;
             input.next_char().map_err(to_token_error)?;
             Ok(StrRange::new(range.pos, remain_range.offset))
         } else {
@@ -142,42 +113,48 @@ trait QuotaToken {
     }
 }
 
+// CH_SINGLE_QUOTE
 struct SingleQuotaTokenRule;
 
 impl QuotaToken for SingleQuotaTokenRule {}
 
 impl TokenRule for SingleQuotaTokenRule {
-    fn match_char(&self) -> char {
-        CH_SINGLE_QUOTE
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, _: StrRange, ch: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        _: StrRange,
+        ch: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_SINGLE_QUOTED, self.quote(input, ch)?))
     }
 }
 
+// CH_DOUBLE_QUOTE
 struct DoubleQuotaTokenRule;
 
 impl QuotaToken for DoubleQuotaTokenRule {}
 
 impl TokenRule for DoubleQuotaTokenRule {
-    fn match_char(&self) -> char {
-        CH_DOUBLE_QUOTE
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, _: StrRange, ch: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        _: StrRange,
+        ch: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_DOUBLE_QUOTED, self.quote(input, ch)?))
     }
 }
 
+// CH_EQUAL
 struct EqualTokenRule;
 
 impl TokenRule for EqualTokenRule {
-    fn match_char(&self) -> char {
-        CH_EQUAL
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -189,14 +166,16 @@ impl TokenRule for EqualTokenRule {
     }
 }
 
+// CH_EXCLAMATION
 struct ExclamationTokenRule;
 
 impl TokenRule for ExclamationTokenRule {
-    fn match_char(&self) -> char {
-        CH_EXCLAMATION
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -208,14 +187,16 @@ impl TokenRule for ExclamationTokenRule {
     }
 }
 
+// CH_LITTLE
 struct LittleTokenRule;
 
 impl TokenRule for LittleTokenRule {
-    fn match_char(&self) -> char {
-        CH_LITTLE
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -227,14 +208,16 @@ impl TokenRule for LittleTokenRule {
     }
 }
 
+// CH_GREATER
 struct GreaterTokenRule;
 
 impl TokenRule for GreaterTokenRule {
-    fn match_char(&self) -> char {
-        CH_GREATER
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
@@ -246,14 +229,16 @@ impl TokenRule for GreaterTokenRule {
     }
 }
 
+// CH_AMPERSAND
 struct AmpersandTokenRule;
 
 impl TokenRule for AmpersandTokenRule {
-    fn match_char(&self) -> char {
-        CH_AMPERSAND
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_AMPERSAND => {
@@ -265,14 +250,16 @@ impl TokenRule for AmpersandTokenRule {
     }
 }
 
+// CH_PIPE
 struct PipeTokenRule;
 
 impl TokenRule for PipeTokenRule {
-    fn match_char(&self) -> char {
-        CH_PIPE
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        input: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_PIPE => {
@@ -284,122 +271,142 @@ impl TokenRule for PipeTokenRule {
     }
 }
 
+// CH_DOT
 struct DotTokenRule;
 
 impl TokenRule for DotTokenRule {
-    fn match_char(&self) -> char {
-        CH_DOT
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_DOT, range))
     }
 }
 
+// CH_ASTERISK
 struct AsteriskTokenRule;
 
 impl TokenRule for AsteriskTokenRule {
-    fn match_char(&self) -> char {
-        CH_ASTERISK
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_ASTERISK, range))
     }
 }
 
+// CH_LARRAY
 struct LArrayTokenRule;
 
 impl TokenRule for LArrayTokenRule {
-    fn match_char(&self) -> char {
-        CH_LARRAY
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_OPEN_ARRAY, range))
     }
 }
 
+// CH_RARRAY
 struct RArrayTokenRule;
 
 impl TokenRule for RArrayTokenRule {
-    fn match_char(&self) -> char {
-        CH_RARRAY
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_CLOSE_ARRAY, range))
     }
 }
 
+// CH_LPAREN
 struct LParaenTokenRule;
 
 impl TokenRule for LParaenTokenRule {
-    fn match_char(&self) -> char {
-        CH_LPAREN
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_OPEN_PARENTHESIS, range))
     }
 }
 
+// CH_RPAREN
 struct RParaenTokenRule;
 
 impl TokenRule for RParaenTokenRule {
-    fn match_char(&self) -> char {
-        CH_RPAREN
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_CLOSE_PARENTHESIS, range))
     }
 }
 
+// CH_AT
 struct AtTokenRule;
 
 impl TokenRule for AtTokenRule {
-    fn match_char(&self) -> char {
-        CH_AT
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_AT, range))
     }
 }
 
+// CH_QUESTION
 struct QuestionTokenRule;
 
 impl TokenRule for QuestionTokenRule {
-    fn match_char(&self) -> char {
-        CH_QUESTION
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_QUESTION, range))
     }
 }
 
+// CH_COMMA
 struct CommaTokenRule;
 
 impl TokenRule for CommaTokenRule {
-    fn match_char(&self) -> char {
-        CH_COMMA
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_COMMA, range))
     }
 }
 
+// CH_SEMICOLON
 struct SemicolonTokenRule;
 
 impl TokenRule for SemicolonTokenRule {
-    fn match_char(&self) -> char {
-        CH_SEMICOLON
-    }
-
-    fn compute_token<'a>(&self, _: &mut StrReader<'_>, range: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self,
+        _: &mut StrReader<'_>,
+        range: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         Ok(_Token::new(TOK_SPLIT, range))
     }
 }
@@ -408,11 +415,12 @@ impl TokenRule for SemicolonTokenRule {
 struct StdOtherRule;
 
 impl TokenRule for StdOtherRule {
-    fn match_char(&self) -> char {
-        '\u{0FFF}' // ...((((;'')
-    }
-
-    fn compute_token<'a>(&self, input: &mut StrReader<'_>, _: StrRange, _: char) -> Result<_Token<'a>, TokenError> {
+    fn compute_token<'a>(
+        &self, input:
+        &mut StrReader<'_>,
+        _: StrRange,
+        _: &char
+    ) -> Result<_Token<'a>, TokenError> {
         let fun = |c: &char| {
             match c {
                 _ if !c.is_alphanumeric() => false,
@@ -446,7 +454,7 @@ pub(super) struct Tokenizer<'a> {
 
 impl<'a, 'b> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
-        Self::new_with_token_rules(input, Box::new(StdTokenRules::new()))
+        Self::new_with_token_rules(input, Box::new(StdTokenRules::default()))
     }
 
     pub fn new_with_token_rules(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
@@ -467,12 +475,12 @@ impl<'a, 'b> Tokenizer<'a> {
     }
 
     fn read_token(&mut self, range: StrRange, ch: char) -> Result<_Token<'b>, TokenError> {
-        if let Some(rule) = self.token_rule.get_token(&ch) {
-            rule.compute_token(&mut self.input, range, ch)
+        if let Some(ret) = self.token_rule.read_token(&ch, &mut self.input, range.clone()) {
+            return ret;
         } else if ch.is_whitespace() {
             self.whitespace()
         } else {
-            self.std_other_rule.compute_token(&mut self.input, range, ch)
+            self.std_other_rule.compute_token(&mut self.input, range, &ch)
         }
     }
 
@@ -497,7 +505,7 @@ impl<'a, 'b> Tokenizer<'a> {
 pub(crate) struct TokenReader<'a, 'b> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,
-    err: Option<TokenError>,
+    // err: Option<TokenError>,
     peeked: Option<Result<_Token<'b>, TokenError>>,
 }
 
@@ -506,7 +514,7 @@ impl<'a, 'b> TokenReader<'a, 'b> {
         TokenReader {
             tokenizer: Tokenizer::new(input),
             curr_pos: 0,
-            err: None,
+            // err: None,
             peeked: None,
         }
     }
@@ -515,7 +523,7 @@ impl<'a, 'b> TokenReader<'a, 'b> {
         TokenReader {
             tokenizer: Tokenizer::new_with_token_rules(input, token_rules),
             curr_pos: 0,
-            err: None,
+            // err: None,
             peeked: None,
         }
     }
@@ -530,7 +538,9 @@ impl<'a, 'b> TokenReader<'a, 'b> {
         let peeked = self.peeked.get_or_insert_with(|| {
             let mut token = tokenizer.next_token();
             if let Ok(token) = &mut token {
-                let token = token.replace_range(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos));
+                let token = token.replace_range(
+                    StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos)
+                );
                 return Ok(token);
             }
             token
@@ -548,7 +558,9 @@ impl<'a, 'b> TokenReader<'a, 'b> {
                 let mut token = tokenizer.next_token();
                 if let Ok(token) = &mut token {
                     let current_pos = tokenizer.current_pos();
-                    let token = token.replace_range(StrRange::new(prev_pos, current_pos - prev_pos));
+                    let token = token.replace_range(
+                        StrRange::new(prev_pos, current_pos - prev_pos)
+                    );
                     self.curr_pos = current_pos;
                     return Ok(token);
                 }

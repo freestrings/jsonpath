@@ -12,7 +12,6 @@ use super::tokens::{
     _Token,
     _TokenType,
     _TokenValue,
-    ParseToken
 };
 use super::tokens::constants::*;
 
@@ -23,7 +22,7 @@ pub struct PathParser<'a, 'b> {
 
 impl<'a, 'b> PathParser<'a, 'b> {
     pub fn compile(input: &'a str) -> Result<Self, TokenError> {
-        let mut parser = ParserImpl::new_with_token_rules(input, Box::new(StdTokenRules::new()));
+        let mut parser = ParserImpl::new_with_token_rules(input, Box::new(StdTokenRules::default()));
         parser.compile()?;
         Ok(PathParser { parser })
     }
@@ -817,13 +816,6 @@ impl<'a> _ParserNode<'a> {
             token: _ParserToken::new_with_types(token, token_type),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct ParserNode {
-    pub left: Option<Box<ParserNode>>,
-    pub right: Option<Box<ParserNode>>,
-    pub token: ParseToken,
 }
 
 #[cfg(test)]
