@@ -6,10 +6,83 @@ use super::str_reader::{
     StrRange,
     StrReader
 };
-use super::tokens::{
-    *,
-    constants::*,
-};
+use super::Token;
+
+use self::std_token_str::*;
+
+pub(crate) mod std_token_str {
+    pub const CH_DOLLA: char = '$';
+    pub const CH_DOT: char = '.';
+    pub const CH_ASTERISK: char = '*';
+    pub const CH_LARRAY: char = '[';
+    pub const CH_RARRAY: char = ']';
+    pub const CH_LPAREN: char = '(';
+    pub const CH_RPAREN: char = ')';
+    pub const CH_AT: char = '@';
+    pub const CH_QUESTION: char = '?';
+    pub const CH_COMMA: char = ',';
+    pub const CH_SEMICOLON: char = ':';
+    pub const CH_EQUAL: char = '=';
+    pub const CH_AMPERSAND: char = '&';
+    pub const CH_PIPE: char = '|';
+    pub const CH_LITTLE: char = '<';
+    pub const CH_GREATER: char = '>';
+    pub const CH_EXCLAMATION: char = '!';
+    pub const CH_SINGLE_QUOTE: char = '\'';
+    pub const CH_DOUBLE_QUOTE: char = '"';
+
+    // tokens
+    pub const TOK_ABSOLUTE: &str = "$";
+    pub const TOK_DOT: &str = ".";
+    pub const TOK_AT: &str = "@";
+    pub const TOK_OPEN_ARRAY: &str = "[";
+    pub const TOK_CLOSE_ARRAY: &str = "]";
+    pub const TOK_ASTERISK: &str = "*";
+    pub const TOK_QUESTION: &str = "?";
+    pub const TOK_COMMA: &str = ",";
+    pub const TOK_SPLIT: &str = ":";
+    pub const TOK_OPEN_PARENTHESIS: &str = "(";
+    pub const TOK_CLOSE_PARENTHESIS: &str = ")";
+    pub const TOK_KEY: &str = "___KEY___";
+    pub const TOK_DOUBLE_QUOTED: &str = "\"";
+    pub const TOK_SINGLE_QUOTED: &str = "'";
+    pub const TOK_EQUAL: &str = "==";
+    pub const TOK_GREATER_OR_EQUAL: &str = ">=";
+    pub const TOK_GREATER: &str = ">";
+    pub const TOK_LITTLE: &str = "<";
+    pub const TOK_LITTLE_OR_EQUAL: &str = "<=";
+    pub const TOK_NOT_EQUAL: &str = "!=";
+    pub const TOK_AND: &str = "&&";
+    pub const TOK_OR: &str = "||";
+    pub const TOK_WHITESPACE: &str = "___WHITESPACE___";
+
+    // parser tokens
+    pub const P_TOK_ABSOLUTE: &str = "Absolute";
+    pub const P_TOK_RELATIVE: &str = "Relative";
+    pub const P_TOK_LEAVES: &str = "Leaves";
+    pub const P_TOK_IN: &str = "In";
+    pub const P_TOK_ALL: &str = "All";
+    pub const P_TOK_RANGE: &str = "Range";
+    pub const P_TOK_RANGE_TO: &str = "RangeTo";
+    pub const P_TOK_RANGE_FROM: &str = "RangeFrom";
+    pub const P_TOK_UNION: &str = "Union";
+    pub const P_TOK_ARRAY: &str = "Array";
+    pub const P_TOK_ARRAY_END: &str = "ArrayEnd";
+    pub const P_TOK_END: &str = "End";
+    pub const P_TOK_KEY: &str = "Key";
+    pub const P_TOK_KEYS: &str = "Keys";
+    pub const P_TOK_NUMBER: &str = "Number";
+    pub const P_TOK_BOOL: &str = "Bool";
+    pub const P_TOK_FILTER_AND: &str = "And";
+    pub const P_TOK_FILTER_OR: &str = "Or";
+    pub const P_TOK_FILTER_EQUAL: &str = "FilterEqual";
+    pub const P_TOK_FILTER_NOT_EQUAL: &str = "FilterNotEqual";
+    pub const P_TOK_FILTER_LITTLE: &str = "FilterLittle";
+    pub const P_TOK_FILTER_LITTLE_OR_EQUAL: &str = "FilterLittleOrEqual";
+    pub const P_TOK_FILTER_GREATER: &str = "FilterGreater";
+    pub const P_TOK_FILTER_GREATER_OR_EQUAL: &str = "GreaterOrEqual";
+}
+
 
 pub(crate) trait TokenRules {
     fn read_token<'a>(
@@ -17,7 +90,7 @@ pub(crate) trait TokenRules {
         ch: &char,
         input: &mut StrReader<'_>,
         range: StrRange,
-    ) -> Option<Result<_Token<'a>, TokenError>>;
+    ) -> Option<Result<Token<'a>, TokenError>>;
 }
 
 impl Debug for dyn TokenRules {
@@ -35,7 +108,7 @@ impl TokenRules for StdTokenRules {
         ch: &char,
         input: &mut StrReader<'_>,
         range: StrRange,
-    ) -> Option<Result<_Token<'a>, TokenError>> {
+    ) -> Option<Result<Token<'a>, TokenError>> {
         match ch {
             &CH_DOLLA => Some(DollaTokenRule {}.compute_token(input, range, ch)),
             &CH_SINGLE_QUOTE => Some(SingleQuotaTokenRule {}.compute_token(input, range, ch)),
@@ -67,7 +140,7 @@ pub(crate) trait TokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         ch: &char,
-    ) -> Result<_Token<'a>, TokenError>;
+    ) -> Result<Token<'a>, TokenError>;
 }
 
 // CH_DOLLA
@@ -79,16 +152,16 @@ impl TokenRule for DollaTokenRule {
         input: &mut StrReader<'_>,
         _: StrRange,
         _: &char,
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let read = input.take_while(|c| match c {
             _ if !c.is_alphanumeric() => false,
             _ => !c.is_whitespace(),
         }).map_err(to_token_error)?;
 
         if read.offset == 0 {
-            Ok(_Token::new(TOK_ABSOLUTE, read))
+            Ok(Token::new(TOK_ABSOLUTE, read))
         } else {
-            Ok(_Token::new(TOK_KEY, read))
+            Ok(Token::new(TOK_KEY, read))
         }
     }
 }
@@ -124,8 +197,8 @@ impl TokenRule for SingleQuotaTokenRule {
         input: &mut StrReader<'_>,
         _: StrRange,
         ch: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_SINGLE_QUOTED, self.quote(input, ch)?))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_SINGLE_QUOTED, self.quote(input, ch)?))
     }
 }
 
@@ -140,8 +213,8 @@ impl TokenRule for DoubleQuotaTokenRule {
         input: &mut StrReader<'_>,
         _: StrRange,
         ch: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_DOUBLE_QUOTED, self.quote(input, ch)?))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_DOUBLE_QUOTED, self.quote(input, ch)?))
     }
 }
 
@@ -154,12 +227,12 @@ impl TokenRule for EqualTokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 input.next_char().map_err(to_token_error)?;
-                Ok(_Token::new(TOK_EQUAL, range))
+                Ok(Token::new(TOK_EQUAL, range))
             }
             _ => Err(TokenError::Position(range.pos)),
         }
@@ -175,12 +248,12 @@ impl TokenRule for ExclamationTokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 input.next_char().map_err(to_token_error)?;
-                Ok(_Token::new(TOK_NOT_EQUAL, range))
+                Ok(Token::new(TOK_NOT_EQUAL, range))
             }
             _ => Err(TokenError::Position(range.pos)),
         }
@@ -196,14 +269,14 @@ impl TokenRule for LittleTokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 input.next_char().map_err(to_token_error)?;
-                Ok(_Token::new(TOK_LITTLE_OR_EQUAL, range))
+                Ok(Token::new(TOK_LITTLE_OR_EQUAL, range))
             }
-            _ => Ok(_Token::new(TOK_LITTLE, range)),
+            _ => Ok(Token::new(TOK_LITTLE, range)),
         }
     }
 }
@@ -217,14 +290,14 @@ impl TokenRule for GreaterTokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 input.next_char().map_err(to_token_error)?;
-                Ok(_Token::new(TOK_GREATER_OR_EQUAL, range))
+                Ok(Token::new(TOK_GREATER_OR_EQUAL, range))
             }
-            _ => Ok(_Token::new(TOK_GREATER, range)),
+            _ => Ok(Token::new(TOK_GREATER, range)),
         }
     }
 }
@@ -238,12 +311,12 @@ impl TokenRule for AmpersandTokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_AMPERSAND => {
                 let _ = input.next_char().map_err(to_token_error);
-                Ok(_Token::new(TOK_AND, range))
+                Ok(Token::new(TOK_AND, range))
             }
             _ => Err(TokenError::Position(range.pos)),
         }
@@ -259,12 +332,12 @@ impl TokenRule for PipeTokenRule {
         input: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let ch = input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_PIPE => {
                 input.next_char().map_err(to_token_error)?;
-                Ok(_Token::new(TOK_OR, range))
+                Ok(Token::new(TOK_OR, range))
             }
             _ => Err(TokenError::Position(range.pos)),
         }
@@ -280,8 +353,8 @@ impl TokenRule for DotTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_DOT, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_DOT, range))
     }
 }
 
@@ -294,8 +367,8 @@ impl TokenRule for AsteriskTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_ASTERISK, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_ASTERISK, range))
     }
 }
 
@@ -308,8 +381,8 @@ impl TokenRule for LArrayTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_OPEN_ARRAY, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_OPEN_ARRAY, range))
     }
 }
 
@@ -322,8 +395,8 @@ impl TokenRule for RArrayTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_CLOSE_ARRAY, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_CLOSE_ARRAY, range))
     }
 }
 
@@ -336,8 +409,8 @@ impl TokenRule for LParaenTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_OPEN_PARENTHESIS, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_OPEN_PARENTHESIS, range))
     }
 }
 
@@ -350,8 +423,8 @@ impl TokenRule for RParaenTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_CLOSE_PARENTHESIS, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_CLOSE_PARENTHESIS, range))
     }
 }
 
@@ -364,8 +437,8 @@ impl TokenRule for AtTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_AT, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_AT, range))
     }
 }
 
@@ -378,8 +451,8 @@ impl TokenRule for QuestionTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_QUESTION, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_QUESTION, range))
     }
 }
 
@@ -392,8 +465,8 @@ impl TokenRule for CommaTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_COMMA, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_COMMA, range))
     }
 }
 
@@ -406,21 +479,21 @@ impl TokenRule for SemicolonTokenRule {
         _: &mut StrReader<'_>,
         range: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
-        Ok(_Token::new(TOK_SPLIT, range))
+    ) -> Result<Token<'a>, TokenError> {
+        Ok(Token::new(TOK_SPLIT, range))
     }
 }
 
 #[derive(Debug)]
-struct StdOtherRule;
+struct StdDefaultRule;
 
-impl TokenRule for StdOtherRule {
+impl TokenRule for StdDefaultRule {
     fn compute_token<'a>(
         &self, input:
         &mut StrReader<'_>,
         _: StrRange,
         _: &char
-    ) -> Result<_Token<'a>, TokenError> {
+    ) -> Result<Token<'a>, TokenError> {
         let fun = |c: &char| {
             match c {
                 _ if !c.is_alphanumeric() => false,
@@ -428,7 +501,7 @@ impl TokenRule for StdOtherRule {
             }
         };
         let range = input.take_while(fun).map_err(to_token_error)?;
-        Ok(_Token::new(TOK_KEY, range))
+        Ok(Token::new(TOK_KEY, range))
     }
 }
 
@@ -449,42 +522,40 @@ fn to_token_error(read_err: ReaderError) -> TokenError {
 pub(super) struct Tokenizer<'a> {
     input: StrReader<'a>,
     token_rule: Box<dyn TokenRules>,
-    std_other_rule: StdOtherRule
+    std_default_rule: StdDefaultRule
 }
 
 impl<'a, 'b> Tokenizer<'a> {
-    pub fn new(input: &'a str) -> Self {
-        Self::new_with_token_rules(input, Box::new(StdTokenRules::default()))
-    }
-
-    pub fn new_with_token_rules(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
+    pub fn new(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
         trace!("input: {}", input);
         Tokenizer {
             input: StrReader::new(input),
             token_rule: token_rules,
-            std_other_rule: StdOtherRule {}
+            std_default_rule: StdDefaultRule {}
         }
     }
 
-    fn whitespace(&mut self) -> Result<_Token<'b>, TokenError> {
+    fn whitespace(&mut self) -> Result<Token<'b>, TokenError> {
         let range = self
             .input
             .take_while(|c| c.is_whitespace())
             .map_err(to_token_error)?;
-        Ok(_Token::new(TOK_WHITESPACE, range))
+        Ok(Token::new(TOK_WHITESPACE, range))
     }
 
-    fn read_token(&mut self, range: StrRange, ch: char) -> Result<_Token<'b>, TokenError> {
+    fn read_token(&mut self, range: StrRange, ch: char) -> Result<Token<'b>, TokenError> {
         if let Some(ret) = self.token_rule.read_token(&ch, &mut self.input, range.clone()) {
             return ret;
-        } else if ch.is_whitespace() {
-            self.whitespace()
-        } else {
-            self.std_other_rule.compute_token(&mut self.input, range, &ch)
         }
+
+        if ch.is_whitespace() {
+            return self.whitespace();
+        }
+
+        self.std_default_rule.compute_token(&mut self.input, range, &ch)
     }
 
-    pub fn next_token(&mut self) -> Result<_Token<'b>, TokenError> {
+    pub fn next_token(&mut self) -> Result<Token<'b>, TokenError> {
         let (range, ch) = self.input.next_char().map_err(to_token_error)?;
         match self.read_token(range, ch) {
             Ok(t) => Ok(t),
@@ -505,25 +576,14 @@ impl<'a, 'b> Tokenizer<'a> {
 pub(crate) struct TokenReader<'a, 'b> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,
-    // err: Option<TokenError>,
-    peeked: Option<Result<_Token<'b>, TokenError>>,
+    peeked: Option<Result<Token<'b>, TokenError>>,
 }
 
 impl<'a, 'b> TokenReader<'a, 'b> {
-    pub fn new(input: &'a str) -> Self {
+    pub fn new(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
         TokenReader {
-            tokenizer: Tokenizer::new(input),
+            tokenizer: Tokenizer::new(input, token_rules),
             curr_pos: 0,
-            // err: None,
-            peeked: None,
-        }
-    }
-
-    pub fn new_with_token_rules(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
-        TokenReader {
-            tokenizer: Tokenizer::new_with_token_rules(input, token_rules),
-            curr_pos: 0,
-            // err: None,
             peeked: None,
         }
     }
@@ -532,7 +592,7 @@ impl<'a, 'b> TokenReader<'a, 'b> {
         self.tokenizer.read_range(str_range)
     }
 
-    pub fn peek_token(&mut self) -> Result<&_Token<'b>, &TokenError> {
+    pub fn peek_token(&mut self) -> Result<&Token<'b>, &TokenError> {
         let tokenizer = &mut self.tokenizer;
         let prev_pos = self.curr_pos;
         let peeked = self.peeked.get_or_insert_with(|| {
@@ -549,7 +609,7 @@ impl<'a, 'b> TokenReader<'a, 'b> {
         peeked.as_ref()
     }
 
-    pub fn next_token(&mut self) -> Result<_Token<'b>, TokenError> {
+    pub fn next_token(&mut self) -> Result<Token<'b>, TokenError> {
         match self.peeked.take() {
             Some(v) => v,
             None => {
@@ -574,7 +634,7 @@ impl<'a, 'b> TokenReader<'a, 'b> {
     }
 
     pub fn eat_whitespace(&mut self) {
-        while let Ok(_Token { key: TOK_WHITESPACE, .. }) = self.peek_token() {
+        while let Ok(Token { key: TOK_WHITESPACE, .. }) = self.peek_token() {
             self.eat_token();
         }
     }
@@ -592,17 +652,21 @@ impl<'a, 'b> TokenReader<'a, 'b> {
 
 #[cfg(test)]
 mod tokenizer_tests {
-    use paths::str_reader::StrRange;
-    use paths::tokenizer::{TokenError, TokenReader};
-    use paths::tokens::*;
-    use paths::tokens::constants::*;
+    use jsonpath_parser::std_token_str::*;
+    use jsonpath_parser::str_reader::StrRange;
+    use jsonpath_parser::Token;
+    use jsonpath_parser::tokenizer::{StdTokenRules, TokenError, Tokenizer, TokenReader};
 
     fn setup() {
         let _ = env_logger::try_init();
     }
 
-    fn collect_token(input: &str) -> (Vec<_Token>, Option<TokenError>) {
-        let mut tokenizer = TokenReader::new(input);
+    fn collect_token(input: &str) -> (Vec<Token>, Option<TokenError>) {
+        let mut tokenizer = TokenReader {
+            tokenizer: Tokenizer::new(input, Box::new(StdTokenRules {})),
+            curr_pos: 0,
+            peeked: None,
+        };
         let mut vec = vec![];
         loop {
             match tokenizer.next_token() {
@@ -612,31 +676,35 @@ mod tokenizer_tests {
         }
     }
 
-    fn run(input: &str, expected: (Vec<_Token>, Option<TokenError>)) {
+    fn run(input: &str, expected: (Vec<Token>, Option<TokenError>)) {
         let (vec, err) = collect_token(input);
         assert_eq!((vec, err), expected, "\"{}\"", input);
     }
 
     #[test]
     fn peek() {
-        let mut tokenizer = TokenReader::new("$.a");
+        let mut tokenizer = TokenReader {
+            tokenizer: Tokenizer::new("$.a", Box::new(StdTokenRules {})),
+            curr_pos: 0,
+            peeked: None,
+        };
         match tokenizer.next_token() {
-            Ok(t) => assert_eq!(_Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)), t),
+            Ok(t) => assert_eq!(Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)), t),
             _ => panic!(),
         }
 
         match tokenizer.peek_token() {
-            Ok(t) => assert_eq!(&_Token::new(TOK_DOT, StrRange::new(1, 1)), t),
+            Ok(t) => assert_eq!(&Token::new(TOK_DOT, StrRange::new(1, 1)), t),
             _ => panic!(),
         }
 
         match tokenizer.peek_token() {
-            Ok(t) => assert_eq!(&_Token::new(TOK_DOT, StrRange::new(1, 1)), t),
+            Ok(t) => assert_eq!(&Token::new(TOK_DOT, StrRange::new(1, 1)), t),
             _ => panic!(),
         }
 
         match tokenizer.next_token() {
-            Ok(t) => assert_eq!(_Token::new(TOK_DOT, StrRange::new(1, 1)), t),
+            Ok(t) => assert_eq!(Token::new(TOK_DOT, StrRange::new(1, 1)), t),
             _ => panic!(),
         }
     }
@@ -649,11 +717,11 @@ mod tokenizer_tests {
             "$.01.a",
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(1, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(2, 2)),
-                    _Token::new(TOK_DOT, StrRange::new(4, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(5, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_DOT, StrRange::new(1, 1)),
+                    Token::new(TOK_KEY, StrRange::new(2, 2)),
+                    Token::new(TOK_DOT, StrRange::new(4, 1)),
+                    Token::new(TOK_KEY, StrRange::new(5, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -663,11 +731,11 @@ mod tokenizer_tests {
             "$.   []",
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(1, 1)),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(2, 3)),
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(5, 1)),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(6, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_DOT, StrRange::new(1, 1)),
+                    Token::new(TOK_WHITESPACE, StrRange::new(2, 3)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(5, 1)),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(6, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -676,9 +744,9 @@ mod tokenizer_tests {
         run(
             "$..",
             (
-                vec![_Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                     _Token::new(TOK_DOT, StrRange::new(1, 1)),
-                     _Token::new(TOK_DOT, StrRange::new(2, 1))],
+                vec![Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                     Token::new(TOK_DOT, StrRange::new(1, 1)),
+                     Token::new(TOK_DOT, StrRange::new(2, 1))],
                 Some(TokenError::Eof),
             ),
         );
@@ -687,10 +755,10 @@ mod tokenizer_tests {
             "$..ab",
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(1, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(2, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(3, "ab".len())),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_DOT, StrRange::new(1, 1)),
+                    Token::new(TOK_DOT, StrRange::new(2, 1)),
+                    Token::new(TOK_KEY, StrRange::new(3, "ab".len())),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -700,12 +768,12 @@ mod tokenizer_tests {
             "$..가 [",
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(1, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(2, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(3, '가'.len_utf8())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(6, 1)),
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(7, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_DOT, StrRange::new(1, 1)),
+                    Token::new(TOK_DOT, StrRange::new(2, 1)),
+                    Token::new(TOK_KEY, StrRange::new(3, '가'.len_utf8())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(6, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(7, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -715,13 +783,13 @@ mod tokenizer_tests {
             "[-1, 2 ]",
             (
                 vec![
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(0, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(1, "-1".len())),
-                    _Token::new(TOK_COMMA, StrRange::new(3, 1)),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(4, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(5, "2".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(6, 1)),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(7, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(0, 1)),
+                    Token::new(TOK_KEY, StrRange::new(1, "-1".len())),
+                    Token::new(TOK_COMMA, StrRange::new(3, 1)),
+                    Token::new(TOK_WHITESPACE, StrRange::new(4, 1)),
+                    Token::new(TOK_KEY, StrRange::new(5, "2".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(6, 1)),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(7, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -731,23 +799,23 @@ mod tokenizer_tests {
             "[ 1 2 , 3 \"abc\" : -10 ]",
             (
                 vec![
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(0, 1)),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(1, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(2, "1".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(3, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(4, "2".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(5, 1)),
-                    _Token::new(TOK_COMMA, StrRange::new(6, 1)),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(7, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(8, "3".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(9, 1)),
-                    _Token::new(TOK_DOUBLE_QUOTED, StrRange::new(10, "\"abc\"".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(15, 1)),
-                    _Token::new(TOK_SPLIT, StrRange::new(16, 1)),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(17, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(18, "-10".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(21, 1)),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(22, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(0, 1)),
+                    Token::new(TOK_WHITESPACE, StrRange::new(1, 1)),
+                    Token::new(TOK_KEY, StrRange::new(2, "1".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(3, 1)),
+                    Token::new(TOK_KEY, StrRange::new(4, "2".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(5, 1)),
+                    Token::new(TOK_COMMA, StrRange::new(6, 1)),
+                    Token::new(TOK_WHITESPACE, StrRange::new(7, 1)),
+                    Token::new(TOK_KEY, StrRange::new(8, "3".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(9, 1)),
+                    Token::new(TOK_DOUBLE_QUOTED, StrRange::new(10, "\"abc\"".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(15, 1)),
+                    Token::new(TOK_SPLIT, StrRange::new(16, 1)),
+                    Token::new(TOK_WHITESPACE, StrRange::new(17, 1)),
+                    Token::new(TOK_KEY, StrRange::new(18, "-10".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(21, 1)),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(22, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -757,17 +825,17 @@ mod tokenizer_tests {
             "?(@.a가 <41.01)",
             (
                 vec![
-                    _Token::new(TOK_QUESTION, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_PARENTHESIS, StrRange::new(1, 1)),
-                    _Token::new(TOK_AT, StrRange::new(2, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(3, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(4, "a가".chars().map(|c| c.len_utf8()).sum())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(8, 1)),
-                    _Token::new(TOK_LITTLE, StrRange::new(9, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(10, "41".len())),
-                    _Token::new(TOK_DOT, StrRange::new(12, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(13, "01".len())),
-                    _Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(15, 1)),
+                    Token::new(TOK_QUESTION, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_PARENTHESIS, StrRange::new(1, 1)),
+                    Token::new(TOK_AT, StrRange::new(2, 1)),
+                    Token::new(TOK_DOT, StrRange::new(3, 1)),
+                    Token::new(TOK_KEY, StrRange::new(4, "a가".chars().map(|c| c.len_utf8()).sum())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(8, 1)),
+                    Token::new(TOK_LITTLE, StrRange::new(9, 1)),
+                    Token::new(TOK_KEY, StrRange::new(10, "41".len())),
+                    Token::new(TOK_DOT, StrRange::new(12, 1)),
+                    Token::new(TOK_KEY, StrRange::new(13, "01".len())),
+                    Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(15, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -777,17 +845,17 @@ mod tokenizer_tests {
             "?(@.a <4a.01)",
             (
                 vec![
-                    _Token::new(TOK_QUESTION, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_PARENTHESIS, StrRange::new(1, 1)),
-                    _Token::new(TOK_AT, StrRange::new(2, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(3, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(4, "a".len())),
-                    _Token::new(TOK_WHITESPACE, StrRange::new(5, 1)),
-                    _Token::new(TOK_LITTLE, StrRange::new(6, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(7, "4a".len())),
-                    _Token::new(TOK_DOT, StrRange::new(9, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(10, "01".len())),
-                    _Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(12, 1)),
+                    Token::new(TOK_QUESTION, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_PARENTHESIS, StrRange::new(1, 1)),
+                    Token::new(TOK_AT, StrRange::new(2, 1)),
+                    Token::new(TOK_DOT, StrRange::new(3, 1)),
+                    Token::new(TOK_KEY, StrRange::new(4, "a".len())),
+                    Token::new(TOK_WHITESPACE, StrRange::new(5, 1)),
+                    Token::new(TOK_LITTLE, StrRange::new(6, 1)),
+                    Token::new(TOK_KEY, StrRange::new(7, "4a".len())),
+                    Token::new(TOK_DOT, StrRange::new(9, 1)),
+                    Token::new(TOK_KEY, StrRange::new(10, "01".len())),
+                    Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(12, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -797,16 +865,16 @@ mod tokenizer_tests {
             "?($.c>@.d)",
             (
                 vec![
-                    _Token::new(TOK_QUESTION, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_PARENTHESIS, StrRange::new(1, 1)),
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(2, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(3, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(4, 1)),
-                    _Token::new(TOK_GREATER, StrRange::new(5, 1)),
-                    _Token::new(TOK_AT, StrRange::new(6, 1)),
-                    _Token::new(TOK_DOT, StrRange::new(7, 1)),
-                    _Token::new(TOK_KEY, StrRange::new(8, 1)),
-                    _Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(9, 1)),
+                    Token::new(TOK_QUESTION, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_PARENTHESIS, StrRange::new(1, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(2, 1)),
+                    Token::new(TOK_DOT, StrRange::new(3, 1)),
+                    Token::new(TOK_KEY, StrRange::new(4, 1)),
+                    Token::new(TOK_GREATER, StrRange::new(5, 1)),
+                    Token::new(TOK_AT, StrRange::new(6, 1)),
+                    Token::new(TOK_DOT, StrRange::new(7, 1)),
+                    Token::new(TOK_KEY, StrRange::new(8, 1)),
+                    Token::new(TOK_CLOSE_PARENTHESIS, StrRange::new(9, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -816,10 +884,10 @@ mod tokenizer_tests {
             "$[:]",
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
-                    _Token::new(TOK_SPLIT, StrRange::new(2, 1)),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(3, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
+                    Token::new(TOK_SPLIT, StrRange::new(2, 1)),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(3, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -829,10 +897,10 @@ mod tokenizer_tests {
             r#"$['single\'quote']"#,
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
-                    _Token::new(TOK_SINGLE_QUOTED, StrRange::new(2, r#"'single\'quote'"#.len())),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(17, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
+                    Token::new(TOK_SINGLE_QUOTED, StrRange::new(2, r#"'single\'quote'"#.len())),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(17, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -842,12 +910,12 @@ mod tokenizer_tests {
             r#"$['single\'1','single\'2']"#,
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
-                    _Token::new(TOK_SINGLE_QUOTED, StrRange::new(2, r#"'single\'1'"#.len())),
-                    _Token::new(TOK_COMMA, StrRange::new(13, 1)),
-                    _Token::new(TOK_SINGLE_QUOTED, StrRange::new(14, r#"'single\'2'"#.len())),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(25, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
+                    Token::new(TOK_SINGLE_QUOTED, StrRange::new(2, r#"'single\'1'"#.len())),
+                    Token::new(TOK_COMMA, StrRange::new(13, 1)),
+                    Token::new(TOK_SINGLE_QUOTED, StrRange::new(14, r#"'single\'2'"#.len())),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(25, 1)),
                 ],
                 Some(TokenError::Eof),
             ),
@@ -857,10 +925,10 @@ mod tokenizer_tests {
             r#"$["double\"quote"]"#,
             (
                 vec![
-                    _Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
-                    _Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
-                    _Token::new(TOK_DOUBLE_QUOTED, StrRange::new(2, r#""double\"quote""#.len())),
-                    _Token::new(TOK_CLOSE_ARRAY, StrRange::new(17, 1)),
+                    Token::new(TOK_ABSOLUTE, StrRange::new(0, 1)),
+                    Token::new(TOK_OPEN_ARRAY, StrRange::new(1, 1)),
+                    Token::new(TOK_DOUBLE_QUOTED, StrRange::new(2, r#""double\"quote""#.len())),
+                    Token::new(TOK_CLOSE_ARRAY, StrRange::new(17, 1)),
                 ],
                 Some(TokenError::Eof),
             ),

@@ -5,14 +5,12 @@ use serde_json::{Number, Value};
 use serde_json::map::Entry;
 
 use ::{JsonPathError, PathParser};
-use paths::{
-    _ParserTokenHandler,
-    tokens::{
-        _ParserToken,
-        _TokenType,
-        _TokenValue,
-        constants::*,
-    }
+use jsonpath_parser::{
+    ParserToken,
+    ParserTokenHandler,
+    std_token_str::*,
+    TokenType,
+    TokenValue,
 };
 
 use super::terms::*;
@@ -22,7 +20,7 @@ use super::utils;
 pub struct JsonSelector<'a, 'b> {
     parser: Option<Rc<PathParser<'a, 'b>>>,
     value: Option<&'a Value>,
-    tokens: Vec<_ParserToken<'b>>,
+    tokens: Vec<ParserToken<'b>>,
     current: Option<Vec<&'a Value>>,
     selectors: Vec<JsonSelector<'a, 'b>>,
     selector_filter: FilterTerms<'a>,
@@ -119,9 +117,9 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
         }
     }
 
-    fn compute_absolute_path_filter<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) -> bool
+    fn compute_absolute_path_filter<F>(&mut self, token: &ParserToken<'b>, parse_value_reader: &F) -> bool
         where
-            F: Fn(&'_ _TokenType) -> _TokenValue<'a>
+            F: Fn(&'_ TokenType) -> TokenValue<'a>
     {
         if !self.selectors.is_empty() {
             match &token.key {
@@ -163,8 +161,8 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
-    fn handle<F>(&mut self, token: &_ParserToken<'b>, parse_value_reader: &F) where F: Fn(&_TokenType) -> _TokenValue<'a> {
+impl<'a, 'b> ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
+    fn handle<F>(&mut self, token: &ParserToken<'b>, parse_value_reader: &F) where F: Fn(&TokenType) -> TokenValue<'a> {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
         if self.compute_absolute_path_filter(token, parse_value_reader) {
@@ -172,7 +170,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
         }
 
         match &token {
-            _ParserToken { key: P_TOK_ABSOLUTE, .. } => {
+            ParserToken { key: P_TOK_ABSOLUTE, .. } => {
                 if self.current.is_some() {
                     if let Some(value) = self.value {
                         let selector = JsonSelector {
@@ -189,10 +187,10 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     self.current = Some(vec![v]);
                 }
             }
-            _ParserToken { key: P_TOK_RELATIVE, .. } => {
-                if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
+            ParserToken { key: P_TOK_RELATIVE, .. } => {
+                if let Some(ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
                     let array_token = self.tokens.pop();
-                    if let Some(_ParserToken { key: P_TOK_LEAVES, .. }) = self.tokens.last() {
+                    if let Some(ParserToken { key: P_TOK_LEAVES, .. }) = self.tokens.last() {
                         self.tokens.pop();
                         self.current = self.selector_filter.collect_all(self.current.take());
                     }
@@ -200,20 +198,20 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                 }
                 self.selector_filter.new_filter_context();
             }
-            _ParserToken { key: P_TOK_IN, .. }
-            | _ParserToken { key: P_TOK_LEAVES, .. }
-            | _ParserToken { key: P_TOK_ARRAY, .. } => {
+            ParserToken { key: P_TOK_IN, .. }
+            | ParserToken { key: P_TOK_LEAVES, .. }
+            | ParserToken { key: P_TOK_ARRAY, .. } => {
                 self.tokens.push(token.clone());
             }
-            _ParserToken { key: P_TOK_ARRAY_END, .. } => {
-                fn get_last_before<'a>(tokens: &'a Vec<_ParserToken<'a>>) -> Option<&'a _ParserToken<'a>> {
+            ParserToken { key: P_TOK_ARRAY_END, .. } => {
+                fn get_last_before<'a>(tokens: &'a Vec<ParserToken<'a>>) -> Option<&'a ParserToken<'a>> {
                     if tokens.len() > 1 {
                         tokens.get(tokens.len() - 2)
                     } else {
                         None
                     }
                 }
-                if let Some(&_ParserToken { key: P_TOK_ARRAY, .. }) = get_last_before(&self.tokens) {
+                if let Some(&ParserToken { key: P_TOK_ARRAY, .. }) = get_last_before(&self.tokens) {
                     if let Some(Some(e)) = self.selector_filter.pop_term() {
                         if let ExprTerm::String(key) = e {
                             self.current = self.selector_filter.filter_next_with_str(self.current.take(), key);
@@ -225,7 +223,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     }
                 }
 
-                if let Some(&_ParserToken { key: P_TOK_LEAVES, .. }) = get_last_before(&self.tokens) {
+                if let Some(&ParserToken { key: P_TOK_LEAVES, .. }) = get_last_before(&self.tokens) {
                     self.tokens.pop();
                     self.tokens.pop();
                     if let Some(Some(e)) = self.selector_filter.pop_term() {
@@ -278,17 +276,17 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
 
                 self.tokens.pop();
             }
-            _ParserToken { key: P_TOK_ALL, .. } => {
-                if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
+            ParserToken { key: P_TOK_ALL, .. } => {
+                if let Some(ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
                     self.tokens.pop();
                 }
 
                 match self.tokens.last() {
-                    Some(_ParserToken { key: P_TOK_LEAVES, .. }) => {
+                    Some(ParserToken { key: P_TOK_LEAVES, .. }) => {
                         self.tokens.pop();
                         self.current = self.selector_filter.collect_all(self.current.take());
                     }
-                    Some(_ParserToken { key: P_TOK_IN, .. }) => {
+                    Some(ParserToken { key: P_TOK_IN, .. }) => {
                         self.tokens.pop();
                         self.current = self.selector_filter.collect_next_all(self.current.take());
                     }
@@ -297,7 +295,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     }
                 }
             }
-            _ParserToken { key: P_TOK_BOOL, token_type } => {
+            ParserToken { key: P_TOK_BOOL, token_type } => {
                 if let Some(types) = token_type {
                     assert_eq!(types.len(), 1, "Invalid bool token size: {}", types.len());
                     if let Some(b) = parse_value_reader(&types[0]).get_bool() {
@@ -311,7 +309,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
 
                 // self.selector_filter.push_term(Some(ExprTerm::Bool(*b)));
             }
-            _ParserToken { key: P_TOK_KEY, token_type } => {
+            ParserToken { key: P_TOK_KEY, token_type } => {
                 if let Some(types) = token_type {
                     assert_eq!(types.len(), 1, "Invalid key token size: {}", types.len());
 
@@ -321,7 +319,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                         panic!("Not a string {:?}", types)
                     };
 
-                    if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
+                    if let Some(ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.last() {
                         self.selector_filter.push_term(Some(ExprTerm::String(key)));
                         return;
                     }
@@ -329,20 +327,20 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     if let Some(t) = self.tokens.pop() {
                         if self.selector_filter.is_term_empty() {
                             match t {
-                                _ParserToken { key: P_TOK_LEAVES, .. } => {
+                                ParserToken { key: P_TOK_LEAVES, .. } => {
                                     self.current = self.selector_filter.collect_all_with_str(self.current.take(), key)
                                 }
-                                _ParserToken { key: P_TOK_IN, .. } => {
+                                ParserToken { key: P_TOK_IN, .. } => {
                                     self.current = self.selector_filter.collect_next_with_str(self.current.take(), &[key])
                                 }
                                 _ => {}
                             }
                         } else {
                             match t {
-                                _ParserToken { key: P_TOK_LEAVES, .. } => {
+                                ParserToken { key: P_TOK_LEAVES, .. } => {
                                     self.current = self.selector_filter.filter_all_with_str(self.current.take(), key);
                                 }
-                                _ParserToken { key: P_TOK_IN, .. } => {
+                                ParserToken { key: P_TOK_IN, .. } => {
                                     self.current = self.selector_filter.filter_next_with_str(self.current.take(), key);
                                 }
                                 _ => {}
@@ -354,7 +352,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     panic!("Empty key token value");
                 }
             }
-            _ParserToken { key: P_TOK_KEYS, token_type, .. } => {
+            ParserToken { key: P_TOK_KEYS, token_type, .. } => {
                 if !self.selector_filter.is_term_empty() {
                     debug!("TODO keys in filter");
                     return;
@@ -369,7 +367,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     assert_ne!(ranges.len(), 0, "Invalid keys token size: {}", ranges.len());
                     assert_eq!(ranges.len(), keys.len(), "Invalid keys token value: {:?} {:?}", ranges, keys);
 
-                    if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
+                    if let Some(ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
                         self.current = self.selector_filter.collect_next_with_str(self.current.take(), &keys);
                     } else {
                         unreachable!();
@@ -378,16 +376,16 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     panic!("Empty keys token value");
                 }
             }
-            _ParserToken { key: P_TOK_NUMBER, token_type } => {
+            ParserToken { key: P_TOK_NUMBER, token_type } => {
                 if let Some(types) = token_type {
                     assert_eq!(types.len(), 1, "Invalid number token size: {}", types.len());
                     let v = parse_value_reader(&types[0]);
                     // FIXME
                     match v {
-                        _TokenValue::Int(v) => {
+                        TokenValue::Int(v) => {
                             self.selector_filter.push_term(Some(ExprTerm::Number(Number::from(v))));
                         }
-                        _TokenValue::Float(v) => {
+                        TokenValue::Float(v) => {
                             self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(v).unwrap())));
                         }
                         _ => panic!("Not a number")
@@ -396,14 +394,14 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     panic!("Empty number token value");
                 }
             }
-            _ParserToken { key: P_TOK_FILTER_AND, .. }
-            | _ParserToken { key: P_TOK_FILTER_EQUAL, .. }
-            | _ParserToken { key: P_TOK_FILTER_GREATER, .. }
-            | _ParserToken { key: P_TOK_FILTER_GREATER_OR_EQUAL, .. }
-            | _ParserToken { key: P_TOK_FILTER_LITTLE, .. }
-            | _ParserToken { key: P_TOK_FILTER_LITTLE_OR_EQUAL, .. }
-            | _ParserToken { key: P_TOK_FILTER_NOT_EQUAL, .. }
-            | _ParserToken { key: P_TOK_FILTER_OR, .. } => {
+            ParserToken { key: P_TOK_FILTER_AND, .. }
+            | ParserToken { key: P_TOK_FILTER_EQUAL, .. }
+            | ParserToken { key: P_TOK_FILTER_GREATER, .. }
+            | ParserToken { key: P_TOK_FILTER_GREATER_OR_EQUAL, .. }
+            | ParserToken { key: P_TOK_FILTER_LITTLE, .. }
+            | ParserToken { key: P_TOK_FILTER_LITTLE_OR_EQUAL, .. }
+            | ParserToken { key: P_TOK_FILTER_NOT_EQUAL, .. }
+            | ParserToken { key: P_TOK_FILTER_OR, .. } => {
                 let right = match self.selector_filter.pop_term() {
                     Some(Some(right)) => right,
                     Some(None) => ExprTerm::Json(
@@ -444,23 +442,23 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
 
                 self.selector_filter.push_term(Some(expr));
             }
-            _ParserToken { key: P_TOK_RANGE, token_type }
-            | _ParserToken { key: P_TOK_RANGE_TO, token_type }
-            | _ParserToken { key: P_TOK_RANGE_FROM, token_type } => {
+            ParserToken { key: P_TOK_RANGE, token_type }
+            | ParserToken { key: P_TOK_RANGE_TO, token_type }
+            | ParserToken { key: P_TOK_RANGE_FROM, token_type } => {
                 if !self.selector_filter.is_term_empty() {
                     debug!("TODO range syntax in filter");
                     return;
                 }
 
                 let as_int = |t| -> isize {
-                    if let _TokenValue::Int(v) = parse_value_reader(t) {
+                    if let TokenValue::Int(v) = parse_value_reader(t) {
                         v
                     } else {
                         panic!("expected int {:?}", &t)
                     }
                 };
 
-                if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
+                if let Some(ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
                     let mut tmp = Vec::new();
                     if let Some(current) = &self.current {
                         for v in current {
@@ -572,7 +570,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     unreachable!();
                 }
             }
-            _ParserToken { key: P_TOK_UNION, token_type } => {
+            ParserToken { key: P_TOK_UNION, token_type } => {
                 if !self.selector_filter.is_term_empty() {
                     debug!("TODO union syntax in filter");
                     return;
@@ -584,7 +582,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
 
                 let mut indices: Option<Vec<isize>> = None;
 
-                if let Some(_ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
+                if let Some(ParserToken { key: P_TOK_ARRAY, .. }) = self.tokens.pop() {
                     let mut tmp = Vec::new();
                     if let Some(current) = &self.current {
                         for v in current {
@@ -625,7 +623,7 @@ impl<'a, 'b> _ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
                     unreachable!();
                 }
             }
-            _ParserToken { key: P_TOK_END, .. } => {
+            ParserToken { key: P_TOK_END, .. } => {
                 debug!("visit_token eof");
             }
             _ => {}

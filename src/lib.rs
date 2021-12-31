@@ -144,7 +144,7 @@ note = "It will be move to common module. since 0.5"
 pub use select::JsonPathError;
 
 pub use selector::{JsonSelector, JsonSelectorMut};
-pub use paths::PathParser;
+pub use jsonpath_parser::PathParser;
 use std::rc::Rc;
 
 #[doc(hidden)]
@@ -158,15 +158,16 @@ mod parser;
 #[doc(hidden)]
 mod select;
 
-mod paths;
+mod jsonpath_parser;
 mod selector;
 
-impl From<&paths::TokenError> for JsonPathError {
-    fn from(e: &paths::TokenError) -> Self {
+// FIXME
+impl From<&jsonpath_parser::TokenError> for JsonPathError {
+    fn from(e: &jsonpath_parser::TokenError) -> Self {
         match e {
-            paths::TokenError::Eof => JsonPathError::Path("Eof".to_string()),
-            paths::TokenError::Position(pos) => JsonPathError::Path(["Position:", &pos.to_string()].concat()),
-            paths::TokenError::Unknown => JsonPathError::Path("Not supported token".to_string()),
+            jsonpath_parser::TokenError::Eof => JsonPathError::Path("Eof".to_string()),
+            jsonpath_parser::TokenError::Position(pos) => JsonPathError::Path(["Position:", &pos.to_string()].concat()),
+            jsonpath_parser::TokenError::Unknown => JsonPathError::Path("Not supported token".to_string()),
         }
     }
 }
