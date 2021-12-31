@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use jsonpath_parser::tokenizer_ext::ExtTokenRules;
 use super::{
     ParserNode,
     ParserToken,
@@ -15,7 +17,7 @@ use super::tokenizer::{
     TokenRules,
 };
 
-trait ParserNodeBuilder<'a> {
+pub trait ParserNodeBuilder<'a> {
     fn build(
         &mut self,
         token_reader: &mut TokenReader,
@@ -23,15 +25,15 @@ trait ParserNodeBuilder<'a> {
     ) -> Result<ParserNode<'a>, TokenError>;
 }
 
-struct JsonPathParserNodeBuilder;
+pub struct AbsolutePathParserNodeBuilder;
 
-impl<'a> ParserNodeBuilder<'a> for JsonPathParserNodeBuilder {
+impl<'a> ParserNodeBuilder<'a> for AbsolutePathParserNodeBuilder {
     fn build(
         &mut self,
         token_reader: &mut TokenReader,
         _: Option<ParserNode<'a>>
     ) -> Result<ParserNode<'a>, TokenError> {
-        debug!("#json_path");
+        debug!("#absolute_path");
         match token_reader.next_token() {
             Ok(Token { key: TOK_ABSOLUTE, .. }) => {
                 PathsParserNodeBuilder {}.build(token_reader, Some(ParserNode::new(P_TOK_ABSOLUTE)))
@@ -41,7 +43,7 @@ impl<'a> ParserNodeBuilder<'a> for JsonPathParserNodeBuilder {
     }
 }
 
-struct PathsParserNodeBuilder;
+pub struct PathsParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathsParserNodeBuilder {
     fn build(
@@ -66,7 +68,7 @@ impl<'a> ParserNodeBuilder<'a> for PathsParserNodeBuilder {
     }
 }
 
-struct PathDotParserNodeBuilder;
+pub struct PathDotParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathDotParserNodeBuilder {
     fn build(
@@ -80,7 +82,7 @@ impl<'a> ParserNodeBuilder<'a> for PathDotParserNodeBuilder {
     }
 }
 
-struct ArrayParserNodeBuilder;
+pub struct ArrayParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ArrayParserNodeBuilder {
     fn build(
@@ -97,7 +99,7 @@ impl<'a> ParserNodeBuilder<'a> for ArrayParserNodeBuilder {
     }
 }
 
-struct CloseParserNodeBuilder<'a> {
+pub struct CloseParserNodeBuilder<'a> {
     close_token: Token<'a>,
 }
 
@@ -115,7 +117,7 @@ impl<'a> ParserNodeBuilder<'a> for CloseParserNodeBuilder<'a> {
     }
 }
 
-struct PathParserNodeBuilder;
+pub struct PathParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathParserNodeBuilder {
     fn build(
@@ -139,7 +141,7 @@ impl<'a> ParserNodeBuilder<'a> for PathParserNodeBuilder {
     }
 }
 
-struct PathInAllParserNodeBuilder;
+pub struct PathInAllParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathInAllParserNodeBuilder {
     fn build(
@@ -156,7 +158,7 @@ impl<'a> ParserNodeBuilder<'a> for PathInAllParserNodeBuilder {
     }
 }
 
-struct PathInKeyParserNodeBuilder;
+pub struct PathInKeyParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathInKeyParserNodeBuilder {
     fn build(
@@ -172,7 +174,7 @@ impl<'a> ParserNodeBuilder<'a> for PathInKeyParserNodeBuilder {
     }
 }
 
-struct PathLeavesParserNodeBuilder;
+pub struct PathLeavesParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathLeavesParserNodeBuilder {
     fn build(
@@ -194,7 +196,7 @@ impl<'a> ParserNodeBuilder<'a> for PathLeavesParserNodeBuilder {
     }
 }
 
-struct PathLeavesAllParserNodeBuilder;
+pub struct PathLeavesAllParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathLeavesAllParserNodeBuilder {
     fn build(
@@ -211,7 +213,7 @@ impl<'a> ParserNodeBuilder<'a> for PathLeavesAllParserNodeBuilder {
     }
 }
 
-struct PathLeavesKeyParserNodeBuilder;
+pub struct PathLeavesKeyParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for PathLeavesKeyParserNodeBuilder {
     fn build(
@@ -227,7 +229,7 @@ impl<'a> ParserNodeBuilder<'a> for PathLeavesKeyParserNodeBuilder {
     }
 }
 
-struct KeyParserNodeBuilder;
+pub struct KeyParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for KeyParserNodeBuilder {
     fn build(
@@ -245,7 +247,7 @@ impl<'a> ParserNodeBuilder<'a> for KeyParserNodeBuilder {
     }
 }
 
-struct ArrayStartParserNodeBuilder;
+pub struct ArrayStartParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ArrayStartParserNodeBuilder {
     fn build(
@@ -275,7 +277,7 @@ impl<'a> ParserNodeBuilder<'a> for ArrayStartParserNodeBuilder {
     }
 }
 
-struct FilterParserNodeBuilder;
+pub struct FilterParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for FilterParserNodeBuilder {
     fn build(
@@ -297,7 +299,7 @@ impl<'a> ParserNodeBuilder<'a> for FilterParserNodeBuilder {
     }
 }
 
-struct ExprsParserNodeBuilder;
+pub struct ExprsParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ExprsParserNodeBuilder {
     fn build(
@@ -327,7 +329,7 @@ impl<'a> ParserNodeBuilder<'a> for ExprsParserNodeBuilder {
     }
 }
 
-struct ConditionExprParserNodeBuilder;
+pub struct ConditionExprParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ConditionExprParserNodeBuilder {
     fn build(
@@ -357,7 +359,7 @@ impl<'a> ParserNodeBuilder<'a> for ConditionExprParserNodeBuilder {
     }
 }
 
-struct ExprParserNodeBuilder;
+pub struct ExprParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ExprParserNodeBuilder {
     fn build(
@@ -389,7 +391,7 @@ impl<'a> ParserNodeBuilder<'a> for ExprParserNodeBuilder {
     }
 }
 
-struct OpParserNodeBuilder;
+pub struct OpParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for OpParserNodeBuilder {
     fn build(
@@ -418,7 +420,7 @@ impl<'a> ParserNodeBuilder<'a> for OpParserNodeBuilder {
     }
 }
 
-struct TermParserNodeBuilder;
+pub struct TermParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for TermParserNodeBuilder {
     fn build(
@@ -460,7 +462,7 @@ impl<'a> ParserNodeBuilder<'a> for TermParserNodeBuilder {
                 }
             }
             Ok(Token { key: TOK_ABSOLUTE, .. }) => {
-                JsonPathParserNodeBuilder {}.build(token_reader, None)
+                AbsolutePathParserNodeBuilder {}.build(token_reader, None)
             }
             Ok(Token { key: TOK_DOUBLE_QUOTED, .. }) | Ok(Token { key: TOK_SINGLE_QUOTED, .. }) => {
                 ArrayQuoteValueParserNodeBuilder {}.build(token_reader, None)
@@ -472,7 +474,7 @@ impl<'a> ParserNodeBuilder<'a> for TermParserNodeBuilder {
     }
 }
 
-struct ArrayQuoteValueParserNodeBuilder;
+pub struct ArrayQuoteValueParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ArrayQuoteValueParserNodeBuilder {
     fn build(
@@ -495,7 +497,7 @@ impl<'a> ParserNodeBuilder<'a> for ArrayQuoteValueParserNodeBuilder {
     }
 }
 
-struct ArrayKeysParserNodeBuilder {
+pub struct ArrayKeysParserNodeBuilder {
     range: Option<StrRange>,
 }
 
@@ -529,7 +531,7 @@ impl<'a> ParserNodeBuilder<'a> for ArrayKeysParserNodeBuilder {
     }
 }
 
-struct BoolParserNodeBuilder;
+pub struct BoolParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for BoolParserNodeBuilder {
     fn build(
@@ -548,7 +550,7 @@ impl<'a> ParserNodeBuilder<'a> for BoolParserNodeBuilder {
     }
 }
 
-struct TermNumParserNodeBuilder;
+pub struct TermNumParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for TermNumParserNodeBuilder {
     fn build(
@@ -587,7 +589,7 @@ impl<'a> ParserNodeBuilder<'a> for TermNumParserNodeBuilder {
     }
 }
 
-struct ArrayValueParserNodeBuilder;
+pub struct ArrayValueParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ArrayValueParserNodeBuilder {
     fn build(
@@ -601,8 +603,8 @@ impl<'a> ParserNodeBuilder<'a> for ArrayValueParserNodeBuilder {
                 Ok(ArrayValueKeyParserNodeBuilder {}.build(token_reader, None)?)
             }
             Ok(Token { key: TOK_SPLIT, .. }) => {
-                _RangeParserNodeBuilder {
-                    range_parser_type: _RangeParserNodeBuilder::TO,
+                RangeParserNodeBuilder {
+                    range_parser_type: RangeParserNodeBuilder::TO,
                     range: None
                 }.build(token_reader, None)
             }
@@ -618,7 +620,7 @@ impl<'a> ParserNodeBuilder<'a> for ArrayValueParserNodeBuilder {
     }
 }
 
-struct ArrayValueKeyParserNodeBuilder;
+pub struct ArrayValueKeyParserNodeBuilder;
 
 impl<'a> ParserNodeBuilder<'a> for ArrayValueKeyParserNodeBuilder {
     fn build(
@@ -633,8 +635,8 @@ impl<'a> ParserNodeBuilder<'a> for ArrayValueKeyParserNodeBuilder {
 
             match token_reader.peek_token() {
                 Ok(Token { key: TOK_COMMA, .. }) => UnionParserNodeBuilder { range: Some(range) }.build(token_reader, None),
-                Ok(Token { key: TOK_SPLIT, .. }) => _RangeParserNodeBuilder {
-                    range_parser_type: _RangeParserNodeBuilder::FROM,
+                Ok(Token { key: TOK_SPLIT, .. }) => RangeParserNodeBuilder {
+                    range_parser_type: RangeParserNodeBuilder::FROM,
                     range: Some(range),
                 }.build(token_reader, None),
                 Ok(Token { key: TOK_DOUBLE_QUOTED, .. })
@@ -653,12 +655,12 @@ impl<'a> ParserNodeBuilder<'a> for ArrayValueKeyParserNodeBuilder {
     }
 }
 
-struct _RangeParserNodeBuilder {
+pub struct RangeParserNodeBuilder {
     range_parser_type: u8,
     range: Option<StrRange>,
 }
 
-impl _RangeParserNodeBuilder {
+impl RangeParserNodeBuilder {
     const FROM: u8 = 1;
     const TO: u8 = 2;
     const STEP: u8 = 3;
@@ -684,16 +686,16 @@ impl _RangeParserNodeBuilder {
     }
 }
 
-impl<'a> ParserNodeBuilder<'a> for _RangeParserNodeBuilder {
+impl<'a> ParserNodeBuilder<'a> for RangeParserNodeBuilder {
     fn build(
         &mut self,
         token_reader: &mut TokenReader,
         _: Option<ParserNode<'a>>
     ) -> Result<ParserNode<'a>, TokenError> {
         debug!("#range {}", match self.range_parser_type {
-            _RangeParserNodeBuilder::FROM => "from",
-            _RangeParserNodeBuilder::TO => "to",
-            _RangeParserNodeBuilder::STEP => "step",
+            RangeParserNodeBuilder::FROM => "from",
+            RangeParserNodeBuilder::TO => "to",
+            RangeParserNodeBuilder::STEP => "step",
             _ => "range_unknown"
         });
 
@@ -779,7 +781,7 @@ impl<'a> ParserNodeBuilder<'a> for _RangeParserNodeBuilder {
     }
 }
 
-struct UnionParserNodeBuilder {
+pub struct UnionParserNodeBuilder {
     range: Option<StrRange>,
 }
 
@@ -888,16 +890,33 @@ pub(super) trait ParserNodeVisitor<'a, 'b> {
     }
 }
 
+// TODO
+// import를 하면 enable 되게 하고 싶은디..
+//
+pub struct JsonPathParserOption {
+    extended_tokens: HashSet<char>,
+}
+
 #[derive(Debug)]
-pub struct PathParser<'a, 'b> {
+pub struct JsonPathParser<'a, 'b> {
     parser: ParserImpl<'a, 'b>,
 }
 
-impl<'a, 'b> PathParser<'a, 'b> {
+impl<'a, 'b> JsonPathParser<'a, 'b> {
     pub fn compile(input: &'a str) -> Result<Self, TokenError> {
-        let mut parser = ParserImpl::new_with_token_rules(input, Box::new(StdTokenRules::default()));
+        let mut parser = ParserImpl::new(input, Box::new(StdTokenRules::default()));
         parser.compile()?;
-        Ok(PathParser { parser })
+        Ok(JsonPathParser { parser })
+    }
+
+    pub fn compile_with_option(input: &'a str, options: JsonPathParserOption) -> Result<Self, TokenError> {
+        if options.extended_tokens.len() == 0 {
+            return Self::compile(input)
+        }
+
+        let mut parser = ParserImpl::new(input, Box::new(ExtTokenRules::default()));
+        parser.compile()?;
+        Ok(JsonPathParser { parser })
     }
 
     pub(crate) fn parse<F>(&self, parse_token_handler: &mut F) -> Result<(), String>
@@ -935,7 +954,7 @@ impl<'a, 'b> PathParser<'a, 'b> {
     }
 }
 
-impl<'a, 'b> ParserNodeVisitor<'a, 'b> for PathParser<'a, 'b> {}
+impl<'a, 'b> ParserNodeVisitor<'a, 'b> for JsonPathParser<'a, 'b> {}
 
 #[derive(Debug)]
 struct ParserImpl<'a, 'b> {
@@ -944,7 +963,7 @@ struct ParserImpl<'a, 'b> {
 }
 
 impl<'a, 'b> ParserImpl<'a, 'b> {
-    pub fn new_with_token_rules(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
+    pub fn new(input: &'a str, token_rules: Box<dyn TokenRules>) -> Self {
         ParserImpl {
             token_reader: TokenReader::new(input, token_rules),
             parse_node: None,
@@ -952,7 +971,7 @@ impl<'a, 'b> ParserImpl<'a, 'b> {
     }
 
     pub fn compile(&mut self) -> Result<&mut Self, TokenError> {
-        self.parse_node = Some(JsonPathParserNodeBuilder {}.build(&mut self.token_reader, None)?);
+        self.parse_node = Some(AbsolutePathParserNodeBuilder {}.build(&mut self.token_reader, None)?);
         Ok(self)
     }
 }
@@ -963,7 +982,7 @@ mod path_parser_tests {
     use jsonpath_parser::parser_token_handler::ParserTokenHandler;
     use jsonpath_parser::std_token_str::*;
     use jsonpath_parser::str_reader::StrRange;
-    use PathParser;
+    use JsonPathParser;
 
     struct NodeVisitorTestImpl<'a, 'b> {
         input: &'a str,
@@ -979,7 +998,7 @@ mod path_parser_tests {
         }
 
         fn start(&mut self) -> Result<Vec<ParserToken<'b>>, String> {
-            let parser = PathParser::compile(self.input).map_err(|_| "Token Error")?;
+            let parser = JsonPathParser::compile(self.input).map_err(|_| "Token Error")?;
             let _ = parser.parse(self);
             Ok(self.stack.split_off(0))
         }

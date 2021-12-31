@@ -6,7 +6,7 @@ extern crate serde_json;
 use serde::Deserialize;
 use serde_json::Value;
 
-use jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
+use jsonpath::{JsonSelector, JsonSelectorMut, JsonPathParser};
 
 mod common;
 
@@ -173,7 +173,7 @@ fn readme_selector() {
             {"name": "친구4"}
     ]});
 
-    let parser = PathParser::compile("$..[?(@.age >= 30)]").unwrap();
+    let parser = JsonPathParser::compile("$..[?(@.age >= 30)]").unwrap();
     let mut selector = JsonSelector::new(parser);
 
     let result = selector.value(&json_obj)
@@ -209,7 +209,7 @@ fn readme_selector_mut() {
             {"name": "친구4"}
     ]});
 
-    let parser = PathParser::compile("$..[?(@.age == 20)].age").unwrap();
+    let parser = JsonPathParser::compile("$..[?(@.age == 20)].age").unwrap();
     let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut.value(json_obj)

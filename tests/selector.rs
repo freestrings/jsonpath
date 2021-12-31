@@ -5,7 +5,7 @@ extern crate serde_json;
 use serde_json::Value;
 
 use common::{read_json, setup};
-use jsonpath::{PathParser, JsonSelector, JsonSelectorMut};
+use jsonpath::{JsonPathParser, JsonSelector, JsonSelectorMut};
 
 mod common;
 
@@ -13,7 +13,7 @@ mod common;
 fn selector_mut() {
     setup();
 
-    let parser = PathParser::compile("$.store..price").unwrap();
+    let parser = JsonPathParser::compile("$.store..price").unwrap();
     let mut selector_mut = JsonSelectorMut::new(parser);
 
     let mut nums = Vec::new();
@@ -33,7 +33,7 @@ fn selector_mut() {
         vec![8.95_f64, 12.99_f64, 8.99_f64, 22.99_f64, 19.95_f64]
     );
 
-    let parser = PathParser::compile("$.store..price").unwrap();
+    let parser = JsonPathParser::compile("$.store..price").unwrap();
     let mut selector = JsonSelector::new(parser);
     let result = selector.value(&result)
         .select()
@@ -55,7 +55,7 @@ fn selector_mut() {
 fn selector_delete_multi_elements_from_array() {
     setup();
 
-    let parser = PathParser::compile("$[0,2]").unwrap();
+    let parser = JsonPathParser::compile("$[0,2]").unwrap();
     let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut.value(serde_json::from_str("[1,2,3]").unwrap())
@@ -74,7 +74,7 @@ fn selector_delete_multi_elements_from_array() {
 fn selector_delete() {
     setup();
 
-    let parser = PathParser::compile("$.store..price[?(@>13)]").unwrap();
+    let parser = JsonPathParser::compile("$.store..price[?(@>13)]").unwrap();
     let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut.value(read_json("./benchmark/example.json"))
@@ -83,7 +83,7 @@ fn selector_delete() {
         .take()
         .unwrap();
 
-    let parser = PathParser::compile("$.store..price").unwrap();
+    let parser = JsonPathParser::compile("$.store..price").unwrap();
     let mut selector = JsonSelector::new(parser);
     let result = selector.value(&result)
         .select()
@@ -104,7 +104,7 @@ fn selector_delete() {
 #[test]
 fn selector_remove() {
     setup();
-    let parser = PathParser::compile("$.store..price[?(@>13)]").unwrap();
+    let parser = JsonPathParser::compile("$.store..price[?(@>13)]").unwrap();
     let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut.value(read_json("./benchmark/example.json"))
@@ -113,7 +113,7 @@ fn selector_remove() {
         .take()
         .unwrap();
 
-    let parser = PathParser::compile("$.store..price").unwrap();
+    let parser = JsonPathParser::compile("$.store..price").unwrap();
     let mut selector = JsonSelector::new(parser);
     let result = selector.value(&result)
         .select()

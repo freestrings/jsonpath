@@ -128,24 +128,31 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 
+use std::rc::Rc;
+
 use serde_json::Value;
 
+pub use jsonpath_parser::{
+    JsonPathParser,
+    StrRange,
+    StrReader,
+    Token,
+    TokenError,
+    TokenRule,
+    TokenType
+};
 #[allow(deprecated)]
 use parser::Node;
 #[allow(deprecated)]
 pub use parser::Parser;
 #[allow(deprecated)]
 pub use select::{Selector, SelectorMut};
-
 #[deprecated(
 since = "0.4.0",
 note = "It will be move to common module. since 0.5"
 )]
 pub use select::JsonPathError;
-
 pub use selector::{JsonSelector, JsonSelectorMut};
-pub use jsonpath_parser::PathParser;
-use std::rc::Rc;
 
 #[doc(hidden)]
 #[deprecated(
@@ -254,7 +261,7 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&'a Value>, JsonPathError> {
     let mut selector = JsonSelector::default();
     move |path| {
-        let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+        let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
         selector.reset_parser(parser).value(json).reset_value().select()
     }
 }
@@ -311,7 +318,7 @@ pub fn selector_as<'a, T: serde::de::DeserializeOwned>(json: &'a Value)
     let mut selector = JsonSelector::default();
     let _ = selector.value(json);
     move |path: &str| {
-        let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+        let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
         selector.reset_parser(parser).reset_value().select_as()
     }
 }
@@ -342,7 +349,7 @@ pub fn selector_as<'a, T: serde::de::DeserializeOwned>(json: &'a Value)
 /// ]);
 /// ```
 pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, JsonPathError> {
-    let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+    let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
     JsonSelector::new(parser).value(json).select()
 }
 
@@ -371,7 +378,7 @@ pub fn select<'a>(json: &'a Value, path: &'a str) -> Result<Vec<&'a Value>, Json
 /// ```
 pub fn select_as_str(json_str: &str, path: &str) -> Result<String, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+    let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
     let ret = JsonSelector::new(parser).value(&json).select()?;
     serde_json::to_string(&ret).map_err(|e| JsonPathError::Serde(e.to_string()))
 }
@@ -419,7 +426,7 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
     path: &str,
 ) -> Result<Vec<T>, JsonPathError> {
     let json = serde_json::from_str(json_str).map_err(|e| JsonPathError::Serde(e.to_string()))?;
-    let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+    let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
     JsonSelector::new(parser).value(&json).select_as()
 }
 
@@ -456,7 +463,7 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
 /// ]}));
 /// ```
 pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
-    let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+    let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
     let mut selector = JsonSelectorMut::new(parser);
     let value = selector.value(value).delete()?;
     Ok(value.take().unwrap_or(Value::Null))
@@ -508,7 +515,7 @@ pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, J
     where
         F: FnMut(Value) -> Option<Value>,
 {
-    let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+    let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
     let mut selector = JsonSelectorMut::new(parser);
     let value = selector.value(value).replace_with(fun)?;
     Ok(value.take().unwrap_or(Value::Null))
@@ -629,7 +636,7 @@ impl Compiled {
 /// ```
 #[derive(Clone, Debug)]
 pub struct PathCompiled<'a, 'b> {
-    parser: Rc<PathParser<'a, 'b>>,
+    parser: Rc<JsonPathParser<'a, 'b>>,
 }
 
 impl<'a, 'b> PathCompiled<'a, 'b> {
@@ -637,7 +644,7 @@ impl<'a, 'b> PathCompiled<'a, 'b> {
     ///
     /// If parsing the path fails, it will return an error.
     pub fn compile(path: &str) -> Result<PathCompiled, JsonPathError> {
-        let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
+        let parser = JsonPathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
         Ok(PathCompiled {
             parser: Rc::new(parser)
         })

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use serde_json::{Number, Value};
 use serde_json::map::Entry;
 
-use ::{JsonPathError, PathParser};
+use ::{JsonPathError, JsonPathParser};
 use jsonpath_parser::{
     ParserToken,
     ParserTokenHandler,
@@ -18,7 +18,7 @@ use super::utils;
 
 #[derive(Debug, Default)]
 pub struct JsonSelector<'a, 'b> {
-    parser: Option<Rc<PathParser<'a, 'b>>>,
+    parser: Option<Rc<JsonPathParser<'a, 'b>>>,
     value: Option<&'a Value>,
     tokens: Vec<ParserToken<'b>>,
     current: Option<Vec<&'a Value>>,
@@ -27,7 +27,7 @@ pub struct JsonSelector<'a, 'b> {
 }
 
 impl<'a, 'b> JsonSelector<'a, 'b> {
-    pub fn new(parser: PathParser<'a, 'b>) -> Self {
+    pub fn new(parser: JsonPathParser<'a, 'b>) -> Self {
         JsonSelector {
             parser: Some(Rc::new(parser)),
             value: None,
@@ -38,7 +38,7 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
         }
     }
 
-    pub fn new_ref(parser: Rc<PathParser<'a, 'b>>) -> Self {
+    pub fn new_ref(parser: Rc<JsonPathParser<'a, 'b>>) -> Self {
         JsonSelector {
             parser: Some(parser),
             value: None,
@@ -49,12 +49,12 @@ impl<'a, 'b> JsonSelector<'a, 'b> {
         }
     }
 
-    pub fn reset_parser(&mut self, parser: PathParser<'a, 'b>) -> &mut Self {
+    pub fn reset_parser(&mut self, parser: JsonPathParser<'a, 'b>) -> &mut Self {
         self.parser = Some(Rc::new(parser));
         self
     }
 
-    pub fn reset_parser_ref(&mut self, parser: Rc<PathParser<'a, 'b>>) -> &mut Self {
+    pub fn reset_parser_ref(&mut self, parser: Rc<JsonPathParser<'a, 'b>>) -> &mut Self {
         self.parser = Some(parser);
         self
     }
@@ -634,27 +634,27 @@ impl<'a, 'b> ParserTokenHandler<'a, 'b> for JsonSelector<'a, 'b> {
 #[derive(Default)]
 pub struct JsonSelectorMut<'a, 'b> {
     value: Option<Value>,
-    parser: Option<Rc<PathParser<'a, 'b>>>,
+    parser: Option<Rc<JsonPathParser<'a, 'b>>>,
 }
 
 impl<'a, 'b> JsonSelectorMut<'a, 'b> {
-    pub fn new(parser: PathParser<'a, 'b>) -> Self {
+    pub fn new(parser: JsonPathParser<'a, 'b>) -> Self {
         Self::new_ref(Rc::new(parser))
     }
 
-    pub fn new_ref(parser: Rc<PathParser<'a, 'b>>) -> Self {
+    pub fn new_ref(parser: Rc<JsonPathParser<'a, 'b>>) -> Self {
         JsonSelectorMut {
             value: None,
             parser: Some(parser),
         }
     }
 
-    pub fn reset_parser(&mut self, parser: PathParser<'a, 'b>) -> &mut Self {
+    pub fn reset_parser(&mut self, parser: JsonPathParser<'a, 'b>) -> &mut Self {
         self.parser = Some(Rc::new(parser));
         self
     }
 
-    pub fn reset_parser_ref(&mut self, parser: Rc<PathParser<'a, 'b>>) -> &mut Self {
+    pub fn reset_parser_ref(&mut self, parser: Rc<JsonPathParser<'a, 'b>>) -> &mut Self {
         self.parser = Some(parser);
         self
     }

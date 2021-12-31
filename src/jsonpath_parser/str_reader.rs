@@ -8,9 +8,9 @@ pub enum ReaderError {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct StrRange {
-    pub pos: usize,
-    pub offset: usize,
+pub struct StrRange {
+    pub(crate) pos: usize,
+    pub(crate) offset: usize,
 }
 
 impl StrRange {
@@ -31,10 +31,18 @@ impl StrRange {
             offset
         }
     }
+
+    pub fn get_pos(&self) -> &usize {
+        &self.pos
+    }
+
+    pub fn get_offset(&self) -> &usize {
+        &self.offset
+    }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct StrReader<'a> {
+pub struct StrReader<'a> {
     input: &'a str,
     pos: usize,
     chars: Chars<'a>,

@@ -1,9 +1,17 @@
+pub use self::{
+    path_parser::JsonPathParser,
+    str_reader::{
+        StrRange,
+        StrReader,
+    },
+    tokenizer::{
+        TokenError,
+        TokenReader,
+        TokenRule
+    }
+};
 pub(crate) use self::parser_token_handler::ParserTokenHandler;
-pub use self::path_parser::PathParser;
-use self::str_reader::StrRange;
 pub(crate) use self::tokenizer::std_token_str;
-pub(crate) use self::tokenizer::TokenError;
-use self::tokenizer::TokenReader;
 
 mod str_reader;
 
@@ -13,11 +21,10 @@ mod parser_token_handler;
 
 mod path_parser;
 
-
 #[derive(Debug, PartialEq)]
-pub(crate) struct Token<'a> {
-    pub key: &'a str,
-    pub range: StrRange,
+pub struct Token<'a> {
+    pub(crate) key: &'a str,
+    pub(crate) range: StrRange,
 }
 
 impl<'a> Token<'a> {
@@ -32,10 +39,18 @@ impl<'a> Token<'a> {
     pub fn is_type_matched(&self, other: &Token) -> bool {
         self.key == other.key
     }
+
+    pub fn get_key(&self) -> &'a str {
+        self.key
+    }
+
+    pub fn get_range(&self) -> &StrRange {
+        &self.range
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) enum TokenType {
+pub enum TokenType {
     String(StrRange),
     Int(StrRange),
     Float(StrRange),
@@ -91,7 +106,7 @@ impl TokenType {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) enum TokenValue<'a> {
+pub enum TokenValue<'a> {
     String(&'a str),
     Int(isize),
     Float(f64),
@@ -202,9 +217,9 @@ impl<'a> TokenValue<'a> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct ParserToken<'a> {
-    pub key: &'a str,
-    pub token_type: Option<Vec<TokenType>>,
+pub struct ParserToken<'a> {
+    pub(crate) key: &'a str,
+    pub(crate) token_type: Option<Vec<TokenType>>,
 }
 
 impl<'a> ParserToken<'a> {
@@ -228,13 +243,21 @@ impl<'a> ParserToken<'a> {
             token_type: Some(data_type),
         }
     }
+
+    pub fn get_key(&self) -> &'a str {
+        self.key
+    }
+
+    pub fn get_token_type(&self) -> Option<&Vec<TokenType>> {
+        self.token_type.as_ref()
+    }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ParserNode<'a> {
-    pub left: Option<Box<ParserNode<'a>>>,
-    pub right: Option<Box<ParserNode<'a>>>,
-    pub token: ParserToken<'a>,
+pub struct ParserNode<'a> {
+    left: Option<Box<ParserNode<'a>>>,
+    right: Option<Box<ParserNode<'a>>>,
+    token: ParserToken<'a>,
 }
 
 impl<'a> ParserNode<'a> {
