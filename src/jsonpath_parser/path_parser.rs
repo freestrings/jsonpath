@@ -1570,30 +1570,30 @@ mod path_parser_tests {
     fn parse_array_float() {
         setup();
 
-        // assert_eq!(
-        //     run("$[?(1.1<2.1)]"),
-        //     Ok(vec![
-        //         _ParserToken::new(P_TOK_ABSOLUTE),
-        //         _ParserToken::new(P_TOK_ARRAY),
-        //         _ParserToken { key: P_TOK_NUMBER, token_type: Some(vec![_TokenType::Float(StrRange::new(4, "1.1".len()))]) },
-        //         _ParserToken { key: P_TOK_NUMBER, token_type: Some(vec![_TokenType::Float(StrRange::new(8, "2.1".len()))]) },
-        //         _ParserToken::new(P_TOK_FILTER_LITTLE),
-        //         _ParserToken::new(P_TOK_ARRAY_END),
-        //     ]),
-        //     "$[?(1.1<2.1)]"
-        // );
-        //
-        // if run("$[1.1]").is_ok() {
-        //     panic!();
-        // }
-        //
-        // if run("$[?(1.1<.2)]").is_ok() {
-        //     panic!();
-        // }
-        //
-        // if run("$[?(1.1<2.)]").is_ok() {
-        //     panic!();
-        // }
+        assert_eq!(
+            run("$[?(1.1<2.1)]"),
+            Ok(vec![
+                ParserToken::new(P_TOK_ABSOLUTE),
+                ParserToken::new(P_TOK_ARRAY),
+                ParserToken { key: P_TOK_NUMBER, token_type: Some(vec![TokenType::Float(StrRange::new(4, "1.1".len()))]) },
+                ParserToken { key: P_TOK_NUMBER, token_type: Some(vec![TokenType::Float(StrRange::new(8, "2.1".len()))]) },
+                ParserToken::new(P_TOK_FILTER_LITTLE),
+                ParserToken::new(P_TOK_ARRAY_END),
+            ]),
+            "$[?(1.1<2.1)]"
+        );
+
+        if run("$[1.1]").is_ok() {
+            panic!();
+        }
+
+        if run("$[?(1.1<.2)]").is_ok() {
+            panic!();
+        }
+
+        if run("$[?(1.1<2.)]").is_ok() {
+            panic!();
+        }
 
         if run("$[?(1.1<2.a)]").is_ok() {
             panic!();
