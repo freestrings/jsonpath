@@ -687,7 +687,7 @@ impl Selector<'_, '_> {
                     _ => unreachable!(),
                 },
             ),
-            _ => panic!("empty term right"),
+            _ => ExprTerm::Json(None, None, vec![]), //panic!("empty term right"),
         };
 
         let left = match self.selector_filter.pop_term() {
@@ -700,7 +700,6 @@ impl Selector<'_, '_> {
                     _ => unreachable!(),
                 },
             ),
-            _ => panic!("empty term left"),
         };
 
         let mut ret = None;
