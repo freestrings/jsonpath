@@ -278,3 +278,18 @@ fn bugs38_array_notation_in_filter() {
         json!([{"seq": 2, "subKey": "subKey2"}]),
     );
 }
+
+#[test]
+fn unsupported_in_filter() {
+    setup();
+
+    let json = json!([{
+        "a": {"x": {"i": 10}},
+        "b": {"x": {"i": 20, "j": 5}}
+    }]);
+
+    select_and_then_compare("$..x[?(@.i>10)]", json.clone(), json!([{"i": 20,"j": 5}]));
+
+    // Should not panic ('empty term left')
+    select_and_then_compare("$..x[?($.i>10)]", json.clone(), json!([]));
+}

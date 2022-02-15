@@ -328,7 +328,7 @@ impl<'a> JsonSelector<'a> {
                     _ => unreachable!(),
                 },
             ),
-            _ => panic!("empty term right"),
+            _ => ExprTerm::Json(None, None, vec![]), //panic!("empty term right"),
         };
 
         let mut left = match self.selector_filter.pop_term() {
@@ -341,7 +341,7 @@ impl<'a> JsonSelector<'a> {
                     _ => unreachable!(),
                 },
             ),
-            _ => panic!("empty term left"),
+            _ => ExprTerm::Json(None, None, vec![]), //panic!("empty term left"),
         };
 
         let expr = match ft {
