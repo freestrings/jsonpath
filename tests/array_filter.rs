@@ -264,36 +264,39 @@ fn bugs50() {
 }
 
 #[test]
-fn bugs40_bracket_notation_after_recursive_descent() {
+fn bugs92_duplicate_result_similar_indernal_values() {
     setup();
 
     select_and_then_compare(
-        "$..[0]",
+        "$[?(@.name.first=='A')]",
         json!([
-            "first",
             {
-                "key": [
-                    "first nested",
-                    {
-                        "more": [
-                            {"nested": ["deepest", "second"]},
-                            ["more", "values"]
-                        ]
-                    }
-                ]
+                "name":{
+                    "first":"A"
+                }
+            },
+            {
+                "name":{
+                    "first":"A"
+                }
+            },
+            {
+                "name":{
+                    "first":"B"
+                }
             }
         ]),
         json!([
-           "first",
-           "first nested",
-           {
-              "nested" : [
-                 "deepest",
-                 "second"
-              ]
-           },
-           "deepest",
-           "more"
+            {
+                "name":{
+                    "first":"A"
+                }
+            },
+            {
+                "name":{
+                    "first":"A"
+                }
+            }
         ]),
     );
 }
