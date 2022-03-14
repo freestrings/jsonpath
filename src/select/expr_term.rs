@@ -107,6 +107,7 @@ impl<'a> ExprTerm<'a> {
                                     for result_value in &ret {
                                         if map_value.eq(*result_value) {
                                             tmp.push(*rel_value);
+                                            break;
                                         }
                                     }
                                 }
