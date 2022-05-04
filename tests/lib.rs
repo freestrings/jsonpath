@@ -14,7 +14,7 @@ mod common;
 #[test]
 fn compile() {
     let compile_object = |path| {
-        let template = jsonpath::Compiled::compile(path).unwrap();
+        let template = jsonpath::PathCompiled::compile(path).unwrap();
         let json_obj = read_json("./benchmark/data_obj.json");
         let json = template.select(&json_obj).unwrap();
         let ret = json!([
@@ -25,7 +25,7 @@ fn compile() {
     };
 
     let compile_array = |path| {
-        let template = jsonpath::Compiled::compile(path).unwrap();
+        let template = jsonpath::PathCompiled::compile(path).unwrap();
         let json_obj = read_json("./benchmark/data_array.json");
         let json = template.select(&json_obj).unwrap();
         let ret = json!([
@@ -36,6 +36,7 @@ fn compile() {
     };
 
     fn compile_error() {
+        #[allow(deprecated)]
         let template = jsonpath::Compiled::compile("$[");
         assert!(template.is_err());
     }
@@ -57,7 +58,7 @@ fn selector() {
     {
         let json = selector(path).unwrap();
         compare_result(json, target);
-    };
+    }
 
     let json_obj = read_json("./benchmark/data_obj.json");
     let mut selector = jsonpath::selector(&json_obj);
@@ -94,7 +95,7 @@ fn selector_as() {
     {
         let json = selector(path).unwrap();
         assert_eq!(json, target);
-    };
+    }
 
     let json_obj = read_json("./benchmark/data_obj.json");
     let mut selector = jsonpath::selector_as::<Friend>(&json_obj);

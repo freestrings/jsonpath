@@ -1,7 +1,0 @@
-[package]
-name = "bench_bin"
-version = "0.2.0"
-
-[dependencies]
-jsonpath_lib = {path = "../../"}
-serde_json = { version = "1.0", features = ["preserve_order"] }

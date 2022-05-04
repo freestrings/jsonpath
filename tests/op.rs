@@ -242,15 +242,94 @@ fn op_eq_for_object_value() {
     );
 }
 
+///
+/// It seems to Jayway's bug.
+///
+/// 빈 배열이 아니라 current context가 리턴되야 하는데 빈배열이 리턴됨.
+/// 참고: `op_ne_for_object_value2` 결과와 다름
+///
 #[test]
 fn op_ne_for_object_value() {
     setup();
 
     select_and_then_compare(
         r#"$.[?(@.a != @.c)]"#,
-        json!({"a": { "1": 1 }, "b": { "2": 2 }, "c": { "1": 1 }}),
-        json!([]),
+        json!({
+            "a": {
+                "1": 1
+            },
+            "c": {
+                "1": 1
+            }
+        }),
+        json!([{
+            "a": {
+                "1": 1
+            },
+            "c": {
+                "1": 1
+            }
+        }]),
     );
+}
+
+#[test]
+fn op_ne_for_object_value2() {
+    setup();
+
+    select_and_then_compare(
+        "$.[?(@.store1 != @.store2)]",
+        json!({
+            "store1": {
+                "a" : 1
+            },
+             "store2": {
+                "b" : 1
+            }
+        }),
+        json!([{
+              "store1" : {
+                 "a" : 1
+              },
+              "store2" : {
+                 "b" : 1
+              }
+           }
+        ]),
+    );
+}
+
+#[test]
+fn cmp_json_rel() {
+    setup();
+
+    select_and_then_compare(
+        "$.[?(@.a.a == @.b.a)]",
+        json!({
+            "a": {
+                "a": [true, "1"]
+            },
+            "b": {
+                "a": [true, "1"]
+            }
+        }),
+        json!([
+                   {
+                      "a" : {
+                         "a" : [
+                            true,
+                            "1"
+                         ]
+                      },
+                      "b" : {
+                         "a" : [
+                            true,
+                            "1"
+                         ]
+                      }
+                   }
+                ])
+    )
 }
 
 #[test]
@@ -314,8 +393,17 @@ fn op_ne_for_complex_value() {
 
     select_and_then_compare(
         r#"$.[?("1" != @.a)]"#,
-        json!({ "a": { "b": 1 } }),
-        json!([]),
+        json!({
+            "a": {
+                "b": 1
+            }
+        }),
+        json!([{
+              "a" : {
+                 "b" : 1
+              }
+           }
+        ])
     );
 }
 

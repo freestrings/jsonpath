@@ -10,7 +10,7 @@ keywords = ["jsonpath", "json", "webassembly", "lua", "query"]
 categories = ['wasm', "parser-implementations", "api-bindings"]
 
 repository = "https://github.com/freestrings/jsonpath"
-documentation = "https://docs.rs/jsonpath_lib/0.2.6/jsonpath_lib"
+documentation = "https://docs.rs/jsonpath_lib/0.3.0/jsonpath_lib"
 license = "MIT"
 
 [badges]
@@ -18,10 +18,11 @@ travis-ci = { repository = "freestrings/jsonpath", branch = "master" }
 
 [dependencies]
 log = "0.4"
-env_logger = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
-array_tool = "1.0.3"
+
+[dev-dependencies]
+env_logger = "0.8"
 
 [lib]
 name = "jsonpath_lib"

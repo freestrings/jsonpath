@@ -5,8 +5,11 @@ extern crate serde_json;
 extern crate wasm_bindgen;
 
 use cfg_if::cfg_if;
+#[allow(deprecated)]
 use jsonpath::Selector as _Selector;
+#[allow(deprecated)]
 use jsonpath::SelectorMut as _SelectorMut;
+#[allow(deprecated)]
 use jsonpath::{JsonPathError, Parser};
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
@@ -40,8 +43,8 @@ macro_rules! console_error {
 }
 
 fn into_serde_json<D>(js_value: &JsValue) -> Result<D, String>
-where
-    D: for<'a> serde::de::Deserialize<'a>,
+    where
+        D: for<'a> serde::de::Deserialize<'a>,
 {
     if js_value.is_string() {
         match serde_json::from_str(js_value.as_string().unwrap().as_str()) {
@@ -56,6 +59,7 @@ where
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn replace_fun(v: Value, fun: &js_sys::Function) -> Option<Value> {
     match JsValue::from_serde(&v) {
         Ok(js_v) => match fun.call1(&JsValue::NULL, &js_v) {
@@ -80,7 +84,8 @@ fn replace_fun(v: Value, fun: &js_sys::Function) -> Option<Value> {
 
 #[wasm_bindgen]
 pub fn compile(path: &str) -> JsValue {
-    let node = Parser::compile(path);
+    #[allow(deprecated)]
+        let node = Parser::compile(path);
 
     if let Err(e) = &node {
         return JsValue::from_str(&format!("{:?}", JsonPathError::Path(e.clone())));
@@ -92,7 +97,8 @@ pub fn compile(path: &str) -> JsValue {
             Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e))),
         };
 
-        let mut selector = _Selector::new();
+        #[allow(deprecated)]
+            let mut selector = _Selector::new();
 
         match &node {
             Ok(node) => selector.compiled_path(node),
@@ -120,23 +126,24 @@ pub fn selector(js_value: JsValue) -> JsValue {
         Err(e) => return JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string()))),
     };
 
+    #[allow(deprecated)]
     let cb = Closure::wrap(
         Box::new(move |path: String| match Parser::compile(path.as_str()) {
-            Ok(node) => {
-                let mut selector = _Selector::new();
-                let _ = selector.compiled_path(&node);
-                match selector.value(&json).select() {
-                    Ok(ret) => match JsValue::from_serde(&ret) {
-                        Ok(ret) => ret,
-                        Err(e) => {
-                            JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
-                        }
-                    },
-                    Err(e) => JsValue::from_str(&format!("{:?}", e)),
+                Ok(node) => {
+                    let mut selector = _Selector::new();
+                    let _ = selector.compiled_path(&node);
+                    match selector.value(&json).select() {
+                        Ok(ret) => match JsValue::from_serde(&ret) {
+                            Ok(ret) => ret,
+                            Err(e) => {
+                                JsValue::from_str(&format!("{:?}", JsonPathError::Serde(e.to_string())))
+                            }
+                        },
+                        Err(e) => JsValue::from_str(&format!("{:?}", e)),
+                    }
                 }
-            }
-            Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Path(e))),
-        }) as Box<dyn Fn(String) -> JsValue>,
+                Err(e) => JsValue::from_str(&format!("{:?}", JsonPathError::Path(e))),
+            }) as Box<dyn Fn(String) -> JsValue>,
     );
 
     let ret = cb.as_ref().clone();
@@ -226,11 +233,12 @@ impl Selector {
 
     #[wasm_bindgen(catch, js_name = select)]
     pub fn select(&mut self) -> Result<JsValue, JsValue> {
+        #[allow(deprecated)]
         let mut selector = _Selector::new();
 
         if let Some(path) = &self.path {
             let _ = selector
-                .str_path(&path)
+                .str_path(path)
                 .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         } else {
             return Err(JsValue::from_str(&format!(
@@ -294,6 +302,7 @@ impl SelectorMut {
 
     #[wasm_bindgen(catch, js_name = "deleteValue")]
     pub fn delete(&mut self) -> Result<(), JsValue> {
+        #[allow(deprecated)]
         let mut selector = _SelectorMut::new();
 
         if let Some(path) = &self.path {
@@ -325,6 +334,7 @@ impl SelectorMut {
 
     #[wasm_bindgen(catch, js_name = replaceWith)]
     pub fn replace_with(&mut self, fun: js_sys::Function) -> Result<(), JsValue> {
+        #[allow(deprecated)]
         let mut selector = _SelectorMut::new();
 
         if let Some(path) = &self.path {
