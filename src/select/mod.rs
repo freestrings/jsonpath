@@ -45,6 +45,8 @@ pub enum JsonPathError {
     Replacement(String)
 }
 
+impl std::error::Error for JsonPathError {}
+
 impl fmt::Debug for JsonPathError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
@@ -153,7 +155,7 @@ impl<'a> FilterTerms<'a> {
 
     fn filter_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) {
         self.filter(current, |vec, tmp, _| {
-            ValueWalker::all_with_str(&vec, tmp, key, true);
+            ValueWalker::all_with_str(vec, tmp, key, true);
             FilterKey::All
         });
 
@@ -294,7 +296,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all(&mut self, current: &Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all(&current, &mut tmp);
+            ValueWalker::all(current, &mut tmp);
             return Some(tmp);
         }
         debug!("collect_all: {:?}", &current);
@@ -305,7 +307,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all_with_str(&current, &mut tmp, key, false);
+            ValueWalker::all_with_str(current, &mut tmp, key, false);
             return Some(tmp);
         }
 
@@ -317,7 +319,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all_with_num(&current, &mut tmp, index);
+            ValueWalker::all_with_num(current, &mut tmp, index);
             return Some(tmp);
         }
 
@@ -329,15 +331,19 @@ impl<'a> FilterTerms<'a> {
 
 #[derive(Debug, Default, Clone)]
 pub struct Selector<'a, 'b> {
+    #[allow(deprecated)]
     node: Option<Node>,
+    #[allow(deprecated)]
     node_ref: Option<&'b Node>,
     value: Option<&'a Value>,
     tokens: Vec<ParseToken>,
     current: Option<Vec<&'a Value>>,
+    #[allow(deprecated)]
     selectors: Vec<Selector<'a, 'b>>,
     selector_filter: FilterTerms<'a>,
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> Selector<'a, 'b> {
     pub fn new() -> Self {
         Self::default()
@@ -465,6 +471,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> Selector<'a, 'b> {
     fn visit_absolute(&mut self) {
         if self.current.is_some() {
@@ -742,6 +749,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     fn visit_token(&mut self, token: &ParseToken) {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
@@ -778,6 +786,7 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
 
 #[derive(Default, Clone)]
 pub struct SelectorMut {
+    #[allow(deprecated)]
     path: Option<Node>,
     value: Option<Value>,
 }
@@ -866,11 +875,13 @@ fn replace_value<F: FnMut(Value) -> Result<Option<Value>, JsonPathError>>(
             Value::Array(ref mut vec) => {
                 if let Ok(x) = token.parse::<usize>() {
                     if is_last {
-                        let v = std::mem::replace(&mut vec[x], Value::Null);
-                        if let Some(res) = fun(v)? {
-                            vec[x] = res;
-                        } else {
-                            vec.remove(x);
+                        if x < vec.len() {
+                            let v = std::mem::replace(&mut vec[x], Value::Null);
+                            if let Some(res) = fun(v)? {
+                                vec[x] = res;
+                            } else {
+                                vec.remove(x);
+                            }
                         }
                         return Ok(());
                     }
@@ -891,6 +902,7 @@ fn replace_value<F: FnMut(Value) -> Result<Option<Value>, JsonPathError>>(
     Ok(())
 }
 
+#[allow(deprecated)]
 impl SelectorMut {
     pub fn new() -> Self {
         Self::default()
@@ -988,7 +1000,7 @@ impl SelectorMut {
     fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
         if let Some(node) = &self.path {
             let mut selector = Selector::default();
-            selector.compiled_path(&node);
+            selector.compiled_path(node);
 
             if let Some(value) = &self.value {
                 selector.value(value);

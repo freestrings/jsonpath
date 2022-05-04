@@ -6,7 +6,7 @@ use std::io::Read;
 
 use serde_json::Value;
 
-use self::jsonpath::Selector;
+use self::jsonpath::{JsonSelector, PathParser};
 
 #[allow(dead_code)]
 pub fn setup() {
@@ -31,13 +31,9 @@ pub fn read_contents(path: &str) -> String {
 
 #[allow(dead_code)]
 pub fn select_and_then_compare(path: &str, json: Value, target: Value) {
-    let mut selector = Selector::default();
-    let result = selector
-        .str_path(path)
-        .unwrap()
-        .value(&json)
-        .select_as::<Value>()
-        .unwrap();
+    let parser = PathParser::compile(path).unwrap();
+    let mut selector = JsonSelector::new(parser);
+    let result = selector.value(&json).select_as::<Value>().unwrap();
     assert_eq!(
         result,
         match target {
