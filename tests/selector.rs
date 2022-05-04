@@ -71,6 +71,24 @@ fn selector_mut_err() {
 }
 
 #[test]
+fn jsonselector_mut_err() {
+    setup();
+
+    let parser = PathParser::compile("$.store..price[?(@>13)]").unwrap();
+    let mut selector_mut = JsonSelectorMut::new(parser);
+    let result = selector_mut
+        .value(read_json("./benchmark/example.json"))
+        .replace_with(&mut |_| {
+            Err(JsonPathError::EmptyValue)
+        });
+
+    assert_eq!(
+        result.is_err(),
+        true
+    );
+}
+
+#[test]
 fn selector_node_ref() {
     let node = Parser::compile("$.*").unwrap();
     let mut selector = Selector::default();
