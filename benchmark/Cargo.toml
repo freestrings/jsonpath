@@ -15,3 +15,6 @@ bencher = "0.1.5"
 [[bin]]
 name = "jsonpath_lib_benches"
 path = "src/main.rs"
+
+[profile.release]
+debug = true

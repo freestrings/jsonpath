@@ -6,7 +6,7 @@ extern crate serde_json;
 use serde::Deserialize;
 use serde_json::Value;
 
-use jsonpath::{Selector, SelectorMut};
+use jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
 
 mod common;
 
@@ -173,12 +173,10 @@ fn readme_selector() {
             {"name": "친구4"}
     ]});
 
-    let mut selector = Selector::default();
+    let parser = PathParser::compile("$..[?(@.age >= 30)]").unwrap();
+    let mut selector = JsonSelector::new(parser);
 
-    let result = selector
-        .str_path("$..[?(@.age >= 30)]")
-        .unwrap()
-        .value(&json_obj)
+    let result = selector.value(&json_obj)
         .select()
         .unwrap();
 
@@ -191,7 +189,7 @@ fn readme_selector() {
     assert_eq!(
         vec![Friend {
             name: "친구3".to_string(),
-            age: Some(30)
+            age: Some(30),
         }],
         result
     );
@@ -211,12 +209,10 @@ fn readme_selector_mut() {
             {"name": "친구4"}
     ]});
 
-    let mut selector_mut = SelectorMut::default();
+    let parser = PathParser::compile("$..[?(@.age == 20)].age").unwrap();
+    let mut selector_mut = JsonSelectorMut::new(parser);
 
-    let result = selector_mut
-        .str_path("$..[?(@.age == 20)].age")
-        .unwrap()
-        .value(json_obj)
+    let result = selector_mut.value(json_obj)
         .replace_with(&mut |v| {
             let age = if let Value::Number(n) = v {
                 n.as_u64().unwrap() * 2
@@ -290,7 +286,7 @@ fn readme_select_as_str() {
     "#,
         "$..friends[0]",
     )
-    .unwrap();
+        .unwrap();
 
     assert_eq!(
         ret,
@@ -321,7 +317,7 @@ fn readme_select_as() {
                 }"#,
         "$.person",
     )
-    .unwrap();
+        .unwrap();
 
     let person = Person {
         name: "Doe John".to_string(),
@@ -334,7 +330,7 @@ fn readme_select_as() {
 
 #[test]
 fn readme_compile() {
-    let first_firend = jsonpath::Compiled::compile("$..friends[0]").unwrap();
+    let first_firend = jsonpath::PathCompiled::compile("$..friends[0]").unwrap();
 
     let json_obj = json!({
         "school": {
@@ -524,7 +520,7 @@ fn readme_replace_with() {
 
         Some(json!(age))
     })
-    .unwrap();
+        .unwrap();
 
     assert_eq!(
         result,

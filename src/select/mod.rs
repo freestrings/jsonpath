@@ -153,7 +153,7 @@ impl<'a> FilterTerms<'a> {
 
     fn filter_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) {
         self.filter(current, |vec, tmp, _| {
-            ValueWalker::all_with_str(&vec, tmp, key, true);
+            ValueWalker::all_with_str(vec, tmp, key, true);
             FilterKey::All
         });
 
@@ -294,7 +294,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all(&mut self, current: &Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all(&current, &mut tmp);
+            ValueWalker::all(current, &mut tmp);
             return Some(tmp);
         }
         debug!("collect_all: {:?}", &current);
@@ -305,7 +305,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all_with_str(&current, &mut tmp, key, false);
+            ValueWalker::all_with_str(current, &mut tmp, key, false);
             return Some(tmp);
         }
 
@@ -317,7 +317,7 @@ impl<'a> FilterTerms<'a> {
     fn collect_all_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
-            ValueWalker::all_with_num(&current, &mut tmp, index);
+            ValueWalker::all_with_num(current, &mut tmp, index);
             return Some(tmp);
         }
 
@@ -327,17 +327,22 @@ impl<'a> FilterTerms<'a> {
     }
 }
 
+#[deprecated(since = "0.4.0", note = "Please use `JsonSelector`")]
 #[derive(Debug, Default)]
 pub struct Selector<'a, 'b> {
+    #[allow(deprecated)]
     node: Option<Node>,
+    #[allow(deprecated)]
     node_ref: Option<&'b Node>,
     value: Option<&'a Value>,
     tokens: Vec<ParseToken>,
     current: Option<Vec<&'a Value>>,
+    #[allow(deprecated)]
     selectors: Vec<Selector<'a, 'b>>,
     selector_filter: FilterTerms<'a>,
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> Selector<'a, 'b> {
     pub fn new() -> Self {
         Self::default()
@@ -465,6 +470,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> Selector<'a, 'b> {
     fn visit_absolute(&mut self) {
         if self.current.is_some() {
@@ -742,6 +748,7 @@ impl<'a, 'b> Selector<'a, 'b> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     fn visit_token(&mut self, token: &ParseToken) {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
@@ -776,8 +783,10 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
     }
 }
 
+#[deprecated(since = "0.4.0", note = "Please use `JsonSelectorMut`")]
 #[derive(Default)]
 pub struct SelectorMut {
+    #[allow(deprecated)]
     path: Option<Node>,
     value: Option<Value>,
 }
@@ -837,6 +846,7 @@ fn replace_value<F: FnMut(Value) -> Option<Value>>(
     }
 }
 
+#[allow(deprecated)]
 impl SelectorMut {
     pub fn new() -> Self {
         Self::default()
@@ -939,7 +949,7 @@ impl SelectorMut {
     fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
         if let Some(node) = &self.path {
             let mut selector = Selector::default();
-            selector.compiled_path(&node);
+            selector.compiled_path(node);
 
             if let Some(value) = &self.value {
                 selector.value(value);
@@ -971,40 +981,40 @@ impl SelectorMut {
 }
 
 
-#[cfg(test)]
-mod select_inner_tests {
-    use serde_json::Value;
-
-    #[test]
-    fn to_f64_i64() {
-        let number = 0_i64;
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
-        } else {
-            panic!();
-        }
-    }
-
-    #[test]
-    fn to_f64_f64() {
-        let number = 0.1_f64;
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert!((super::to_f64(&n) - number).abs() == 0_f64);
-        } else {
-            panic!();
-        }
-    }
-
-    #[test]
-    fn to_f64_u64() {
-        let number = u64::max_value();
-        let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
-        if let Value::Number(n) = v {
-            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
-        } else {
-            panic!();
-        }
-    }
-}
+// #[cfg(test)]
+// mod select_inner_tests {
+//     use serde_json::Value;
+//
+//     #[test]
+//     fn to_f64_i64() {
+//         let number = 0_i64;
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
+//         } else {
+//             panic!();
+//         }
+//     }
+//
+//     #[test]
+//     fn to_f64_f64() {
+//         let number = 0.1_f64;
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert!((super::to_f64(&n) - number).abs() == 0_f64);
+//         } else {
+//             panic!();
+//         }
+//     }
+//
+//     #[test]
+//     fn to_f64_u64() {
+//         let number = u64::max_value();
+//         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
+//         if let Value::Number(n) = v {
+//             assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
+//         } else {
+//             panic!();
+//         }
+//     }
+// }

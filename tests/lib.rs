@@ -14,7 +14,7 @@ mod common;
 #[test]
 fn compile() {
     let compile_object = |path| {
-        let template = jsonpath::Compiled::compile(path).unwrap();
+        let template = jsonpath::PathCompiled::compile(path).unwrap();
         let json_obj = read_json("./benchmark/data_obj.json");
         let json = template.select(&json_obj).unwrap();
         let ret = json!([
@@ -25,7 +25,7 @@ fn compile() {
     };
 
     let compile_array = |path| {
-        let template = jsonpath::Compiled::compile(path).unwrap();
+        let template = jsonpath::PathCompiled::compile(path).unwrap();
         let json_obj = read_json("./benchmark/data_array.json");
         let json = template.select(&json_obj).unwrap();
         let ret = json!([
@@ -36,6 +36,7 @@ fn compile() {
     };
 
     fn compile_error() {
+        #[allow(deprecated)]
         let template = jsonpath::Compiled::compile("$[");
         assert!(template.is_err());
     }
