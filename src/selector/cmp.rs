@@ -209,12 +209,11 @@ impl Cmp for CmpOr {
     }
 }
 
-
 #[cfg(test)]
 mod cmp_inner_tests {
     use serde_json::Value;
 
-    use selector::cmp::*;
+    use crate::selector::cmp::*;
 
     #[test]
     fn cmp_eq() {

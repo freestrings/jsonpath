@@ -1,7 +1,7 @@
-pub use self::selector_impl::{JsonSelector, JsonSelectorMut};
+pub use self::selector_impl::{JsonSelector, MultiJsonSelectorMut};
 
 mod cmp;
-mod terms;
 mod selector_impl;
-mod value_walker;
+mod terms;
 mod utils;
+mod value_walker;

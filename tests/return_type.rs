@@ -100,9 +100,5 @@ fn return_type_for_array_filter_true() {
 fn return_type_empty() {
     setup();
 
-    select_and_then_compare(
-        "$[?(@.key==43)]",
-        json!([{"key": 42}]),
-        json!([]),
-    );
+    select_and_then_compare("$[?(@.key==43)]", json!([{"key": 42}]), json!([]));
 }

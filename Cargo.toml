@@ -1,6 +1,7 @@
 [package]
 name = "jsonpath_lib"
 version = "0.3.0"
+edition = "2021"
 authors = ["Changseok Han <freestrings@gmail.com>"]
 
 description = "It is JsonPath engine written in Rust. it provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath"
@@ -17,12 +18,17 @@ license = "MIT"
 travis-ci = { repository = "freestrings/jsonpath", branch = "master" }
 
 [dependencies]
+futures = "0.3.28"
 log = "0.4"
+reqwest = "0.11.22"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
 env_logger = "0.8"
+tokio = { version = "1.33.0", features = ["macros"] }
+tokio-test = "0.4.3"
 
 [lib]
 name = "jsonpath_lib"

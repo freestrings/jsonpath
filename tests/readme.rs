@@ -6,7 +6,7 @@ extern crate serde_json;
 use serde::Deserialize;
 use serde_json::Value;
 
-use jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
+use jsonpath::{JsonSelector, MultiJsonSelectorMut, PathParser};
 
 mod common;
 
@@ -176,9 +176,7 @@ fn readme_selector() {
     let parser = PathParser::compile("$..[?(@.age >= 30)]").unwrap();
     let mut selector = JsonSelector::new(parser);
 
-    let result = selector.value(&json_obj)
-        .select()
-        .unwrap();
+    let result = selector.value(&json_obj).select().unwrap();
 
     assert_eq!(vec![&json!({"name": "친구3", "age": 30})], result);
 
@@ -210,9 +208,10 @@ fn readme_selector_mut() {
     ]});
 
     let parser = PathParser::compile("$..[?(@.age == 20)].age").unwrap();
-    let mut selector_mut = JsonSelectorMut::new(parser);
+    let mut selector_mut = MultiJsonSelectorMut::new(parser);
 
-    let result = selector_mut.value(json_obj)
+    let result = selector_mut
+        .value(json_obj)
         .replace_with(&mut |v| {
             let age = if let Value::Number(n) = v {
                 n.as_u64().unwrap() * 2
@@ -286,7 +285,7 @@ fn readme_select_as_str() {
     "#,
         "$..friends[0]",
     )
-        .unwrap();
+    .unwrap();
 
     assert_eq!(
         ret,
@@ -317,7 +316,7 @@ fn readme_select_as() {
                 }"#,
         "$.person",
     )
-        .unwrap();
+    .unwrap();
 
     let person = Person {
         name: "Doe John".to_string(),
@@ -520,7 +519,7 @@ fn readme_replace_with() {
 
         Ok(Some(json!(age)))
     })
-        .unwrap();
+    .unwrap();
 
     assert_eq!(
         result,
