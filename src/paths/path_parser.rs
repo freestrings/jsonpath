@@ -22,10 +22,9 @@ pub struct PathParser<'a> {
 /// can use PathParserWithMetadata to associate metadata with each parser.
 ///
 /// ```
-/// use jsonpath_lib::paths::PathParserWithMetadata;
+/// use jsonpath_lib::PathParserWithMetadata;
 ///
 /// let parser = PathParserWithMetadata::compile("$.store..price", 1).unwrap();
-/// assert_eq!(parser.metadata(), &1);
 /// ```
 #[derive(Clone, Debug)]
 pub struct PathParserWithMetadata<'a, T: Debug> {

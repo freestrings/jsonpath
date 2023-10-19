@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use super::utils;
 use crate::selector::utils::PathKey;
-use super::utils;
-use crate::selector::utils::PathKey;
 use serde_json::Value;
 
 pub(super) struct ValueWalker;

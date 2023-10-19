@@ -10,22 +10,26 @@ use serde_json::Value;
 
 use self::jsonpath::{JsonSelector, PathParser};
 
+static SETUP_LOGS_ONCE: std::sync::Once = std::sync::Once::new();
+
 #[allow(dead_code)]
 pub fn setup() {
-    env_logger::Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{}:{} {} - {}",
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
-                record.level(),
-                record.args()
-            )
-        })
-        .parse_env("RUST_LOG")
-        // .filter(Some("logger_example"), LevelFilter::Trace)
-        .init();
+    SETUP_LOGS_ONCE.call_once(|| {
+        env_logger::Builder::new()
+            .format(|buf, record| {
+                writeln!(
+                    buf,
+                    "{}:{} {} - {}",
+                    record.file().unwrap_or("unknown"),
+                    record.line().unwrap_or(0),
+                    record.level(),
+                    record.args()
+                )
+            })
+            .parse_env("RUST_LOG")
+            // .filter(Some("logger_example"), LevelFilter::Trace)
+            .init();
+    })
 }
 
 #[allow(dead_code)]
