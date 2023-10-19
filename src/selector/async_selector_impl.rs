@@ -23,10 +23,7 @@ impl<'a, T: Debug + Send + Sync> From<(Vec<String>, &'a T)> for JsonPointerWithM
     fn from((pointer, metadata): (Vec<String>, &'a T)) -> Self {
         let pointer = "/".to_owned() + &pointer.join("/");
 
-        JsonPointerWithMetadata {
-            pointer,
-            metadata,
-        }
+        JsonPointerWithMetadata { pointer, metadata }
     }
 }
 
@@ -82,7 +79,10 @@ impl<'a, T: Debug + Send + Sync + 'a> MultiJsonSelectorMutWithMetadata<'a, T> {
         selector.select()
     }
 
-    fn select<'b>(&'b self, value: &'b Value) -> Result<Vec<&'b Value>, JsonPathError> {
+    fn select<'b>(&self, value: &'b Value) -> Result<Vec<&'b Value>, JsonPathError>
+    where
+        'a: 'b,
+    {
         let res: Vec<Result<Vec<&Value>, JsonPathError>> =
             if let Some(parser) = self.parser.as_ref() {
                 parser

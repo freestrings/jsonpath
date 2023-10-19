@@ -140,7 +140,6 @@ pub use crate::select::{Selector, SelectorMut};
 #[deprecated(since = "0.4.0", note = "It will be move to common module. since 0.5")]
 pub use crate::select::JsonPathError;
 
-
 pub use paths::{PathParser, PathParserWithMetadata};
 pub use selector::{JsonSelector, JsonSelectorMut, MultiJsonSelectorMutWithMetadata};
 use std::sync::Arc;

@@ -5,7 +5,6 @@ extern crate serde_json;
 use std::io::Read;
 use std::io::Write;
 
-
 use serde_json::Value;
 
 use self::jsonpath::{JsonSelector, PathParser};

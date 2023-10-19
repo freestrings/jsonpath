@@ -70,7 +70,8 @@ impl CryptoRequest {
     async fn send_request(&self) {
         let mut bags = self.bags.lock().unwrap();
         for bag in bags.iter_mut() {
-            bag.value.set_value(serde_json::Value::String(bag.metadata.clone()));
+            bag.value
+                .set_value(serde_json::Value::String(bag.metadata.clone()));
         }
     }
 }
@@ -126,7 +127,13 @@ async fn async_selector_mut() {
     let result = selector.value(&root_result).select().unwrap();
 
     assert_eq!(
-        vec![&json!("price-metadata"), &json!("price-metadata"), &json!("price-metadata"), &json!("price-metadata"), &json!("price-metadata")],
+        vec![
+            &json!("price-metadata"),
+            &json!("price-metadata"),
+            &json!("price-metadata"),
+            &json!("price-metadata"),
+            &json!("price-metadata")
+        ],
         result
     );
 
@@ -136,7 +143,12 @@ async fn async_selector_mut() {
     let result = selector.value(&root_result).select().unwrap();
 
     assert_eq!(
-        vec![&json!("author-metadata"), &json!("author-metadata"), &json!("author-metadata"), &json!("author-metadata")],
+        vec![
+            &json!("author-metadata"),
+            &json!("author-metadata"),
+            &json!("author-metadata"),
+            &json!("author-metadata")
+        ],
         result
     );
 }

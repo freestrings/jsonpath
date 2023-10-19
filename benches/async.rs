@@ -8,7 +8,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use common::{read_json};
+use common::read_json;
 use criterion::{criterion_group, criterion_main, BenchmarkId};
 use futures::Future;
 use jsonpath::{MultiJsonSelectorMutWithMetadata, PathParserWithMetadata};
@@ -116,19 +116,15 @@ fn setup_async_benchmark(c: &mut criterion::Criterion) {
     let t1_json = read_json("./benchmark/example.json");
     let t1_parser = PathParserWithMetadata::compile("$.store..price", "one").unwrap();
     let t1_parser_two = PathParserWithMetadata::compile("$.store..author", "two").unwrap();
-    let t1_selector_mut = MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![
-        t1_parser,
-        t1_parser_two,
-    ]);
+    let t1_selector_mut =
+        MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![t1_parser, t1_parser_two]);
 
     // let big_array = read_json("./benchmark/big_array.json");
     let t2_json = read_json("./benchmark/big_example.json");
     let t2_parser = PathParserWithMetadata::compile("$.store.book[*].author", "one").unwrap();
     let t2_parser_two = PathParserWithMetadata::compile("$.store.author", "two").unwrap();
-    let t2_selector_mut = MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![
-        t2_parser,
-        t2_parser_two,
-    ]);
+    let t2_selector_mut =
+        MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![t2_parser, t2_parser_two]);
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .build()
