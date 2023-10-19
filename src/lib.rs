@@ -131,14 +131,15 @@ extern crate serde_json;
 use serde_json::Value;
 
 #[allow(deprecated)]
-use parser::Node;
+use crate::parser::Node;
 #[allow(deprecated)]
-pub use parser::Parser;
+pub use crate::parser::Parser;
 #[allow(deprecated)]
-pub use select::{Selector, SelectorMut};
+pub use crate::select::{Selector, SelectorMut};
 
 #[deprecated(since = "0.4.0", note = "It will be move to common module. since 0.5")]
-pub use select::JsonPathError;
+pub use crate::select::JsonPathError;
+
 
 pub use paths::{PathParser, PathParserWithMetadata};
 pub use selector::{JsonSelector, JsonSelectorMut, MultiJsonSelectorMutWithMetadata};

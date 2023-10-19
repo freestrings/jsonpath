@@ -6,7 +6,7 @@ extern crate serde_json;
 use serde::Deserialize;
 use serde_json::Value;
 
-use jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
+use crate::jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
 
 mod common;
 

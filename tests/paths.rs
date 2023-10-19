@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use common::{select_and_then_compare, setup};
+use crate::common::{select_and_then_compare, setup};
 
 mod common;
 

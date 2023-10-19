@@ -16,6 +16,11 @@ pub enum ExprTerm<'a> {
         Option<FilterKey<'a>>,
         Vec<&'a Value>,
     ),
+    Json(
+        Option<Vec<&'a Value>>,
+        Option<FilterKey<'a>>,
+        Vec<&'a Value>,
+    ),
 }
 
 impl<'a> ExprTerm<'a> {
