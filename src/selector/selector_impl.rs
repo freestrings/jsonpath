@@ -477,7 +477,7 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
                 self.visit_key(key);
             }
             ParseToken::Keys(keys) => {
-                let keys: Vec<&str> = keys.iter().map(|s| parse_value_reader(s)).collect();
+                let keys: Vec<&str> = keys.iter().map(parse_value_reader).collect();
                 self.visit_keys(&keys)
             }
             ParseToken::Number(v) => {

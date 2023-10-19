@@ -10,7 +10,7 @@ fn quote() {
     setup();
 
     select_and_then_compare(
-        r#"$['single\'quote']"#,
+        r"$['single\'quote']",
         json!({"single'quote":"value"}),
         json!(["value"]),
     );

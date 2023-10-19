@@ -145,12 +145,6 @@ pub use crate::selector::{JsonSelector, JsonSelectorMut};
 use std::rc::Rc;
 
 #[doc(hidden)]
-#[deprecated(
-    since = "0.4.0",
-    note = "'ffi' is moved to another location like 'wasm' from version 0.5.x"
-)]
-mod ffi;
-#[doc(hidden)]
 mod parser;
 #[doc(hidden)]
 mod select;

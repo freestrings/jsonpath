@@ -1125,11 +1125,11 @@ mod path_parser_tests {
         );
 
         assert_eq!(
-            run(r#"$['single\'quote']"#),
+            run(r"$['single\'quote']"),
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Key(StrRange::new(2, r#"'single\'quote'"#.len())),
+                ParseToken::Key(StrRange::new(2, r"'single\'quote'".len())),
                 ParseToken::ArrayEof
             ])
         );

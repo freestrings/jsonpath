@@ -61,7 +61,7 @@ fn selector_mut_err() {
         .value(read_json("./benchmark/example.json"))
         .replace_with(&mut |_| Err(JsonPathError::EmptyValue));
 
-    assert_eq!(result.is_err(), true);
+    assert!(result.is_err());
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn jsonselector_mut_err() {
         .value(read_json("./benchmark/example.json"))
         .replace_with(&mut |_| Err(JsonPathError::EmptyValue));
 
-    assert_eq!(result.is_err(), true);
+    assert!(result.is_err());
 }
 
 #[test]
