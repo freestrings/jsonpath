@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use serde_json::{Number, Value};
 use serde_json::map::Entry;
+use serde_json::{Number, Value};
 
-use parser::*;
+use crate::parser::*;
 
 use self::expr_term::*;
 use self::value_walker::ValueWalker;
@@ -42,7 +42,7 @@ pub enum JsonPathError {
     EmptyValue,
     Path(String),
     Serde(String),
-    Replacement(String)
+    Replacement(String),
 }
 
 impl std::error::Error for JsonPathError {}
@@ -60,7 +60,10 @@ impl fmt::Display for JsonPathError {
             JsonPathError::EmptyValue => f.write_str("json value not set"),
             JsonPathError::Path(msg) => f.write_str(&format!("path error: \n{}\n", msg)),
             JsonPathError::Serde(msg) => f.write_str(&format!("serde error: \n{}\n", msg)),
-            JsonPathError::Replacement(msg) => f.write_str(&format!("error occurred during jsonpath replacement: \n{}\n", msg))
+            JsonPathError::Replacement(msg) => f.write_str(&format!(
+                "error occurred during jsonpath replacement: \n{}\n",
+                msg
+            )),
         }
     }
 }
@@ -87,7 +90,9 @@ impl<'a> FilterTerms<'a> {
         self.0.pop()
     }
 
-    fn filter_json_term<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(
+    fn filter_json_term<
+        F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey,
+    >(
         &mut self,
         e: ExprTerm<'a>,
         fun: F,
@@ -98,33 +103,40 @@ impl<'a> FilterTerms<'a> {
             let mut tmp = Vec::new();
             let mut not_matched = HashSet::new();
             let filter_key = if let Some(FilterKey::String(key)) = fk {
-                let key_contained = &vec.iter().map(|v| match v {
-                    Value::Object(map) if map.contains_key(&key) => map.get(&key).unwrap(),
-                    _ => v,
-                }).collect();
+                let key_contained = &vec
+                    .iter()
+                    .map(|v| match v {
+                        Value::Object(map) if map.contains_key(&key) => map.get(&key).unwrap(),
+                        _ => v,
+                    })
+                    .collect();
                 fun(key_contained, &mut tmp, &mut not_matched)
             } else {
                 fun(&vec, &mut tmp, &mut not_matched)
             };
 
             if rel.is_some() {
-                self.0.push(Some(ExprTerm::Json(rel, Some(filter_key), tmp)));
+                self.0
+                    .push(Some(ExprTerm::Json(rel, Some(filter_key), tmp)));
             } else {
-                let filtered: Vec<&Value> = vec.iter().enumerate()
-                    .filter(
-                        |(idx, _)| !not_matched.contains(idx)
-                    )
+                let filtered: Vec<&Value> = vec
+                    .iter()
+                    .enumerate()
+                    .filter(|(idx, _)| !not_matched.contains(idx))
                     .map(|(_, v)| *v)
                     .collect();
 
-                self.0.push(Some(ExprTerm::Json(Some(filtered), Some(filter_key), tmp)));
+                self.0
+                    .push(Some(ExprTerm::Json(Some(filtered), Some(filter_key), tmp)));
             }
         } else {
             unreachable!("unexpected: ExprTerm: {:?}", e);
         }
     }
 
-    fn push_json_term<F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey>(
+    fn push_json_term<
+        F: Fn(&Vec<&'a Value>, &mut Vec<&'a Value>, &mut HashSet<usize>) -> FilterKey,
+    >(
         &mut self,
         current: &Option<Vec<&'a Value>>,
         fun: F,
@@ -135,7 +147,8 @@ impl<'a> FilterTerms<'a> {
             let mut tmp = Vec::new();
             let mut not_matched = HashSet::new();
             let filter_key = fun(current, &mut tmp, &mut not_matched);
-            self.0.push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
+            self.0
+                .push(Some(ExprTerm::Json(None, Some(filter_key), tmp)));
         }
     }
 
@@ -196,7 +209,11 @@ impl<'a> FilterTerms<'a> {
         debug!("filter_next_with_str : {}, {:?}", key, self.0);
     }
 
-    fn collect_next_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
+    fn collect_next_with_num(
+        &mut self,
+        current: &Option<Vec<&'a Value>>,
+        index: f64,
+    ) -> Option<Vec<&'a Value>> {
         fn _collect<'a>(tmp: &mut Vec<&'a Value>, vec: &'a [Value], index: f64) {
             let index = abs_index(index as isize, vec.len());
             if let Some(v) = vec.get(index) {
@@ -230,10 +247,7 @@ impl<'a> FilterTerms<'a> {
             }
         }
 
-        debug!(
-            "collect_next_with_num : {:?}, {:?}",
-            &index, &current
-        );
+        debug!("collect_next_with_num : {:?}, {:?}", &index, &current);
 
         None
     }
@@ -264,7 +278,11 @@ impl<'a> FilterTerms<'a> {
         None
     }
 
-    fn collect_next_with_str(&mut self, current: &Option<Vec<&'a Value>>, keys: &[String]) -> Option<Vec<&'a Value>> {
+    fn collect_next_with_str(
+        &mut self,
+        current: &Option<Vec<&'a Value>>,
+        keys: &[String],
+    ) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             for c in current {
@@ -285,10 +303,7 @@ impl<'a> FilterTerms<'a> {
             }
         }
 
-        debug!(
-            "collect_next_with_str : {:?}, {:?}",
-            keys, &current
-        );
+        debug!("collect_next_with_str : {:?}, {:?}", keys, &current);
 
         None
     }
@@ -304,7 +319,11 @@ impl<'a> FilterTerms<'a> {
         None
     }
 
-    fn collect_all_with_str(&mut self, current: &Option<Vec<&'a Value>>, key: &str) -> Option<Vec<&'a Value>> {
+    fn collect_all_with_str(
+        &mut self,
+        current: &Option<Vec<&'a Value>>,
+        key: &str,
+    ) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             ValueWalker::all_with_str(current, &mut tmp, key, false);
@@ -316,7 +335,11 @@ impl<'a> FilterTerms<'a> {
         None
     }
 
-    fn collect_all_with_num(&mut self, current: &Option<Vec<&'a Value>>, index: f64) -> Option<Vec<&'a Value>> {
+    fn collect_all_with_num(
+        &mut self,
+        current: &Option<Vec<&'a Value>>,
+        index: f64,
+    ) -> Option<Vec<&'a Value>> {
         if let Some(current) = current {
             let mut tmp = Vec::new();
             ValueWalker::all_with_num(current, &mut tmp, index);
@@ -506,7 +529,8 @@ impl<'a, 'b> Selector<'a, 'b> {
         if self.is_last_before_token_match(ParseToken::Array) {
             if let Some(Some(e)) = self.selector_filter.pop_term() {
                 if let ExprTerm::String(key) = e {
-                    self.selector_filter.filter_next_with_str(&self.current, &key);
+                    self.selector_filter
+                        .filter_next_with_str(&self.current, &key);
                     self.tokens.pop();
                     return;
                 }
@@ -521,12 +545,16 @@ impl<'a, 'b> Selector<'a, 'b> {
             if let Some(Some(e)) = self.selector_filter.pop_term() {
                 let selector_filter_consumed = match &e {
                     ExprTerm::Number(n) => {
-                        self.current = self.selector_filter.collect_all_with_num(&self.current, to_f64(n));
+                        self.current = self
+                            .selector_filter
+                            .collect_all_with_num(&self.current, to_f64(n));
                         self.selector_filter.pop_term();
                         true
                     }
                     ExprTerm::String(key) => {
-                        self.current = self.selector_filter.collect_all_with_str(&self.current, key);
+                        self.current = self
+                            .selector_filter
+                            .collect_all_with_str(&self.current, key);
                         self.selector_filter.pop_term();
                         true
                     }
@@ -545,10 +573,14 @@ impl<'a, 'b> Selector<'a, 'b> {
         if let Some(Some(e)) = self.selector_filter.pop_term() {
             match e {
                 ExprTerm::Number(n) => {
-                    self.current = self.selector_filter.collect_next_with_num(&self.current, to_f64(&n));
+                    self.current = self
+                        .selector_filter
+                        .collect_next_with_num(&self.current, to_f64(&n));
                 }
                 ExprTerm::String(key) => {
-                    self.current = self.selector_filter.collect_next_with_str(&self.current, &[key]);
+                    self.current = self
+                        .selector_filter
+                        .collect_next_with_str(&self.current, &[key]);
                 }
                 ExprTerm::Json(rel, _, v) => {
                     if v.is_empty() {
@@ -599,7 +631,8 @@ impl<'a, 'b> Selector<'a, 'b> {
 
     fn visit_key(&mut self, key: &str) {
         if let Some(ParseToken::Array) = self.tokens.last() {
-            self.selector_filter.push_term(Some(ExprTerm::String(key.to_string())));
+            self.selector_filter
+                .push_term(Some(ExprTerm::String(key.to_string())));
             return;
         }
 
@@ -607,10 +640,14 @@ impl<'a, 'b> Selector<'a, 'b> {
             if self.selector_filter.is_term_empty() {
                 match t {
                     ParseToken::Leaves => {
-                        self.current = self.selector_filter.collect_all_with_str(&self.current, key)
+                        self.current = self
+                            .selector_filter
+                            .collect_all_with_str(&self.current, key)
                     }
                     ParseToken::In => {
-                        self.current = self.selector_filter.collect_next_with_str(&self.current, &[key.to_string()])
+                        self.current = self
+                            .selector_filter
+                            .collect_next_with_str(&self.current, &[key.to_string()])
                     }
                     _ => {}
                 }
@@ -620,7 +657,8 @@ impl<'a, 'b> Selector<'a, 'b> {
                         self.selector_filter.filter_all_with_str(&self.current, key);
                     }
                     ParseToken::In => {
-                        self.selector_filter.filter_next_with_str(&self.current, key);
+                        self.selector_filter
+                            .filter_next_with_str(&self.current, key);
                     }
                     _ => {}
                 }
@@ -634,7 +672,9 @@ impl<'a, 'b> Selector<'a, 'b> {
         }
 
         if let Some(ParseToken::Array) = self.tokens.pop() {
-            self.current = self.selector_filter.collect_next_with_str(&self.current, keys);
+            self.current = self
+                .selector_filter
+                .collect_next_with_str(&self.current, keys);
         } else {
             unreachable!();
         }
@@ -772,7 +812,8 @@ impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
             ParseToken::Key(key) => self.visit_key(key),
             ParseToken::Keys(keys) => self.visit_keys(keys),
             ParseToken::Number(v) => {
-                self.selector_filter.push_term(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
+                self.selector_filter
+                    .push_term(Some(ExprTerm::Number(Number::from_f64(*v).unwrap())));
             }
             ParseToken::Filter(ref ft) => self.visit_filter(ft),
             ParseToken::Range(from, to, step) => self.visit_range(from, to, step),
@@ -808,7 +849,7 @@ fn replace_value_with_tokens<F: FnMut(Value, &[String]) -> Result<Option<Value>,
                 if is_last {
                     if let Entry::Occupied(mut e) = map.entry(token) {
                         let v = e.insert(Value::Null);
-                        if let Some(res) = fun(v,&tokens_clone)? {
+                        if let Some(res) = fun(v, &tokens_clone)? {
                             e.insert(res);
                         } else {
                             e.remove();
@@ -822,7 +863,7 @@ fn replace_value_with_tokens<F: FnMut(Value, &[String]) -> Result<Option<Value>,
                 if let Ok(x) = token.parse::<usize>() {
                     if is_last {
                         let v = std::mem::replace(&mut vec[x], Value::Null);
-                        if let Some(res) = fun(v,&tokens_clone)? {
+                        if let Some(res) = fun(v, &tokens_clone)? {
                             vec[x] = res;
                         } else {
                             vec.remove(x);
@@ -1030,9 +1071,11 @@ impl SelectorMut {
         Ok(self)
     }
 
-    pub fn replace_with_tokens<F: FnMut(Value, &[String]) -> Result<Option<Value>, JsonPathError>>(
+    pub fn replace_with_tokens<
+        F: FnMut(Value, &[String]) -> Result<Option<Value>, JsonPathError>,
+    >(
         &mut self,
-        fun: &mut F
+        fun: &mut F,
     ) -> Result<&mut Self, JsonPathError> {
         let paths = {
             let result = self.select()?;
@@ -1049,7 +1092,6 @@ impl SelectorMut {
     }
 }
 
-
 #[cfg(test)]
 mod select_inner_tests {
     use serde_json::Value;
@@ -1059,7 +1101,7 @@ mod select_inner_tests {
         let number = 0_i64;
         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
         if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
+            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
         } else {
             panic!();
         }
@@ -1070,7 +1112,7 @@ mod select_inner_tests {
         let number = 0.1_f64;
         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
         if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number).abs() == 0_f64, true);
+            assert!((super::to_f64(&n) - number).abs() == 0_f64);
         } else {
             panic!();
         }
@@ -1081,7 +1123,7 @@ mod select_inner_tests {
         let number = u64::max_value();
         let v: Value = serde_json::from_str(&format!("{}", number)).unwrap();
         if let Value::Number(n) = v {
-            assert_eq!((super::to_f64(&n) - number as f64).abs() == 0_f64, true);
+            assert!((super::to_f64(&n) - number as f64).abs() == 0_f64);
         } else {
             panic!();
         }
