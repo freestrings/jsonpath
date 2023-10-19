@@ -175,7 +175,6 @@ impl<'a> JsonSelector<'a> {
     }
 
     fn visit_relative(&mut self) {
-        println!("visit_relative");
         if let Some(ParseToken::Array) = self.tokens.last() {
             let array_token = self.tokens.pop();
             if let Some(ParseToken::Leaves) = self.tokens.last() {
@@ -459,7 +458,6 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
         debug!("token: {:?}, stack: {:?}", token, self.tokens);
 
         if self.compute_absolute_path_filter(token, parse_value_reader) {
-            println!("compute_absolute_path_filter");
             return;
         }
 

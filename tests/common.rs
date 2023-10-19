@@ -3,33 +3,14 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 
 use std::io::Read;
-use std::io::Write;
-
 
 use serde_json::Value;
 
 use self::jsonpath::{JsonSelector, PathParser};
 
-static SETUP_LOGS_ONCE: std::sync::Once = std::sync::Once::new();
-
 #[allow(dead_code)]
 pub fn setup() {
-    SETUP_LOGS_ONCE.call_once(|| {
-        env_logger::Builder::new()
-            .format(|buf, record| {
-                writeln!(
-                    buf,
-                    "{}:{} {} - {}",
-                    record.file().unwrap_or("unknown"),
-                    record.line().unwrap_or(0),
-                    record.level(),
-                    record.args()
-                )
-            })
-            .parse_env("RUST_LOG")
-            // .filter(Some("logger_example"), LevelFilter::Trace)
-            .init();
-    })
+    let _ = env_logger::try_init();
 }
 
 #[allow(dead_code)]
