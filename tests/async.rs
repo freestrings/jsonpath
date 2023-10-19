@@ -50,19 +50,19 @@ impl<T: Clone> Future for ValueFuture<T> {
     }
 }
 
-struct CryptoRequest {
-    bags: Mutex<Vec<CryptoField>>,
+struct MutationRequest {
+    bags: Mutex<Vec<Field>>,
 }
 
-impl CryptoRequest {
+impl MutationRequest {
     fn new() -> Self {
         Self {
             bags: Mutex::new(Vec::new()),
         }
     }
 
-    fn new_field(&self, metadata: String) -> CryptoField {
-        let bag = CryptoField::new(metadata);
+    fn new_field(&self, metadata: String) -> Field {
+        let bag = Field::new(metadata);
         self.bags.lock().unwrap().push(bag.clone());
         bag
     }
@@ -77,12 +77,12 @@ impl CryptoRequest {
 }
 
 #[derive(Clone)]
-struct CryptoField {
+struct Field {
     metadata: String,
     value: ValueFuture<Value>,
 }
 
-impl CryptoField {
+impl Field {
     fn new(metadata: String) -> Self {
         Self {
             metadata: metadata,
@@ -104,11 +104,11 @@ async fn async_selector_mut() {
     let mut selector_mut =
         MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![parser, parser_two]);
 
-    let crypto_request = Arc::new(CryptoRequest::new());
+    let mut_request = Arc::new(MutationRequest::new());
 
     let result_futures = selector_mut
         .replace_with_async(read_json("./benchmark/example.json"), |_, m| {
-            let bag: CryptoField = crypto_request.new_field(m.to_string());
+            let bag: Field = mut_request.new_field(m.to_string());
 
             Box::pin(async move {
                 let val = bag.value().await;
@@ -117,7 +117,7 @@ async fn async_selector_mut() {
         })
         .unwrap();
 
-    crypto_request.send_request().await;
+    mut_request.send_request().await;
 
     let root_result = result_futures.await.unwrap();
 
