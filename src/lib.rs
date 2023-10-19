@@ -140,9 +140,9 @@ pub use crate::select::{Selector, SelectorMut};
 #[deprecated(since = "0.4.0", note = "It will be move to common module. since 0.5")]
 pub use crate::select::JsonPathError;
 
-pub use crate::paths::PathParser;
-pub use crate::selector::{JsonSelector, JsonSelectorMut};
-use std::rc::Rc;
+pub use paths::{PathParser, PathParserWithMetadata};
+pub use selector::{JsonSelector, JsonSelectorMut, MultiJsonSelectorMutWithMetadata};
+use std::sync::Arc;
 
 #[doc(hidden)]
 mod parser;
@@ -675,7 +675,7 @@ impl Compiled {
 /// ```
 #[derive(Clone, Debug)]
 pub struct PathCompiled<'a> {
-    parser: Rc<PathParser<'a>>,
+    parser: Arc<PathParser<'a>>,
 }
 
 impl<'a> PathCompiled<'a> {
@@ -685,13 +685,13 @@ impl<'a> PathCompiled<'a> {
     pub fn compile(path: &str) -> Result<PathCompiled, JsonPathError> {
         let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
         Ok(PathCompiled {
-            parser: Rc::new(parser),
+            parser: Arc::new(parser),
         })
     }
 
     /// Execute the select operation on the pre-compiled path.
     pub fn select(&self, value: &'a Value) -> Result<Vec<&'a Value>, JsonPathError> {
-        let mut selector = JsonSelector::new_ref(Rc::clone(&self.parser));
+        let mut selector = JsonSelector::new_ref(Arc::clone(&self.parser));
         selector.value(value).select()
     }
 }

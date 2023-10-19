@@ -1,4 +1,7 @@
+use std::fmt::Debug;
+use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use super::parser_node_visitor::ParserNodeVisitor;
 use super::parser_token_handler::ParserTokenHandler;
@@ -9,6 +12,52 @@ use super::tokens::{FilterToken, ParseToken, Token};
 #[derive(Clone, Debug)]
 pub struct PathParser<'a> {
     parser: ParserImpl<'a>,
+}
+
+/// PathParserWithMetadata is a wrapper around PathParser that allows you to
+/// associate metadata with the parser. This is useful when you are using a
+/// multi selector and want to associate metadata with each parser.
+///
+/// For example, if you have a multi selector that is parsing two paths, you
+/// can use PathParserWithMetadata to associate metadata with each parser.
+///
+/// ```
+/// use jsonpath_lib::PathParserWithMetadata;
+///
+/// let parser = PathParserWithMetadata::compile("$.store..price", 1).unwrap();
+/// ```
+#[derive(Clone, Debug)]
+pub struct PathParserWithMetadata<'a, T: Debug> {
+    /// The underlying parser
+    ///
+    /// It is wrapped in an `Arc<>` so that it can be shared between threads.
+    parser: Arc<PathParser<'a>>,
+    /// The metadata associated with the parser
+    metadata: T,
+}
+
+impl<'a, T: Debug> Deref for PathParserWithMetadata<'a, T> {
+    type Target = PathParser<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.parser
+    }
+}
+
+impl<'a, T: Debug> PathParserWithMetadata<'a, T> {
+    /// Compile a JsonPath with metadata
+    pub fn compile(input: &'a str, metadata: T) -> Result<Self, TokenError> {
+        let parser = Arc::new(PathParser::compile(input)?);
+        Ok(PathParserWithMetadata { parser, metadata })
+    }
+
+    pub(crate) fn parser(&self) -> Arc<PathParser<'a>> {
+        self.parser.clone()
+    }
+
+    pub(crate) fn metadata(&self) -> &T {
+        &self.metadata
+    }
 }
 
 impl<'a> PathParser<'a> {
@@ -28,7 +77,7 @@ impl<'a> PathParser<'a> {
 
         let token_reader = &self.parser.token_reader;
         if let Some(parse_node) = self.parser.parse_node.as_ref() {
-            self.visit(parse_node, parse_token_handler, &|s| {
+            self.visit(parse_node, parse_token_handler, &|s: &StrRange| {
                 token_reader.read_value(s)
             });
         }

@@ -2,9 +2,9 @@ extern crate jsonpath_lib as jsonpath;
 #[macro_use]
 extern crate serde_json;
 
-use crate::common::{read_json, setup};
-use crate::jsonpath::{JsonPathError, Parser, Selector, SelectorMut};
-use crate::jsonpath::{JsonSelector, JsonSelectorMut, PathParser};
+use common::{read_json, setup};
+use jsonpath::{JsonPathError, JsonSelectorMut, Parser, Selector, SelectorMut};
+use jsonpath::{JsonSelector, PathParser};
 use serde_json::Value;
 
 mod common;
@@ -85,6 +85,7 @@ fn selector_node_ref() {
     assert!(std::ptr::eq(selector.node_ref().unwrap(), &node));
 }
 
+#[test]
 fn selector_delete_multi_elements_from_array() {
     setup();
 

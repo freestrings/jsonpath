@@ -2,7 +2,7 @@
 extern crate serde_json;
 extern crate jsonpath_lib;
 
-use crate::common::setup;
+use common::setup;
 use jsonpath_lib::PathCompiled;
 use serde_json::Value;
 
