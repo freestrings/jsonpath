@@ -50,23 +50,9 @@ impl<'a> Tokenizer<'a> {
 
     fn dolla(&mut self) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN | &CH_RPAREN | &CH_AT
+            | &CH_QUESTION | &CH_COMMA | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
+            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
         let read = self.input.take_while(fun).map_err(to_token_error)?;
@@ -78,11 +64,17 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn quote(&mut self, ch: char) -> Result<StrRange, TokenError> {
-        let span = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+        let span = self
+            .input
+            .take_while(|c| *c != ch)
+            .map_err(to_token_error)?;
         let val = self.input.read(&span);
         if let Some('\\') = val.chars().last() {
             self.input.next_char().map_err(to_token_error)?;
-            let remain_span = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+            let remain_span = self
+                .input
+                .take_while(|c| *c != ch)
+                .map_err(to_token_error)?;
             self.input.next_char().map_err(to_token_error)?;
             Ok(StrRange::new(span.pos, remain_span.offset))
         } else {
@@ -175,24 +167,9 @@ impl<'a> Tokenizer<'a> {
 
     fn other(&mut self) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOLLA
-            | &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOLLA | &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN
+            | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA | &CH_SEMICOLON | &CH_LITTLE
+            | &CH_GREATER | &CH_EQUAL | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
         let span = self.input.take_while(fun).map_err(to_token_error)?;
@@ -246,7 +223,6 @@ impl<'a> Tokenizer<'a> {
 pub(super) struct TokenReader<'a> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,
-    err: Option<TokenError>,
     peeked: Option<Result<Token, TokenError>>,
 }
 
@@ -255,7 +231,6 @@ impl<'a> TokenReader<'a> {
         TokenReader {
             tokenizer: Tokenizer::new(input),
             curr_pos: 0,
-            err: None,
             peeked: None,
         }
     }
@@ -270,7 +245,8 @@ impl<'a> TokenReader<'a> {
         let peeked = self.peeked.get_or_insert_with(|| {
             let mut token = tokenizer.next_token();
             if let Ok(token) = &mut token {
-                let token = token.reset_span(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos));
+                let token =
+                    token.reset_span(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos));
                 return Ok(token);
             }
             token
@@ -310,9 +286,9 @@ impl<'a> TokenReader<'a> {
 
 #[cfg(test)]
 mod tokenizer_tests {
-    use paths::str_reader::StrRange;
-    use paths::tokenizer::{TokenError, TokenReader};
-    use paths::tokens::Token;
+    use crate::paths::str_reader::StrRange;
+    use crate::paths::tokenizer::{TokenError, TokenReader};
+    use crate::paths::tokens::Token;
 
     fn setup() {
         let _ = env_logger::try_init();
@@ -393,7 +369,11 @@ mod tokenizer_tests {
         run(
             "$..",
             (
-                vec![Token::Absolute(StrRange::new(0, 1)), Token::Dot(StrRange::new(1, 1)), Token::Dot(StrRange::new(2, 1))],
+                vec![
+                    Token::Absolute(StrRange::new(0, 1)),
+                    Token::Dot(StrRange::new(1, 1)),
+                    Token::Dot(StrRange::new(2, 1)),
+                ],
                 Some(TokenError::Eof),
             ),
         );
@@ -541,12 +521,12 @@ mod tokenizer_tests {
         );
 
         run(
-            r#"$['single\'quote']"#,
+            r"$['single\'quote']",
             (
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::SingleQuoted(StrRange::new(2, r#"'single\'quote'"#.len())),
+                    Token::SingleQuoted(StrRange::new(2, r"'single\'quote'".len())),
                     Token::CloseArray(StrRange::new(17, 1)),
                 ],
                 Some(TokenError::Eof),
@@ -554,14 +534,14 @@ mod tokenizer_tests {
         );
 
         run(
-            r#"$['single\'1','single\'2']"#,
+            r"$['single\'1','single\'2']",
             (
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::SingleQuoted(StrRange::new(2, r#"'single\'1'"#.len())),
+                    Token::SingleQuoted(StrRange::new(2, r"'single\'1'".len())),
                     Token::Comma(StrRange::new(13, 1)),
-                    Token::SingleQuoted(StrRange::new(14, r#"'single\'2'"#.len())),
+                    Token::SingleQuoted(StrRange::new(14, r"'single\'2'".len())),
                     Token::CloseArray(StrRange::new(25, 1)),
                 ],
                 Some(TokenError::Eof),

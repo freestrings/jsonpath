@@ -20,7 +20,7 @@ pub fn abs_index(n: isize, len: usize) -> usize {
 
 pub struct PathKey<'a> {
     key: &'a str,
-    special_key: Option<String>
+    special_key: Option<String>,
 }
 
 impl<'a: 'b, 'b> PathKey<'a> {
@@ -40,7 +40,7 @@ impl<'a: 'b, 'b> PathKey<'a> {
 pub fn to_path_str(key: &str) -> PathKey {
     let mut path_key = PathKey {
         key,
-        special_key: None
+        special_key: None,
     };
 
     if key.starts_with('\'') || key.starts_with('"') {

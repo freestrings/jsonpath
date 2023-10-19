@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use serde_json::Value;
 use super::utils;
-use selector::utils::PathKey;
+use crate::selector::utils::PathKey;
+use serde_json::Value;
 
 pub(super) struct ValueWalker;
 
@@ -52,19 +52,23 @@ impl<'a> ValueWalker {
 
     pub fn all_with_str(vec: &[&'a Value], key: &'a str) -> Vec<&'a Value> {
         let path_key = utils::to_path_str(key);
-        Self::walk(vec, &|v, acc| if let Value::Object(map) = v {
-            if let Some(v) = map.get(path_key.get_key()) {
-                acc.push(v);
+        Self::walk(vec, &|v, acc| {
+            if let Value::Object(map) = v {
+                if let Some(v) = map.get(path_key.get_key()) {
+                    acc.push(v);
+                }
             }
         })
     }
 
     pub fn all_with_strs(vec: &[&'a Value], keys: &[&'a str]) -> Vec<&'a Value> {
-        let path_keys: &Vec<PathKey> = &keys.iter().map(|key| { utils::to_path_str(key) }).collect();
+        let path_keys: &Vec<PathKey> = &keys.iter().map(|key| utils::to_path_str(key)).collect();
         vec.iter().fold(Vec::new(), |mut acc, v| {
             if let Value::Object(map) = v {
-                path_keys.iter().for_each(|pk| if let Some(v) = map.get(pk.get_key()) {
-                    acc.push(v)
+                path_keys.iter().for_each(|pk| {
+                    if let Some(v) = map.get(pk.get_key()) {
+                        acc.push(v)
+                    }
                 });
             }
             acc
@@ -72,20 +76,18 @@ impl<'a> ValueWalker {
     }
 
     pub fn all(vec: &[&'a Value]) -> Vec<&'a Value> {
-        Self::walk(vec, &|v, acc| {
-            match v {
-                Value::Array(ay) => acc.extend(ay),
-                Value::Object(map) => {
-                    acc.extend(map.values());
-                }
-                _ => {}
+        Self::walk(vec, &|v, acc| match v {
+            Value::Array(ay) => acc.extend(ay),
+            Value::Object(map) => {
+                acc.extend(map.values());
             }
+            _ => {}
         })
     }
 
     fn walk<F>(vec: &[&'a Value], fun: &F) -> Vec<&'a Value>
-        where
-            F: Fn(&'a Value, &mut Vec<&'a Value>),
+    where
+        F: Fn(&'a Value, &mut Vec<&'a Value>),
     {
         vec.iter().fold(Vec::new(), |mut acc, v| {
             Self::_walk(v, &mut acc, fun);
@@ -94,8 +96,8 @@ impl<'a> ValueWalker {
     }
 
     fn _walk<F>(v: &'a Value, acc: &mut Vec<&'a Value>, fun: &F)
-        where
-            F: Fn(&'a Value, &mut Vec<&'a Value>),
+    where
+        F: Fn(&'a Value, &mut Vec<&'a Value>),
     {
         fun(v, acc);
 
@@ -104,41 +106,39 @@ impl<'a> ValueWalker {
                 vec.iter().for_each(|v| Self::_walk(v, acc, fun));
             }
             Value::Object(map) => {
-                map.values().into_iter().for_each(|v| Self::_walk(v, acc, fun));
+                map.values().for_each(|v| Self::_walk(v, acc, fun));
             }
             _ => {}
         }
     }
 
-    pub fn walk_dedup_all<F1, F2>(vec: &[&'a Value],
-                                  key: &str,
-                                  visited: &mut HashSet<*const Value>,
-                                  is_contain: &mut F1,
-                                  is_not_contain: &mut F2,
-                                  depth: usize)
-        where
-            F1: FnMut(&'a Value),
-            F2: FnMut(usize),
+    pub fn walk_dedup_all<F1, F2>(
+        vec: &[&'a Value],
+        key: &str,
+        visited: &mut HashSet<*const Value>,
+        is_contain: &mut F1,
+        is_not_contain: &mut F2,
+        depth: usize,
+    ) where
+        F1: FnMut(&'a Value),
+        F2: FnMut(usize),
     {
-        vec.iter().enumerate().for_each(|(index, v)| Self::walk_dedup(v,
-                                                                      key,
-                                                                      visited,
-                                                                      index,
-                                                                      is_contain,
-                                                                      is_not_contain,
-                                                                      depth));
+        vec.iter().enumerate().for_each(|(index, v)| {
+            Self::walk_dedup(v, key, visited, index, is_contain, is_not_contain, depth)
+        });
     }
 
-    fn walk_dedup<F1, F2>(v: &'a Value,
-                          key: &str,
-                          visited: &mut HashSet<*const Value>,
-                          index: usize,
-                          is_contain: &mut F1,
-                          is_not_contain: &mut F2,
-                          depth: usize)
-        where
-            F1: FnMut(&'a Value),
-            F2: FnMut(usize),
+    fn walk_dedup<F1, F2>(
+        v: &'a Value,
+        key: &str,
+        visited: &mut HashSet<*const Value>,
+        index: usize,
+        is_contain: &mut F1,
+        is_not_contain: &mut F2,
+        depth: usize,
+    ) where
+        F1: FnMut(&'a Value),
+        F2: FnMut(usize),
     {
         let ptr = v as *const Value;
         if visited.contains(&ptr) {
@@ -162,7 +162,15 @@ impl<'a> ValueWalker {
                     is_not_contain(index);
                 }
                 vec.iter().for_each(|v| {
-                    Self::walk_dedup(v, key, visited, index, is_contain, is_not_contain, depth + 1);
+                    Self::walk_dedup(
+                        v,
+                        key,
+                        visited,
+                        index,
+                        is_contain,
+                        is_not_contain,
+                        depth + 1,
+                    );
                 })
             }
             _ => {
@@ -173,4 +181,3 @@ impl<'a> ValueWalker {
         }
     }
 }
-

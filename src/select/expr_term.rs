@@ -1,8 +1,8 @@
+use crate::select::cmp::*;
+use crate::select::{to_f64, FilterKey};
 use serde_json::{Number, Value};
-use select::cmp::*;
-use select::{FilterKey, to_f64};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(super) enum ExprTerm<'a> {
     String(String),
     Number(Number),

@@ -6,8 +6,8 @@ extern crate serde_json;
 use serde::Deserialize;
 use serde_json::Value;
 
-use common::{compare_result, read_contents, read_json, setup};
-use jsonpath::JsonPathError;
+use crate::common::{compare_result, read_contents, read_json, setup};
+use crate::jsonpath::JsonPathError;
 
 mod common;
 

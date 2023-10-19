@@ -1,7 +1,9 @@
+pub use self::async_selector_impl::MultiJsonSelectorMutWithMetadata;
 pub use self::selector_impl::{JsonSelector, JsonSelectorMut};
 
+mod async_selector_impl;
 mod cmp;
-mod terms;
 mod selector_impl;
-mod value_walker;
+mod terms;
 mod utils;
+mod value_walker;

@@ -131,28 +131,19 @@ extern crate serde_json;
 use serde_json::Value;
 
 #[allow(deprecated)]
-use parser::Node;
+use crate::parser::Node;
 #[allow(deprecated)]
-pub use parser::Parser;
+pub use crate::parser::Parser;
 #[allow(deprecated)]
-pub use select::{Selector, SelectorMut};
+pub use crate::select::{Selector, SelectorMut};
 
-#[deprecated(
-since = "0.4.0",
-note = "It will be move to common module. since 0.5"
-)]
-pub use select::JsonPathError;
+#[deprecated(since = "0.4.0", note = "It will be move to common module. since 0.5")]
+pub use crate::select::JsonPathError;
 
-pub use selector::{JsonSelector, JsonSelectorMut};
-pub use paths::PathParser;
-use std::rc::Rc;
+pub use paths::{PathParser, PathParserWithMetadata};
+pub use selector::{JsonSelector, JsonSelectorMut, MultiJsonSelectorMutWithMetadata};
+use std::sync::Arc;
 
-#[doc(hidden)]
-#[deprecated(
-since = "0.4.0",
-note = "'ffi' is moved to another location like 'wasm' from version 0.5.x"
-)]
-mod ffi;
 #[doc(hidden)]
 mod parser;
 #[doc(hidden)]
@@ -165,7 +156,9 @@ impl From<&paths::TokenError> for JsonPathError {
     fn from(e: &paths::TokenError) -> Self {
         match e {
             paths::TokenError::Eof => JsonPathError::Path("Eof".to_string()),
-            paths::TokenError::Position(pos) => JsonPathError::Path(["Position:", &pos.to_string()].concat())
+            paths::TokenError::Position(pos) => {
+                JsonPathError::Path(["Position:", &pos.to_string()].concat())
+            }
         }
     }
 }
@@ -198,8 +191,8 @@ impl From<&paths::TokenError> for JsonPathError {
 /// ]);
 /// ```
 #[deprecated(
-since = "0.2.5",
-note = "Please use the PathCompiled::compile function instead. It will be removed from 0.4.1"
+    since = "0.2.5",
+    note = "Please use the PathCompiled::compile function instead. It will be removed from 0.4.1"
 )]
 pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPathError> {
     #[allow(deprecated)]
@@ -249,11 +242,17 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 /// ]);
 /// ```
 #[allow(clippy::needless_lifetimes)]
-pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&'a Value>, JsonPathError> {
+pub fn selector<'a>(
+    json: &'a Value,
+) -> impl FnMut(&'a str) -> Result<Vec<&'a Value>, JsonPathError> {
     let mut selector = JsonSelector::default();
     move |path| {
         let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
-        selector.reset_parser(parser).value(json).reset_value().select()
+        selector
+            .reset_parser(parser)
+            .value(json)
+            .reset_value()
+            .select()
     }
 }
 
@@ -303,9 +302,9 @@ pub fn selector<'a>(json: &'a Value) -> impl FnMut(&'a str) -> Result<Vec<&'a Va
 ///
 /// assert_eq!(json, ret);
 /// ```
-pub fn selector_as<'a, T: serde::de::DeserializeOwned>(json: &'a Value)
-                                                   -> impl FnMut(&'a str) -> Result<Vec<T>, JsonPathError> + '_
-{
+pub fn selector_as<'a, T: serde::de::DeserializeOwned>(
+    json: &'a Value,
+) -> impl FnMut(&'a str) -> Result<Vec<T>, JsonPathError> + '_ {
     let mut selector = JsonSelector::default();
     let _ = selector.value(json);
     move |path: &str| {
@@ -487,7 +486,7 @@ pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
 ///         0
 ///     };
 ///
-///     Some(json!(age))
+///     Ok(Some(json!(age)))
 /// }).unwrap();
 ///
 /// assert_eq!(ret, json!({
@@ -503,12 +502,66 @@ pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
 /// ]}));
 /// ```
 pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
-    where
-        F: FnMut(Value) -> Option<Value>,
+where
+    F: FnMut(Value) -> Result<Option<Value>, JsonPathError>,
 {
     let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
     let mut selector = JsonSelectorMut::new(parser);
     let value = selector.value(value).replace_with(fun)?;
+    Ok(value.take().unwrap_or(Value::Null))
+}
+
+/// Select JSON properties using a jsonpath, exposing the path to the values with the value itself. Allows updating of the value while tracking field names/paths.
+///
+/// ```rust
+/// extern crate jsonpath_lib as jsonpath;
+/// #[macro_use] extern crate serde_json;
+///
+/// use serde_json::Value;
+///
+/// let json_obj = json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 20},
+///             {"name": "친구2", "age": 20}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]});
+///
+/// let ret = jsonpath::replace_with_tokens(json_obj, "$..[?(@.age == 20)].age", &mut |v, _tokens| {
+///     let age = if let Value::Number(n) = v {
+///         n.as_u64().unwrap() * 2
+///     } else {
+///         0
+///     };
+///
+///     Ok(Some(json!(age)))
+/// }).unwrap();
+///
+/// assert_eq!(ret, json!({
+///     "school": {
+///         "friends": [
+///             {"name": "친구1", "age": 40},
+///             {"name": "친구2", "age": 40}
+///         ]
+///     },
+///     "friends": [
+///         {"name": "친구3", "age": 30},
+///         {"name": "친구4"}
+/// ]}));
+/// ```
+pub fn replace_with_tokens<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, JsonPathError>
+where
+    F: FnMut(Value, &[String]) -> Result<Option<Value>, JsonPathError>,
+{
+    let mut selector = SelectorMut::default();
+    let value = selector
+        .str_path(path)?
+        .value(value)
+        .replace_with_tokens(fun)?;
     Ok(value.take().unwrap_or(Value::Null))
 }
 
@@ -555,10 +608,7 @@ pub fn replace_with<F>(value: Value, path: &str, fun: &mut F) -> Result<Value, J
 /// ]);
 /// ```
 #[derive(Clone, Debug)]
-#[deprecated(
-since = "0.4.0",
-note = "Please use PathCompiled."
-)]
+#[deprecated(since = "0.4.0", note = "Please use PathCompiled.")]
 pub struct Compiled {
     #[allow(deprecated)]
     node: Node,
@@ -571,9 +621,7 @@ impl Compiled {
     /// If parsing the path fails, it will return an error.
     pub fn compile(path: &str) -> Result<Self, String> {
         let node = parser::Parser::compile(path)?;
-        Ok(Self {
-            node
-        })
+        Ok(Self { node })
     }
 
     /// Execute the select operation on the pre-compiled path.
@@ -627,7 +675,7 @@ impl Compiled {
 /// ```
 #[derive(Clone, Debug)]
 pub struct PathCompiled<'a> {
-    parser: Rc<PathParser<'a>>,
+    parser: Arc<PathParser<'a>>,
 }
 
 impl<'a> PathCompiled<'a> {
@@ -637,13 +685,13 @@ impl<'a> PathCompiled<'a> {
     pub fn compile(path: &str) -> Result<PathCompiled, JsonPathError> {
         let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
         Ok(PathCompiled {
-            parser: Rc::new(parser)
+            parser: Arc::new(parser),
         })
     }
 
     /// Execute the select operation on the pre-compiled path.
     pub fn select(&self, value: &'a Value) -> Result<Vec<&'a Value>, JsonPathError> {
-        let mut selector = JsonSelector::new_ref(Rc::clone(&self.parser));
+        let mut selector = JsonSelector::new_ref(Arc::clone(&self.parser));
         selector.value(value).select()
     }
 }
