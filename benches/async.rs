@@ -8,10 +8,10 @@ use std::{
     task::{Context, Poll},
 };
 
-use common::{read_json, setup};
-use criterion::{criterion_group, criterion_main};
+use common::{read_json};
+use criterion::{criterion_group, criterion_main, BenchmarkId};
 use futures::Future;
-use jsonpath::{JsonSelector, MultiJsonSelectorMut, PathParser};
+use jsonpath::{MultiJsonSelectorMutWithMetadata, PathParserWithMetadata};
 use serde_json::Value;
 
 mod common;
@@ -93,19 +93,11 @@ impl CryptoField {
     }
 }
 
-async fn selector_mut() {
-    setup();
-
-    let parser = PathParser::compile("$.store..price").unwrap();
-    let parser_two = PathParser::compile("$.store..author").unwrap();
-    let mut selector_mut =
-        MultiJsonSelectorMut::new_multi_parser(vec![parser.into(), parser_two.into()]);
-
+async fn async_run(mut selector_mut: MultiJsonSelectorMutWithMetadata<'_, &str>, json: Value) {
     let crypto_request = Arc::new(CryptoRequest::new());
 
     let result_futures = selector_mut
-        .value(read_json("./benchmark/example.json"))
-        .replace_with_async(|v| {
+        .replace_with_async(json, |v, _| {
             let bag: CryptoField = crypto_request.new_field(v);
 
             Box::pin(async move {
@@ -117,20 +109,62 @@ async fn selector_mut() {
 
     crypto_request.send_request().await;
 
-    let result = result_futures.await.unwrap().take().unwrap();
-
-    let parser = PathParser::compile("$.store..price").unwrap();
-    let mut selector = JsonSelector::new(parser);
-    let result = selector.value(&result).select().unwrap();
-
-    assert_eq!(
-        vec![&json!(42), &json!(42), &json!(42), &json!(42), &json!(42)],
-        result
-    );
+    let _result = result_futures.await.unwrap();
 }
 
 fn setup_async_benchmark(c: &mut criterion::Criterion) {
-    c.bench_function("selector_mut", |b| b.iter(|| selector_mut()));
+    let t1_json = read_json("./benchmark/example.json");
+    let t1_parser = PathParserWithMetadata::compile("$.store..price", "one").unwrap();
+    let t1_parser_two = PathParserWithMetadata::compile("$.store..author", "two").unwrap();
+    let t1_selector_mut = MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![
+        t1_parser,
+        t1_parser_two,
+    ]);
+
+    // let big_array = read_json("./benchmark/big_array.json");
+    let t2_json = read_json("./benchmark/big_example.json");
+    let t2_parser = PathParserWithMetadata::compile("$.store.book[*].author", "one").unwrap();
+    let t2_parser_two = PathParserWithMetadata::compile("$.store.author", "two").unwrap();
+    let t2_selector_mut = MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![
+        t2_parser,
+        t2_parser_two,
+    ]);
+
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
+
+    c.bench_with_input(
+        BenchmarkId::new("async_selector_mut", "Json"),
+        &(t1_selector_mut, t1_json),
+        |b, (s, v)| {
+            // Insert a call to `to_async` to convert the bencher to async mode.
+            // The timing loops are the same as with the normal bencher.
+            b.to_async(&runtime).iter_batched(
+                || (s.clone(), v.clone()),
+                |(s, v)| async {
+                    async_run(s, v).await;
+                },
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
+
+    c.bench_with_input(
+        BenchmarkId::new("async_selector_mut", "BigJson"),
+        &(t2_selector_mut, t2_json),
+        |b, (s, v)| {
+            // Insert a call to `to_async` to convert the bencher to async mode.
+            // The timing loops are the same as with the normal bencher.
+            b.to_async(&runtime).iter_batched(
+                || (s.clone(), v.clone()),
+                |(s, v)| async {
+                    async_run(s, v).await;
+                },
+                criterion::BatchSize::LargeInput,
+            );
+        },
+    );
 }
 
 criterion_group!(benches, setup_async_benchmark);

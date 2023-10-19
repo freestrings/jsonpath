@@ -164,7 +164,7 @@ impl<'a> ExprTerm<'a> {
     fn cmp_json<C1>(
         rel: Option<Vec<&'a Value>>,
         fk1: Option<FilterKey<'a>>,
-        vec1: &mut Vec<&'a Value>,
+        vec1: &mut [&'a Value],
         other: &mut ExprTerm<'a>,
         cmp_fn: &C1,
     ) -> ExprTerm<'a>

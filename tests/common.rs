@@ -5,14 +5,14 @@ extern crate serde_json;
 use std::io::Read;
 use std::io::Write;
 
-use log::LevelFilter;
+
 use serde_json::Value;
 
 use self::jsonpath::{JsonSelector, PathParser};
 
 #[allow(dead_code)]
 pub fn setup() {
-    let _ = env_logger::Builder::new()
+    env_logger::Builder::new()
         .format(|buf, record| {
             writeln!(
                 buf,

@@ -25,7 +25,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
 env_logger = "0.8"
 tokio = { version = "1.33.0", features = ["macros"] }
 tokio-test = "0.4.3"
@@ -38,3 +38,11 @@ crate-type = ["cdylib", "rlib"]
 #[profile.release]
 #debug = true
 #lto = false
+
+[[bench]]
+name = "async"
+harness = false
+
+[[bench]]
+name = "sync_mut"
+harness = false

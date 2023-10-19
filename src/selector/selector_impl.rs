@@ -1,19 +1,12 @@
 use std::collections::HashSet;
-use std::future::Future;
-use std::pin::Pin;
-use std::rc::Rc;
 use std::sync::Arc;
 
-use futures::future::BoxFuture;
-use futures::stream::FuturesOrdered;
-use futures::StreamExt;
-use rayon::prelude::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
 use super::utils;
 use crate::paths::{tokens::*, ParserTokenHandler, PathParser, StrRange};
-use crate::{parser, JsonPathError};
+use crate::JsonPathError;
 
 use super::terms::*;
 
@@ -26,8 +19,6 @@ pub struct JsonSelector<'a> {
     selectors: Vec<JsonSelector<'a>>,
     selector_filter: FilterTerms<'a>,
 }
-
-type FutureValue = Pin<Box<dyn Future<Output = Option<Value>> + Send>>;
 
 impl<'a> JsonSelector<'a> {
     pub fn new(parser: PathParser<'a>) -> Self {
@@ -488,7 +479,7 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
                 self.visit_key(key);
             }
             ParseToken::Keys(keys) => {
-                let keys: Vec<&str> = keys.iter().map(|s| parse_value_reader(s)).collect();
+                let keys: Vec<&str> = keys.iter().map(parse_value_reader).collect();
                 self.visit_keys(&keys)
             }
             ParseToken::Number(v) => {
@@ -506,33 +497,29 @@ impl<'a> ParserTokenHandler<'a> for JsonSelector<'a> {
 }
 
 #[derive(Default, Clone)]
-pub struct MultiJsonSelectorMut<'a> {
+pub struct JsonSelectorMut<'a> {
     value: Option<Value>,
-    parser: Option<Vec<Arc<PathParser<'a>>>>,
+    parser: Option<Arc<PathParser<'a>>>,
 }
 
-impl<'a> MultiJsonSelectorMut<'a> {
+impl<'a> JsonSelectorMut<'a> {
     pub fn new(parser: PathParser<'a>) -> Self {
-        Self::new_ref(vec![Arc::new(parser)])
+        Self::new_ref(Arc::new(parser))
     }
 
-    pub fn new_multi_parser(parsers: Vec<Arc<PathParser<'a>>>) -> Self {
-        Self::new_ref(parsers)
-    }
-
-    pub fn new_ref(parser: Vec<Arc<PathParser<'a>>>) -> Self {
-        MultiJsonSelectorMut {
+    pub fn new_ref(parser: Arc<PathParser<'a>>) -> Self {
+        JsonSelectorMut {
             value: None,
             parser: Some(parser),
         }
     }
 
     pub fn reset_parser(&mut self, parser: PathParser<'a>) -> &mut Self {
-        self.parser = Some(vec![Arc::new(parser)]);
+        self.parser = Some(Arc::new(parser));
         self
     }
 
-    pub fn reset_parser_ref(&mut self, parser: Vec<Arc<PathParser<'a>>>) -> &mut Self {
+    pub fn reset_parser_ref(&mut self, parser: Arc<PathParser<'a>>) -> &mut Self {
         self.parser = Some(parser);
         self
     }
@@ -555,26 +542,21 @@ impl<'a> MultiJsonSelectorMut<'a> {
     }
 
     fn select(&self) -> Result<Vec<&Value>, JsonPathError> {
-        let res: Vec<Result<Vec<&Value>, JsonPathError>> =
-            if let Some(parser) = self.parser.as_ref() {
-                parser
-                    .iter()
-                    .map(|p| {
-                        let mut selector = JsonSelector::default();
-                        selector.reset_parser_ref(p.clone());
-                        if let Some(value) = self.value.as_ref() {
-                            selector.value(value);
-                        } else {
-                            return Err(JsonPathError::EmptyValue);
-                        }
-                        Ok(selector.select()?)
-                    })
-                    .collect()
-            } else {
-                return Err(JsonPathError::EmptyPath);
-            };
+        let mut selector = JsonSelector::default();
 
-        Ok(res.into_iter().flatten().flatten().collect())
+        if let Some(parser) = self.parser.as_ref() {
+            selector.reset_parser_ref(Arc::clone(parser));
+        } else {
+            return Err(JsonPathError::EmptyPath);
+        }
+
+        if let Some(value) = self.value.as_ref() {
+            selector.value(value);
+        } else {
+            return Err(JsonPathError::EmptyValue);
+        }
+
+        selector.select()
     }
 
     pub fn replace_with<F>(&mut self, fun: &mut F) -> Result<&mut Self, JsonPathError>
@@ -582,7 +564,6 @@ impl<'a> MultiJsonSelectorMut<'a> {
         F: FnMut(Value) -> Result<Option<Value>, JsonPathError>,
     {
         let result = self.select()?;
-        let result = result.into_iter().filter(|v| !v.is_object() && !v.is_array()).collect();
         let paths = self.compute_paths(result);
 
         if let Some(ref mut value) = &mut self.value {
@@ -592,68 +573,6 @@ impl<'a> MultiJsonSelectorMut<'a> {
         }
 
         Ok(self)
-    }
-
-    fn get_json_pointers(&mut self) -> Result<Vec<String>, JsonPathError> {
-        let result = self.select()?;
-        let paths = self.compute_paths(result);
-
-        let json_pointers = paths
-            .iter()
-            .map(|tokens| "/".to_owned() + &tokens.join("/"))
-            .collect::<Vec<String>>();
-
-        Ok(json_pointers)
-    }
-
-    pub fn replace_with_async<F>(
-        &mut self,
-        fun: F,
-    ) -> Result<BoxFuture<Result<&mut Self, JsonPathError>>, JsonPathError>
-    where
-        F: Fn(Value) -> FutureValue,
-    {
-        let mut futures = FuturesOrdered::new();
-
-        let json_pointers = self.get_json_pointers()?;
-
-        if let Some(ref mut value) = &mut self.value {
-            for pointer in json_pointers.iter() {
-                let target = value
-                    .pointer_mut(pointer)
-                    .ok_or(JsonPathError::EmptyValue)?;
-                let future = fun(std::mem::replace(target, Value::Null));
-                futures.push_back(future);
-            }
-        };
-
-        let result_future = Box::pin(async move {
-            // FuturesOrdered maintains a strict FIFO order, so we can use the index to get the pointer
-            let mut i = 0;
-            while let Some(res) = futures.next().await {
-                // Get the pointer for this value
-                let pointer = json_pointers.get(i).ok_or(JsonPathError::EmptyValue)?;
-
-                if let Some(v) = res {
-                    if let Some(ref mut value) = &mut self.value {
-                        let target = value
-                            .pointer_mut(pointer)
-                            .ok_or(JsonPathError::EmptyValue)?;
-                        *target = v;
-                    }
-                } else {
-                    // If None is returned then delete the value
-                    if let Some(ref mut value) = &mut self.value {
-                        value.as_object_mut().unwrap().remove(pointer);
-                    }
-                }
-                i += 1;
-            }
-
-            Ok::<_, JsonPathError>(self)
-        });
-
-        Ok(result_future)
     }
 
     fn replace_value<F>(

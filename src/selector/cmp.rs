@@ -60,7 +60,7 @@ impl Cmp for CmpNe {
         let mut ret = v1.to_vec();
         for v in v2 {
             for i in 0..ret.len() {
-                if std::ptr::eq(*v, &*ret[i]) {
+                if std::ptr::eq(*v, ret[i]) {
                     ret.remove(i);
                     break;
                 }

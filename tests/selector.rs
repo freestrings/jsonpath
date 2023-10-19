@@ -3,8 +3,8 @@ extern crate jsonpath_lib as jsonpath;
 extern crate serde_json;
 
 use common::{read_json, setup};
-use jsonpath::{JsonPathError, Parser, Selector, SelectorMut};
-use jsonpath::{JsonSelector, MultiJsonSelectorMut, PathParser};
+use jsonpath::{JsonPathError, JsonSelectorMut, Parser, Selector, SelectorMut};
+use jsonpath::{JsonSelector, PathParser};
 use serde_json::Value;
 
 mod common;
@@ -14,7 +14,7 @@ fn selector_mut() {
     setup();
 
     let parser = PathParser::compile("$.store..price").unwrap();
-    let mut selector_mut = MultiJsonSelectorMut::new(parser);
+    let mut selector_mut = JsonSelectorMut::new(parser);
 
     let mut nums = Vec::new();
     let result = selector_mut
@@ -61,7 +61,7 @@ fn selector_mut_err() {
         .value(read_json("./benchmark/example.json"))
         .replace_with(&mut |_| Err(JsonPathError::EmptyValue));
 
-    assert_eq!(result.is_err(), true);
+    assert!(result.is_err());
 }
 
 #[test]
@@ -69,12 +69,12 @@ fn jsonselector_mut_err() {
     setup();
 
     let parser = PathParser::compile("$.store..price[?(@>13)]").unwrap();
-    let mut selector_mut = MultiJsonSelectorMut::new(parser);
+    let mut selector_mut = JsonSelectorMut::new(parser);
     let result = selector_mut
         .value(read_json("./benchmark/example.json"))
         .replace_with(&mut |_| Err(JsonPathError::EmptyValue));
 
-    assert_eq!(result.is_err(), true);
+    assert!(result.is_err());
 }
 
 #[test]
@@ -85,11 +85,12 @@ fn selector_node_ref() {
     assert!(std::ptr::eq(selector.node_ref().unwrap(), &node));
 }
 
+#[test]
 fn selector_delete_multi_elements_from_array() {
     setup();
 
     let parser = PathParser::compile("$[0,2]").unwrap();
-    let mut selector_mut = MultiJsonSelectorMut::new(parser);
+    let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut
         .value(serde_json::from_str("[1,2,3]").unwrap())
@@ -109,7 +110,7 @@ fn selector_delete() {
     setup();
 
     let parser = PathParser::compile("$.store..price[?(@>13)]").unwrap();
-    let mut selector_mut = MultiJsonSelectorMut::new(parser);
+    let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut
         .value(read_json("./benchmark/example.json"))
@@ -138,7 +139,7 @@ fn selector_delete() {
 fn selector_remove() {
     setup();
     let parser = PathParser::compile("$.store..price[?(@>13)]").unwrap();
-    let mut selector_mut = MultiJsonSelectorMut::new(parser);
+    let mut selector_mut = JsonSelectorMut::new(parser);
 
     let result = selector_mut
         .value(read_json("./benchmark/example.json"))

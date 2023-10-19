@@ -107,7 +107,6 @@ impl<'a> ValueWalker {
             }
             Value::Object(map) => {
                 map.values()
-                    .into_iter()
                     .for_each(|v| Self::_walk(v, acc, fun));
             }
             _ => {}

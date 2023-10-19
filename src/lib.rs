@@ -140,9 +140,9 @@ pub use select::{Selector, SelectorMut};
 #[deprecated(since = "0.4.0", note = "It will be move to common module. since 0.5")]
 pub use select::JsonPathError;
 
-pub use paths::PathParser;
-pub use selector::{JsonSelector, MultiJsonSelectorMut};
-use std::{rc::Rc, sync::Arc};
+pub use paths::{PathParser, PathParserWithMetadata};
+pub use selector::{JsonSelector, JsonSelectorMut, MultiJsonSelectorMutWithMetadata};
+use std::sync::Arc;
 
 #[doc(hidden)]
 mod parser;
@@ -454,7 +454,7 @@ pub fn select_as<T: serde::de::DeserializeOwned>(
 /// ```
 pub fn delete(value: Value, path: &str) -> Result<Value, JsonPathError> {
     let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
-    let mut selector = MultiJsonSelectorMut::new(parser);
+    let mut selector = JsonSelectorMut::new(parser);
     let value = selector.value(value).delete()?;
     Ok(value.take().unwrap_or(Value::Null))
 }
@@ -506,7 +506,7 @@ where
     F: FnMut(Value) -> Result<Option<Value>, JsonPathError>,
 {
     let parser = PathParser::compile(path).map_err(|e| JsonPathError::from(&e))?;
-    let mut selector = MultiJsonSelectorMut::new(parser);
+    let mut selector = JsonSelectorMut::new(parser);
     let value = selector.value(value).replace_with(fun)?;
     Ok(value.take().unwrap_or(Value::Null))
 }

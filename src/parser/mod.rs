@@ -623,48 +623,48 @@ pub trait NodeVisitor {
             }
             ParseToken::In | ParseToken::Leaves => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 self.visit_token(&node.token);
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
             }
             ParseToken::Array => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 self.visit_token(&node.token);
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 self.visit_token(&ParseToken::ArrayEof);
             }
             ParseToken::Filter(FilterToken::And) | ParseToken::Filter(FilterToken::Or) => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 self.visit_token(&node.token);
             }
             ParseToken::Filter(_) => {
                 if let Some(n) = &node.left {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 self.end_term();
 
                 if let Some(n) = &node.right {
-                    self.visit(&*n);
+                    self.visit(n);
                 }
 
                 self.end_term();

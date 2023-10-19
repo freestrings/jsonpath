@@ -223,7 +223,6 @@ impl<'a> Tokenizer<'a> {
 pub(super) struct TokenReader<'a> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,
-    err: Option<TokenError>,
     peeked: Option<Result<Token, TokenError>>,
 }
 
@@ -232,7 +231,6 @@ impl<'a> TokenReader<'a> {
         TokenReader {
             tokenizer: Tokenizer::new(input),
             curr_pos: 0,
-            err: None,
             peeked: None,
         }
     }
@@ -523,12 +521,12 @@ mod tokenizer_tests {
         );
 
         run(
-            r#"$['single\'quote']"#,
+            r"$['single\'quote']",
             (
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::SingleQuoted(StrRange::new(2, r#"'single\'quote'"#.len())),
+                    Token::SingleQuoted(StrRange::new(2, r"'single\'quote'".len())),
                     Token::CloseArray(StrRange::new(17, 1)),
                 ],
                 Some(TokenError::Eof),
@@ -536,14 +534,14 @@ mod tokenizer_tests {
         );
 
         run(
-            r#"$['single\'1','single\'2']"#,
+            r"$['single\'1','single\'2']",
             (
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::SingleQuoted(StrRange::new(2, r#"'single\'1'"#.len())),
+                    Token::SingleQuoted(StrRange::new(2, r"'single\'1'".len())),
                     Token::Comma(StrRange::new(13, 1)),
-                    Token::SingleQuoted(StrRange::new(14, r#"'single\'2'"#.len())),
+                    Token::SingleQuoted(StrRange::new(14, r"'single\'2'".len())),
                     Token::CloseArray(StrRange::new(25, 1)),
                 ],
                 Some(TokenError::Eof),

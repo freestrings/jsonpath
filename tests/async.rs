@@ -9,12 +9,10 @@ use std::{
 };
 
 use common::{read_json, setup};
-use futures::{
-    channel::mpsc::{channel, Receiver, Sender},
-    task::Waker,
-    Future, SinkExt, StreamExt,
+use futures::Future;
+use jsonpath::{
+    JsonSelector, MultiJsonSelectorMutWithMetadata, PathParser, PathParserWithMetadata,
 };
-use jsonpath::{JsonSelector, MultiJsonSelectorMut, PathParser};
 use serde_json::Value;
 
 mod common;
@@ -63,40 +61,30 @@ impl CryptoRequest {
         }
     }
 
-    fn new_field(&self, input: Value) -> CryptoField {
-        let bag = CryptoField::new(input);
+    fn new_field(&self, metadata: String) -> CryptoField {
+        let bag = CryptoField::new(metadata);
         self.bags.lock().unwrap().push(bag.clone());
         bag
     }
 
     async fn send_request(&self) {
         let mut bags = self.bags.lock().unwrap();
-        let inputs = bags
-            .iter_mut()
-            .filter_map(|bag| bag.input.take())
-            .collect::<Vec<_>>();
-        // let _ = reqwest::Client::new()
-        //     .post("https://blackhole.posterior.io/vr5kvy")
-        //     .body(serde_json::to_string(&inputs).unwrap())
-        //     .send()
-        //     .await
-        //     .unwrap();
         for bag in bags.iter_mut() {
-            bag.value.set_value(serde_json::json!(42));
+            bag.value.set_value(serde_json::Value::String(bag.metadata.clone()));
         }
     }
 }
 
 #[derive(Clone)]
 struct CryptoField {
-    input: Option<Value>,
+    metadata: String,
     value: ValueFuture<Value>,
 }
 
 impl CryptoField {
-    fn new(input: Value) -> Self {
+    fn new(metadata: String) -> Self {
         Self {
-            input: Some(input),
+            metadata: metadata,
             value: ValueFuture::new(),
         }
     }
@@ -107,20 +95,19 @@ impl CryptoField {
 }
 
 #[tokio::test]
-async fn selector_mut() {
+async fn async_selector_mut() {
     setup();
 
-    let parser = PathParser::compile("$.store..price").unwrap();
-    let parser_two = PathParser::compile("$.store..author").unwrap();
+    let parser = PathParserWithMetadata::compile("$.store..price", "price-metadata").unwrap();
+    let parser_two = PathParserWithMetadata::compile("$.store..author", "author-metadata").unwrap();
     let mut selector_mut =
-        MultiJsonSelectorMut::new_multi_parser(vec![parser.into(), parser_two.into()]);
+        MultiJsonSelectorMutWithMetadata::new_multi_parser(vec![parser, parser_two]);
 
     let crypto_request = Arc::new(CryptoRequest::new());
 
     let result_futures = selector_mut
-        .value(read_json("./benchmark/example.json"))
-        .replace_with_async(|v| {
-            let bag: CryptoField = crypto_request.new_field(v);
+        .replace_with_async(read_json("./benchmark/example.json"), |_, m| {
+            let bag: CryptoField = crypto_request.new_field(m.to_string());
 
             Box::pin(async move {
                 let val = bag.value().await;
@@ -131,14 +118,25 @@ async fn selector_mut() {
 
     crypto_request.send_request().await;
 
-    let result = result_futures.await.unwrap().take().unwrap();
+    let root_result = result_futures.await.unwrap();
 
+    // Check that it replaced $.store..price with 42
     let parser = PathParser::compile("$.store..price").unwrap();
     let mut selector = JsonSelector::new(parser);
-    let result = selector.value(&result).select().unwrap();
+    let result = selector.value(&root_result).select().unwrap();
 
     assert_eq!(
-        vec![&json!(42), &json!(42), &json!(42), &json!(42), &json!(42)],
+        vec![&json!("price-metadata"), &json!("price-metadata"), &json!("price-metadata"), &json!("price-metadata"), &json!("price-metadata")],
+        result
+    );
+
+    // Check that it replaced $.store..author with 42
+    let parser = PathParser::compile("$.store..author").unwrap();
+    let mut selector = JsonSelector::new(parser);
+    let result = selector.value(&root_result).select().unwrap();
+
+    assert_eq!(
+        vec![&json!("author-metadata"), &json!("author-metadata"), &json!("author-metadata"), &json!("author-metadata")],
         result
     );
 }
