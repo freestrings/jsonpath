@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use super::parser_token_handler::ParserTokenHandler;
 use super::parser_node_visitor::ParserNodeVisitor;
+use super::parser_token_handler::ParserTokenHandler;
 use super::str_reader::StrRange;
 use super::tokenizer::{TokenError, TokenReader};
 use super::tokens::{FilterToken, ParseToken, Token};
@@ -19,8 +19,8 @@ impl<'a> PathParser<'a> {
     }
 
     pub(crate) fn parse<F>(&self, parse_token_handler: &mut F) -> Result<(), String>
-        where
-            F: ParserTokenHandler<'a>,
+    where
+        F: ParserTokenHandler<'a>,
     {
         if self.parser.parse_node.is_none() {
             unreachable!()
@@ -54,8 +54,8 @@ impl<'a> ParserImpl<'a> {
     }
 
     fn string_to_num<F, S: FromStr>(string: &str, msg_handler: F) -> Result<S, TokenError>
-        where
-            F: Fn() -> TokenError,
+    where
+        F: Fn() -> TokenError,
     {
         match string.parse() {
             Ok(n) => Ok(n),
@@ -293,9 +293,7 @@ impl<'a> ParserImpl<'a> {
                 self.eat_token();
                 self.range_to()
             }
-            Ok(Token::DoubleQuoted(_)) | Ok(Token::SingleQuoted(_)) => {
-                self.array_quote_value()
-            }
+            Ok(Token::DoubleQuoted(_)) | Ok(Token::SingleQuoted(_)) => self.array_quote_value(),
             Err(TokenError::Eof) => Ok(self.create_node(ParseToken::Eof)),
             _ => {
                 self.eat_token();
@@ -472,14 +470,15 @@ impl<'a> ParserImpl<'a> {
         let node = self.term()?;
         self.eat_whitespace();
 
-        if matches!(self.token_reader.peek_token(),
+        if matches!(
+            self.token_reader.peek_token(),
             Ok(Token::Equal(_))
-            | Ok(Token::NotEqual(_))
-            | Ok(Token::Little(_))
-            | Ok(Token::LittleOrEqual(_))
-            | Ok(Token::Greater(_))
-            | Ok(Token::GreaterOrEqual(_)))
-        {
+                | Ok(Token::NotEqual(_))
+                | Ok(Token::Little(_))
+                | Ok(Token::LittleOrEqual(_))
+                | Ok(Token::Greater(_))
+                | Ok(Token::GreaterOrEqual(_))
+        ) {
             self.op(node)
         } else if has_prop_candidate {
             Ok(node)
@@ -511,7 +510,9 @@ impl<'a> ParserImpl<'a> {
         match self.token_reader.next_token() {
             Ok(Token::Key(s)) => {
                 let frac = self.token_reader.read_value(&s);
-                let number = Self::string_to_num(&[num, ".", frac].concat(), || self.token_reader.to_error())?;
+                let number = Self::string_to_num(&[num, ".", frac].concat(), || {
+                    self.token_reader.to_error()
+                })?;
                 Ok(self.create_node(ParseToken::Number(number)))
             }
             _ => Err(self.token_reader.to_error()),
@@ -552,15 +553,9 @@ impl<'a> ParserImpl<'a> {
                     _ => self.paths(node),
                 }
             }
-            Ok(Token::Absolute(_)) => {
-                self.json_path()
-            }
-            Ok(Token::DoubleQuoted(_)) | Ok(Token::SingleQuoted(_)) => {
-                self.array_quote_value()
-            }
-            _ => {
-                Err(self.token_reader.to_error())
-            }
+            Ok(Token::Absolute(_)) => self.json_path(),
+            Ok(Token::DoubleQuoted(_)) | Ok(Token::SingleQuoted(_)) => self.array_quote_value(),
+            _ => Err(self.token_reader.to_error()),
         }
     }
 
@@ -623,10 +618,10 @@ pub struct ParserNode {
 
 #[cfg(test)]
 mod path_parser_tests {
-    use paths::ParserTokenHandler;
-    use paths::path_parser::PathParser;
-    use paths::str_reader::StrRange;
-    use paths::tokens::{FilterToken, ParseToken};
+    use crate::paths::path_parser::PathParser;
+    use crate::paths::str_reader::StrRange;
+    use crate::paths::tokens::{FilterToken, ParseToken};
+    use crate::paths::ParserTokenHandler;
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,
@@ -650,8 +645,8 @@ mod path_parser_tests {
 
     impl<'a> ParserTokenHandler<'a> for NodeVisitorTestImpl<'a> {
         fn handle<F>(&mut self, token: &ParseToken, _: &F)
-            where
-                F: Fn(&StrRange) -> &'a str
+        where
+            F: Fn(&StrRange) -> &'a str,
         {
             trace!("handle {:?}", token);
             self.stack.push(token.clone());
@@ -964,7 +959,10 @@ mod path_parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Keys(vec![StrRange::new(2, "\"a\"".len()), StrRange::new(7, "'b'".len())]),
+                ParseToken::Keys(vec![
+                    StrRange::new(2, "\"a\"".len()),
+                    StrRange::new(7, "'b'".len())
+                ]),
                 ParseToken::ArrayEof
             ])
         );
