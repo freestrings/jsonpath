@@ -155,6 +155,9 @@ impl<'a, T: Debug + Send + Sync + 'a> MultiJsonSelectorMutWithMetadata<'a, T> {
         Ok(pointers)
     }
 
+    /// Replace the value at the given path with the result of some asynchronous computation.
+    /// The function provided is called with the current value and the metadata associated with the path,
+    /// and should return a Future that resolves to an Option<Value>. This value will replace the current value.
     pub fn replace_with_async<F>(
         &mut self,
         mut value: Value,
