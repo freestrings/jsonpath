@@ -1,10 +1,13 @@
 [package]
-name = "jsonpath_lib"
+name = "jsonpath_lib2"
 version = "0.3.0"
-authors = ["Changseok Han <freestrings@gmail.com>"]
+authors = [
+    "Changseok Han <freestrings@gmail.com>",
+    "Ivan Azoyan <ivan.azoyan@gmail.com",
+]
 edition = "2021"
 
-description = "It is JsonPath engine written in Rust. it provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath"
+description = "Updated fork of jsonpath_lib2. It is JsonPath engine written in Rust. It provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath"
 readme = "README.md"
 
 keywords = ["jsonpath", "json", "webassembly", "lua", "query"]
@@ -24,6 +27,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [features]
 logs = ["log"]
+ffi = []
 
 [dev-dependencies]
 env_logger = "0.11"

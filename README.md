@@ -1,3 +1,6 @@
+[Original repository](https://github.com/freestrings/jsonpath) looks like not longer maintained.
+This library is updated to Rust 2021 edition. Fixed clippy warnings.
+
 # jsonpath_lib
 
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)

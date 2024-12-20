@@ -145,6 +145,7 @@ pub use paths::PathParser;
 pub use selector::{JsonSelector, JsonSelectorMut};
 use std::rc::Rc;
 
+#[cfg(feature = "ffi")]
 #[doc(hidden)]
 #[deprecated(
     since = "0.4.0",
