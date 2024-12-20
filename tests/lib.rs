@@ -54,7 +54,7 @@ fn selector() {
 
     fn select<'a, F>(selector: &mut F, path: &'a str, target: Value)
     where
-        F: FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError>,
+        F: FnMut(&'a str) -> Result<Vec<&'a Value>, JsonPathError>,
     {
         let json = selector(path).unwrap();
         compare_result(json, target);

@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
 
-use {parser, select, select_as_str};
+use crate::{parser, select, select_as_str};
 
 const INVALID_PATH: &str = "invalid path";
 const INVALID_JSON: &str = "invalud json";
@@ -30,7 +30,7 @@ pub extern "C" fn ffi_select(json_str: *const c_char, path: *const c_char) -> *c
 }
 
 #[no_mangle]
-#[allow(clippy::forget_copy)]
+#[allow(forgetting_copy_types)]
 pub extern "C" fn ffi_path_compile(path: *const c_char) -> *mut c_void {
     let path = to_str(path, INVALID_PATH);
     #[allow(deprecated)]
