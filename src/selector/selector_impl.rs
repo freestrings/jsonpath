@@ -4,11 +4,11 @@ use std::rc::Rc;
 use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
+use super::terms::*;
 use super::utils;
 use crate::paths::{tokens::*, ParserTokenHandler, PathParser, StrRange};
 use crate::JsonPathError;
-
-use super::terms::*;
+use crate::{debug, trace};
 
 #[derive(Debug, Default)]
 pub struct JsonSelector<'a> {

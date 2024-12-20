@@ -4,7 +4,7 @@ use std::fmt;
 use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
-use crate::parser::*;
+use crate::{debug, parser::*, trace};
 
 use self::expr_term::*;
 use self::value_walker::ValueWalker;

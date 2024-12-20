@@ -1,5 +1,7 @@
 use std::result::Result;
 
+use crate::trace;
+
 use super::path_reader::{PathReader, ReaderError};
 
 const CH_DOLLA: char = '$';
@@ -105,23 +107,9 @@ impl<'a> Tokenizer<'a> {
 
     fn dolla(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN | &CH_RPAREN | &CH_AT
+            | &CH_QUESTION | &CH_COMMA | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
+            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
         let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
@@ -243,24 +231,9 @@ impl<'a> Tokenizer<'a> {
 
     fn other(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOLLA
-            | &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOLLA | &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN
+            | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA | &CH_SEMICOLON | &CH_LITTLE
+            | &CH_GREATER | &CH_EQUAL | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
         let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;

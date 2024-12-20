@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use crate::{debug, trace};
+
 use super::parser_node_visitor::ParserNodeVisitor;
 use super::parser_token_handler::ParserTokenHandler;
 use super::str_reader::StrRange;
@@ -622,6 +624,7 @@ mod path_parser_tests {
     use crate::paths::str_reader::StrRange;
     use crate::paths::tokens::{FilterToken, ParseToken};
     use crate::paths::ParserTokenHandler;
+    use crate::trace;
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,

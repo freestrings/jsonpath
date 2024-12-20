@@ -18,9 +18,12 @@ license = "MIT"
 travis-ci = { repository = "freestrings/jsonpath", branch = "master" }
 
 [dependencies]
-log = "0.4"
+log = { version = "0.4", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
+
+[features]
+logs = ["log"]
 
 [dev-dependencies]
 env_logger = "0.8"

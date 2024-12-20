@@ -1,5 +1,7 @@
 use std::result::Result;
 
+use crate::trace;
+
 use super::str_reader::{ReaderError, StrRange, StrReader};
 use super::tokens::Token;
 

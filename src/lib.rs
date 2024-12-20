@@ -122,8 +122,9 @@
 //!                 &json!({"category" : "fiction","author" : "Herman Melville","title" : "Moby Dick","isbn" : "0-553-21311-3","price" : 8.99})
 //!             ]);
 //! ```
-extern crate core;
 #[macro_use]
+extern crate core;
+#[cfg(feature = "logs")]
 extern crate log;
 extern crate serde;
 extern crate serde_json;
@@ -157,6 +158,26 @@ mod select;
 
 mod paths;
 mod selector;
+
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "logs")]
+        {
+            log::debug!($($arg)*);
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! trace {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "logs")]
+        {
+            log::trace!($($arg)*);
+        }
+    }
+}
 
 impl From<&paths::TokenError> for JsonPathError {
     fn from(e: &paths::TokenError) -> Self {
