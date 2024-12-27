@@ -1,19 +1,19 @@
 [package]
 name = "jsonpath_lib2"
-version = "0.3.0"
+version = "0.3.1"
 authors = [
     "Changseok Han <freestrings@gmail.com>",
     "Ivan Azoyan <ivan.azoyan@gmail.com",
 ]
 edition = "2021"
 
-description = "Updated fork of jsonpath_lib2. It is JsonPath engine written in Rust. It provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath"
+description = "Updated fork of jsonpath_lib. Original crate was updated in 2021 Jun 03.\nIt is JsonPath engine written in Rust. It provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath\nFeel free to transfer maintenance for this crate if I don't respond for one year.\nI consent to the transfer of this crate to the first person who asks help@crates.io for it."
 readme = "README.md"
 
 keywords = ["jsonpath", "json", "webassembly", "lua", "query"]
 categories = ['wasm', "parser-implementations", "api-bindings"]
 
-repository = "https://github.com/freestrings/jsonpath"
+repository = "https://github.com/azoyan/jsonpath"
 documentation = "https://docs.rs/jsonpath_lib/0.3.0/jsonpath_lib"
 license = "MIT"
 
@@ -36,7 +36,3 @@ env_logger = "0.11"
 name = "jsonpath_lib"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
-
-#[profile.release]
-#debug = true
-#lto = false

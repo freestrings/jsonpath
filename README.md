@@ -1,5 +1,11 @@
-[Original repository](https://github.com/freestrings/jsonpath) looks like not longer maintained.
-This library is updated to Rust 2021 edition. Fixed clippy warnings.
+[Original repository](https://github.com/freestrings/jsonpath) appears to be no longer maintained. Here's what's been updated and added:
+- This library is updated to Rust 2021 edition.
+- Fixed clippy warnings.
+- Made "wasm" and "lua" features optional by moving them behind feature flags
+
+__Feel free to transfer maintenance for this crate if I don't respond for one year.__
+
+__I consent to the transfer of this crate to the first person who asks help@crates.io for it.__
 
 # jsonpath_lib
 
