@@ -1,6 +1,6 @@
 [package]
 name = "jsonpath_lib2"
-version = "0.3.2"
+version = "0.3.3"
 authors = [
     "Changseok Han <freestrings@gmail.com>",
     "Ivan Azoyan <ivan.azoyan@gmail.com",

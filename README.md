@@ -1,7 +1,7 @@
 [Original repository](https://github.com/freestrings/jsonpath) appears to be no longer maintained. Here's what's been updated and added:
 - This library is updated to Rust 2021 edition.
 - Fixed clippy warnings.
-- Made "wasm" and "lua" features optional by moving them behind feature flags
+- Made "wasm", "lua" and "ffi" features optional by moving them behind feature flags
 
 Cherry-picked commits from PRs to original repository:
 - [ Fixing Potential Double Free Issue #94 ](https://github.com/freestrings/jsonpath/pull/94) by @kuzeyardabulut
