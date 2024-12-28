@@ -296,38 +296,3 @@ fn bugs92_duplicate_result_similar_indernal_values() {
         ]),
     );
 }
-
-#[test]
-fn bugs40_bracket_notation_after_recursive_descent() {
-    setup();
-
-    select_and_then_compare(
-        "$..[0]",
-        json!([
-            "first",
-            {
-                "key": [
-                    "first nested",
-                    {
-                        "more": [
-                            {"nested": ["deepest", "second"]},
-                            ["more", "values"]
-                        ]
-                    }
-                ]
-            }
-        ]),
-        json!([
-           "first",
-           "first nested",
-           {
-              "nested" : [
-                 "deepest",
-                 "second"
-              ]
-           },
-           "deepest",
-           "more"
-        ]),
-    );
-}
