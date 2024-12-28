@@ -3,6 +3,11 @@
 - Fixed clippy warnings.
 - Made "wasm" and "lua" features optional by moving them behind feature flags
 
+Cherry-picked commits from PRs to original repository:
+- [ Fixing Potential Double Free Issue #94 ](https://github.com/freestrings/jsonpath/pull/94) by @kuzeyardabulut
+- [ fix #92 Break after the first equals result_value to avoid duplicates #93 ](https://github.com/freestrings/jsonpath/pull/93) by @gkorland
+- [ Avoid panic on filter with $ #90 ](https://github.com/freestrings/jsonpath/pull/90) by @oshadmi
+
 __Feel free to transfer maintenance for this crate if I don't respond for one year.__
 
 __I consent to the transfer of this crate to the first person who asks help@crates.io for it.__

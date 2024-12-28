@@ -1,13 +1,13 @@
 [package]
 name = "jsonpath_lib2"
-version = "0.3.1"
+version = "0.3.2"
 authors = [
     "Changseok Han <freestrings@gmail.com>",
     "Ivan Azoyan <ivan.azoyan@gmail.com",
 ]
 edition = "2021"
 
-description = "Updated fork of jsonpath_lib. Original crate was updated in 2021 Jun 03.\nIt is JsonPath engine written in Rust. It provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath\nFeel free to transfer maintenance for this crate if I don't respond for one year.\nI consent to the transfer of this crate to the first person who asks help@crates.io for it."
+description = "An updated fork of jsonpath_lib. The original crate has not been updated since 2021 Jun 03.\nIt is JsonPath engine written in Rust. It provide a similar API interface in Webassembly and Javascript too. - Webassembly Demo: https://freestrings.github.io/jsonpath\nFeel free to transfer maintenance for this crate if I don't respond for one year.\nI consent to the transfer of this crate to the first person who asks help@crates.io for it."
 readme = "README.md"
 
 keywords = ["jsonpath", "json", "webassembly", "lua", "query"]
