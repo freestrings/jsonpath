@@ -132,7 +132,6 @@ impl<'a> ParserImpl<'a> {
         }
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn path_leaves_key(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
         debug!("#path_leaves_key");
         Ok(ParserNode {
@@ -142,7 +141,6 @@ impl<'a> ParserImpl<'a> {
         })
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn path_leaves_all(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
         debug!("#path_leaves_all");
         self.eat_token();
@@ -153,7 +151,6 @@ impl<'a> ParserImpl<'a> {
         })
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn path_in_all(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
         debug!("#path_in_all");
         self.eat_token();
@@ -164,7 +161,6 @@ impl<'a> ParserImpl<'a> {
         })
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn path_in_key(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
         debug!("#path_in_key");
         Ok(ParserNode {

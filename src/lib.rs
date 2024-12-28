@@ -269,7 +269,6 @@ pub fn compile(path: &str) -> impl FnMut(&Value) -> Result<Vec<&Value>, JsonPath
 ///     &json!({"name": "친구2", "age": 20})
 /// ]);
 /// ```
-#[allow(clippy::needless_lifetimes)]
 pub fn selector<'a>(
     json: &'a Value,
 ) -> impl FnMut(&'a str) -> Result<Vec<&'a Value>, JsonPathError> {
