@@ -11,7 +11,9 @@ fn to_str(v: *const c_char, err_msg: &str) -> &str {
 }
 
 fn to_char_ptr(v: &str) -> *const c_char {
-    let s = std::mem::ManuallyDrop::new(CString::new(v).unwrap_or_else(|_| panic!("invalid string: {}", v)));
+    let s = std::mem::ManuallyDrop::new(
+        CString::new(v).unwrap_or_else(|_| panic!("invalid string: {}", v)),
+    );
     let ptr = s.as_ptr();
     ptr
 }
