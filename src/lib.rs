@@ -316,7 +316,7 @@ pub fn selector<'a>(
 /// ```
 pub fn selector_as<'a, T: serde::de::DeserializeOwned>(
     json: &'a Value
-) -> impl FnMut(&'a str) -> Result<Vec<T>, JsonPathError> + '_ {
+) -> impl FnMut(&'a str) -> Result<Vec<T>, JsonPathError> {
     let mut selector = JsonSelector::default();
     let _ = selector.value(json);
     move |path: &str| {

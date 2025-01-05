@@ -561,7 +561,7 @@ impl<'a, 'b> Selector<'a, 'b> {
 }
 
 #[allow(deprecated)]
-impl<'a, 'b> Selector<'a, 'b> {
+impl Selector<'_, '_> {
     fn visit_absolute(&mut self) {
         if self.current.is_some() {
             let mut selector = Selector::default();
@@ -880,7 +880,7 @@ impl<'a, 'b> Selector<'a, 'b> {
 }
 
 #[allow(deprecated)]
-impl<'a, 'b> NodeVisitor for Selector<'a, 'b> {
+impl NodeVisitor for Selector<'_, '_> {
     fn visit_token(
         &mut self,
         token: &ParseToken,

@@ -256,6 +256,7 @@ impl<'a> Tokenizer<'a> {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub(super) struct TokenReader<'a> {
     tokenizer: Tokenizer<'a>,
     curr_pos: usize,
