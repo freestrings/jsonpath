@@ -50,23 +50,10 @@ impl<'a> Tokenizer<'a> {
 
     fn dolla(&mut self) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN
+            | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA
+            | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
+            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
         let read = self.input.take_while(fun).map_err(to_token_error)?;
@@ -77,12 +64,21 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn quote(&mut self, ch: char) -> Result<StrRange, TokenError> {
-        let span = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+    fn quote(
+        &mut self,
+        ch: char,
+    ) -> Result<StrRange, TokenError> {
+        let span = self
+            .input
+            .take_while(|c| *c != ch)
+            .map_err(to_token_error)?;
         let val = self.input.read(&span);
         if let Some('\\') = val.chars().last() {
             self.input.next_char().map_err(to_token_error)?;
-            let remain_span = self.input.take_while(|c| *c != ch).map_err(to_token_error)?;
+            let remain_span = self
+                .input
+                .take_while(|c| *c != ch)
+                .map_err(to_token_error)?;
             self.input.next_char().map_err(to_token_error)?;
             Ok(StrRange::new(span.pos, remain_span.offset))
         } else {
@@ -91,76 +87,100 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn single_quote(&mut self, ch: char) -> Result<Token, TokenError> {
+    fn single_quote(
+        &mut self,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         Ok(Token::SingleQuoted(self.quote(ch)?))
     }
 
-    fn double_quote(&mut self, ch: char) -> Result<Token, TokenError> {
+    fn double_quote(
+        &mut self,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         Ok(Token::DoubleQuoted(self.quote(ch)?))
     }
 
-    fn equal(&mut self, span: StrRange) -> Result<Token, TokenError> {
+    fn equal(
+        &mut self,
+        span: StrRange,
+    ) -> Result<Token, TokenError> {
         let ch = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::Equal(span))
-            }
+            },
             _ => Err(TokenError::Position(span.pos)),
         }
     }
 
-    fn not_equal(&mut self, span: StrRange) -> Result<Token, TokenError> {
+    fn not_equal(
+        &mut self,
+        span: StrRange,
+    ) -> Result<Token, TokenError> {
         let ch = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::NotEqual(span))
-            }
+            },
             _ => Err(TokenError::Position(span.pos)),
         }
     }
 
-    fn little(&mut self, span: StrRange) -> Result<Token, TokenError> {
+    fn little(
+        &mut self,
+        span: StrRange,
+    ) -> Result<Token, TokenError> {
         let ch = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::LittleOrEqual(span))
-            }
+            },
             _ => Ok(Token::Little(span)),
         }
     }
 
-    fn greater(&mut self, span: StrRange) -> Result<Token, TokenError> {
+    fn greater(
+        &mut self,
+        span: StrRange,
+    ) -> Result<Token, TokenError> {
         let ch = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::GreaterOrEqual(span))
-            }
+            },
             _ => Ok(Token::Greater(span)),
         }
     }
 
-    fn and(&mut self, span: StrRange) -> Result<Token, TokenError> {
+    fn and(
+        &mut self,
+        span: StrRange,
+    ) -> Result<Token, TokenError> {
         let ch = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_AMPERSAND => {
                 let _ = self.input.next_char().map_err(to_token_error);
                 Ok(Token::And(span))
-            }
+            },
             _ => Err(TokenError::Position(span.pos)),
         }
     }
 
-    fn or(&mut self, span: StrRange) -> Result<Token, TokenError> {
+    fn or(
+        &mut self,
+        span: StrRange,
+    ) -> Result<Token, TokenError> {
         let ch = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_PIPE => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::Or(span))
-            }
+            },
             _ => Err(TokenError::Position(span.pos)),
         }
     }
@@ -175,31 +195,21 @@ impl<'a> Tokenizer<'a> {
 
     fn other(&mut self) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOLLA
-            | &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOLLA | &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY
+            | &CH_LPAREN | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA
+            | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
+            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
         let span = self.input.take_while(fun).map_err(to_token_error)?;
         Ok(Token::Key(span))
     }
 
-    fn read_token(&mut self, span: StrRange, ch: char) -> Result<Token, TokenError> {
+    fn read_token(
+        &mut self,
+        span: StrRange,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         match ch {
             CH_DOLLA => self.dolla(),
             CH_DOT => Ok(Token::Dot(span)),
@@ -237,7 +247,10 @@ impl<'a> Tokenizer<'a> {
         self.input.current_pos()
     }
 
-    fn read_span(&self, span: &StrRange) -> &'a str {
+    fn read_span(
+        &self,
+        span: &StrRange,
+    ) -> &'a str {
         self.input.read(span)
     }
 }
@@ -260,7 +273,10 @@ impl<'a> TokenReader<'a> {
         }
     }
 
-    pub fn read_value(&self, str_range: &StrRange) -> &'a str {
+    pub fn read_value(
+        &self,
+        str_range: &StrRange,
+    ) -> &'a str {
         self.tokenizer.read_span(str_range)
     }
 
@@ -270,7 +286,10 @@ impl<'a> TokenReader<'a> {
         let peeked = self.peeked.get_or_insert_with(|| {
             let mut token = tokenizer.next_token();
             if let Ok(token) = &mut token {
-                let token = token.reset_span(StrRange::new(prev_pos, tokenizer.current_pos() - prev_pos));
+                let token = token.reset_span(StrRange::new(
+                    prev_pos,
+                    tokenizer.current_pos() - prev_pos,
+                ));
                 return Ok(token);
             }
             token
@@ -288,12 +307,15 @@ impl<'a> TokenReader<'a> {
                 let mut token = tokenizer.next_token();
                 if let Ok(token) = &mut token {
                     let current_pos = tokenizer.current_pos();
-                    let token = token.reset_span(StrRange::new(prev_pos, current_pos - prev_pos));
+                    let token = token.reset_span(StrRange::new(
+                        prev_pos,
+                        current_pos - prev_pos,
+                    ));
                     self.curr_pos = current_pos;
                     return Ok(token);
                 }
                 token
-            }
+            },
         }
     }
 
@@ -329,7 +351,10 @@ mod tokenizer_tests {
         }
     }
 
-    fn run(input: &str, expected: (Vec<Token>, Option<TokenError>)) {
+    fn run(
+        input: &str,
+        expected: (Vec<Token>, Option<TokenError>),
+    ) {
         let (vec, err) = collect_token(input);
         assert_eq!((vec, err), expected, "\"{}\"", input);
     }
@@ -393,7 +418,11 @@ mod tokenizer_tests {
         run(
             "$..",
             (
-                vec![Token::Absolute(StrRange::new(0, 1)), Token::Dot(StrRange::new(1, 1)), Token::Dot(StrRange::new(2, 1))],
+                vec![
+                    Token::Absolute(StrRange::new(0, 1)),
+                    Token::Dot(StrRange::new(1, 1)),
+                    Token::Dot(StrRange::new(2, 1)),
+                ],
                 Some(TokenError::Eof),
             ),
         );
@@ -476,7 +505,10 @@ mod tokenizer_tests {
                     Token::OpenParenthesis(StrRange::new(1, 1)),
                     Token::At(StrRange::new(2, 1)),
                     Token::Dot(StrRange::new(3, 1)),
-                    Token::Key(StrRange::new(4, "a가".chars().map(|c| c.len_utf8()).sum())),
+                    Token::Key(StrRange::new(
+                        4,
+                        "a가".chars().map(|c| c.len_utf8()).sum(),
+                    )),
                     Token::Whitespace(StrRange::new(8, 1)),
                     Token::Little(StrRange::new(9, 1)),
                     Token::Key(StrRange::new(10, "41".len())),
@@ -546,7 +578,10 @@ mod tokenizer_tests {
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::SingleQuoted(StrRange::new(2, r#"'single\'quote'"#.len())),
+                    Token::SingleQuoted(StrRange::new(
+                        2,
+                        r#"'single\'quote'"#.len(),
+                    )),
                     Token::CloseArray(StrRange::new(17, 1)),
                 ],
                 Some(TokenError::Eof),
@@ -559,9 +594,15 @@ mod tokenizer_tests {
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::SingleQuoted(StrRange::new(2, r#"'single\'1'"#.len())),
+                    Token::SingleQuoted(StrRange::new(
+                        2,
+                        r#"'single\'1'"#.len(),
+                    )),
                     Token::Comma(StrRange::new(13, 1)),
-                    Token::SingleQuoted(StrRange::new(14, r#"'single\'2'"#.len())),
+                    Token::SingleQuoted(StrRange::new(
+                        14,
+                        r#"'single\'2'"#.len(),
+                    )),
                     Token::CloseArray(StrRange::new(25, 1)),
                 ],
                 Some(TokenError::Eof),
@@ -574,7 +615,10 @@ mod tokenizer_tests {
                 vec![
                     Token::Absolute(StrRange::new(0, 1)),
                     Token::OpenArray(StrRange::new(1, 1)),
-                    Token::DoubleQuoted(StrRange::new(2, r#""double\"quote""#.len())),
+                    Token::DoubleQuoted(StrRange::new(
+                        2,
+                        r#""double\"quote""#.len(),
+                    )),
                     Token::CloseArray(StrRange::new(17, 1)),
                 ],
                 Some(TokenError::Eof),

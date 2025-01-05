@@ -52,8 +52,11 @@ fn compile() {
 fn selector() {
     setup();
 
-    fn select<'a, F>(selector: &mut F, path: &'a str, target: Value)
-    where
+    fn select<'a, F>(
+        selector: &mut F,
+        path: &'a str,
+        target: Value,
+    ) where
         F: FnMut(&'a str) -> Result<Vec<&Value>, JsonPathError>,
     {
         let json = selector(path).unwrap();
@@ -89,8 +92,11 @@ fn selector_as() {
         name: Option<String>,
     }
 
-    fn select<'a, F>(selector: &mut F, path: &'a str, target: Vec<Friend>)
-    where
+    fn select<'a, F>(
+        selector: &mut F,
+        path: &'a str,
+        target: Vec<Friend>,
+    ) where
         F: FnMut(&'a str) -> Result<Vec<Friend>, JsonPathError>,
     {
         let json = selector(path).unwrap();

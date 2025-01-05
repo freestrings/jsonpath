@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use super::parser_token_handler::ParserTokenHandler;
 use super::parser_node_visitor::ParserNodeVisitor;
+use super::parser_token_handler::ParserTokenHandler;
 use super::str_reader::StrRange;
 use super::tokenizer::{TokenError, TokenReader};
 use super::tokens::{FilterToken, ParseToken, Token};
@@ -18,9 +18,12 @@ impl<'a> PathParser<'a> {
         Ok(PathParser { parser })
     }
 
-    pub(crate) fn parse<F>(&self, parse_token_handler: &mut F) -> Result<(), String>
-        where
-            F: ParserTokenHandler<'a>,
+    pub(crate) fn parse<F>(
+        &self,
+        parse_token_handler: &mut F,
+    ) -> Result<(), String>
+    where
+        F: ParserTokenHandler<'a>,
     {
         if self.parser.parse_node.is_none() {
             unreachable!()
@@ -53,9 +56,12 @@ impl<'a> ParserImpl<'a> {
         }
     }
 
-    fn string_to_num<F, S: FromStr>(string: &str, msg_handler: F) -> Result<S, TokenError>
-        where
-            F: Fn() -> TokenError,
+    fn string_to_num<F, S: FromStr>(
+        string: &str,
+        msg_handler: F,
+    ) -> Result<S, TokenError>
+    where
+        F: Fn() -> TokenError,
     {
         match string.parse() {
             Ok(n) => Ok(n),
@@ -74,35 +80,44 @@ impl<'a> ParserImpl<'a> {
             Ok(Token::Absolute(_)) => {
                 let node = self.create_node(ParseToken::Absolute);
                 self.paths(node)
-            }
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
 
-    fn paths(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn paths(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#paths");
         match self.token_reader.peek_token() {
             Ok(Token::Dot(_)) => {
                 self.eat_token();
                 self.paths_dot(prev)
-            }
+            },
             Ok(Token::OpenArray(_)) => {
                 self.eat_token();
                 self.eat_whitespace();
                 let node = self.array(prev)?;
                 self.paths(node)
-            }
+            },
             _ => Ok(prev),
         }
     }
 
-    fn paths_dot(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn paths_dot(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#paths_dot");
         let node = self.path(prev)?;
         self.paths(node)
     }
 
-    fn path(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn path(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#path");
         match self.token_reader.peek_token() {
             Ok(Token::Dot(_)) => self.path_leaves(prev),
@@ -111,12 +126,15 @@ impl<'a> ParserImpl<'a> {
             Ok(Token::OpenArray(_)) => {
                 self.eat_token();
                 self.array(prev)
-            }
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
 
-    fn path_leaves(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn path_leaves(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#path_leaves");
         self.eat_token();
         match self.token_reader.peek_token() {
@@ -125,13 +143,16 @@ impl<'a> ParserImpl<'a> {
                 let mut leaves_node = self.create_node(ParseToken::Leaves);
                 leaves_node.left = Some(Box::new(prev));
                 Ok(self.paths(leaves_node)?)
-            }
+            },
             _ => self.path_leaves_key(prev),
         }
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_leaves_key(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn path_leaves_key(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#path_leaves_key");
         Ok(ParserNode {
             token: ParseToken::Leaves,
@@ -141,7 +162,10 @@ impl<'a> ParserImpl<'a> {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_leaves_all(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn path_leaves_all(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#path_leaves_all");
         self.eat_token();
         Ok(ParserNode {
@@ -152,7 +176,10 @@ impl<'a> ParserImpl<'a> {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_in_all(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn path_in_all(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#path_in_all");
         self.eat_token();
         Ok(ParserNode {
@@ -163,7 +190,10 @@ impl<'a> ParserImpl<'a> {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn path_in_key(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn path_in_key(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#path_in_key");
         Ok(ParserNode {
             token: ParseToken::In,
@@ -185,20 +215,29 @@ impl<'a> ParserImpl<'a> {
 
         fn validation_bool_value(v: &str) -> bool {
             let b = v.as_bytes();
-            !b.is_empty() && (b[0] == b't' || b[0] == b'T' || b[0] == b'f' || b[0] == b'F')
+            !b.is_empty()
+                && (b[0] == b't'
+                    || b[0] == b'T'
+                    || b[0] == b'f'
+                    || b[0] == b'F')
         }
 
         if let Ok(Token::Key(s)) = self.token_reader.next_token() {
             let v = self.token_reader.read_value(&s);
             if validation_bool_value(v) {
-                return Ok(self.create_node(ParseToken::Bool(v.eq_ignore_ascii_case("true"))));
+                return Ok(self.create_node(ParseToken::Bool(
+                    v.eq_ignore_ascii_case("true"),
+                )));
             }
         }
 
         Err(self.token_reader.to_error())
     }
 
-    fn array_keys(&mut self, first_key: StrRange) -> Result<ParserNode, TokenError> {
+    fn array_keys(
+        &mut self,
+        first_key: StrRange,
+    ) -> Result<ParserNode, TokenError> {
         let mut keys = vec![first_key];
 
         while let Ok(Token::Comma(_)) = self.token_reader.peek_token() {
@@ -208,7 +247,7 @@ impl<'a> ParserImpl<'a> {
             match self.token_reader.next_token() {
                 Ok(Token::SingleQuoted(s)) | Ok(Token::DoubleQuoted(s)) => {
                     keys.push(s);
-                }
+                },
                 _ => return Err(self.token_reader.to_error()),
             }
 
@@ -228,12 +267,15 @@ impl<'a> ParserImpl<'a> {
                 } else {
                     Ok(self.create_node(ParseToken::Key(s)))
                 }
-            }
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
 
-    fn array_start(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn array_start(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#array_start");
         match self.token_reader.peek_token() {
             Ok(Token::Question(_)) => {
@@ -243,7 +285,7 @@ impl<'a> ParserImpl<'a> {
                     left: Some(Box::new(prev)),
                     right: Some(Box::new(self.filter()?)),
                 })
-            }
+            },
             Ok(Token::Asterisk(_)) => {
                 self.eat_token();
                 Ok(ParserNode {
@@ -251,7 +293,7 @@ impl<'a> ParserImpl<'a> {
                     left: Some(Box::new(prev)),
                     right: Some(Box::new(self.create_node(ParseToken::All))),
                 })
-            }
+            },
             _ => Ok(ParserNode {
                 token: ParseToken::Array,
                 left: Some(Box::new(prev)),
@@ -260,7 +302,10 @@ impl<'a> ParserImpl<'a> {
         }
     }
 
-    fn array(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn array(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#array");
         let ret = self.array_start(prev)?;
         self.eat_whitespace();
@@ -272,7 +317,8 @@ impl<'a> ParserImpl<'a> {
 
         if let Ok(Token::Key(s)) = self.token_reader.next_token() {
             let val = self.token_reader.read_value(&s);
-            let digit = Self::string_to_num(val, || self.token_reader.to_error())?;
+            let digit =
+                Self::string_to_num(val, || self.token_reader.to_error())?;
             self.eat_whitespace();
 
             match self.token_reader.peek_token() {
@@ -292,19 +338,22 @@ impl<'a> ParserImpl<'a> {
             Ok(Token::Split(_)) => {
                 self.eat_token();
                 self.range_to()
-            }
+            },
             Ok(Token::DoubleQuoted(_)) | Ok(Token::SingleQuoted(_)) => {
                 self.array_quote_value()
-            }
+            },
             Err(TokenError::Eof) => Ok(self.create_node(ParseToken::Eof)),
             _ => {
                 self.eat_token();
                 Err(self.token_reader.to_error())
-            }
+            },
         }
     }
 
-    fn union(&mut self, num: isize) -> Result<ParserNode, TokenError> {
+    fn union(
+        &mut self,
+        num: isize,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#union");
         let mut values = vec![num];
         while matches!(self.token_reader.peek_token(), Ok(Token::Comma(_))) {
@@ -314,12 +363,14 @@ impl<'a> ParserImpl<'a> {
             match self.token_reader.next_token() {
                 Ok(Token::Key(s)) => {
                     let val = self.token_reader.read_value(&s);
-                    let digit = Self::string_to_num(val, || self.token_reader.to_error())?;
+                    let digit = Self::string_to_num(val, || {
+                        self.token_reader.to_error()
+                    })?;
                     values.push(digit);
-                }
+                },
                 _ => {
                     return Err(self.token_reader.to_error());
-                }
+                },
             }
         }
         Ok(self.create_node(ParseToken::Union(values)))
@@ -332,34 +383,39 @@ impl<'a> ParserImpl<'a> {
             Ok(Token::Split(_)) => {
                 self.eat_token();
                 self.eat_whitespace();
-            }
+            },
             _ => {
                 return Ok(None);
-            }
+            },
         }
 
         match self.token_reader.peek_token() {
-            Ok(Token::Key(_)) => {}
+            Ok(Token::Key(_)) => {},
             _ => {
                 return Ok(None);
-            }
+            },
         }
 
         match self.token_reader.next_token() {
             Ok(Token::Key(s)) => {
                 let str_step = self.token_reader.read_value(&s);
-                match Self::string_to_num(str_step, || self.token_reader.to_error()) {
+                match Self::string_to_num(str_step, || {
+                    self.token_reader.to_error()
+                }) {
                     Ok(step) => Ok(Some(step)),
                     Err(e) => Err(e),
                 }
-            }
+            },
             _ => {
                 unreachable!();
-            }
+            },
         }
     }
 
-    fn range_from(&mut self, from: isize) -> Result<ParserNode, TokenError> {
+    fn range_from(
+        &mut self,
+        from: isize,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#range_from");
         self.eat_token();
         self.eat_whitespace();
@@ -367,10 +423,20 @@ impl<'a> ParserImpl<'a> {
         match self.token_reader.peek_token() {
             Ok(Token::Key(_)) => self.range(from),
             Ok(Token::Split(_)) => match self.range_value()? {
-                Some(step) => Ok(self.create_node(ParseToken::Range(Some(from), None, Some(step)))),
-                _ => Ok(self.create_node(ParseToken::Range(Some(from), None, None))),
+                Some(step) => Ok(self.create_node(ParseToken::Range(
+                    Some(from),
+                    None,
+                    Some(step),
+                ))),
+                _ => Ok(self.create_node(ParseToken::Range(
+                    Some(from),
+                    None,
+                    None,
+                ))),
             },
-            _ => Ok(self.create_node(ParseToken::Range(Some(from), None, None))),
+            _ => {
+                Ok(self.create_node(ParseToken::Range(Some(from), None, None)))
+            },
         }
     }
 
@@ -378,7 +444,11 @@ impl<'a> ParserImpl<'a> {
         debug!("#range_to");
 
         if let Some(step) = self.range_value()? {
-            return Ok(self.create_node(ParseToken::Range(None, None, Some(step))));
+            return Ok(self.create_node(ParseToken::Range(
+                None,
+                None,
+                Some(step),
+            )));
         }
 
         if let Ok(Token::CloseArray(_)) = self.token_reader.peek_token() {
@@ -388,23 +458,34 @@ impl<'a> ParserImpl<'a> {
         match self.token_reader.next_token() {
             Ok(Token::Key(s)) => {
                 let to_str = self.token_reader.read_value(&s);
-                let to = Self::string_to_num(to_str, || self.token_reader.to_error())?;
+                let to = Self::string_to_num(to_str, || {
+                    self.token_reader.to_error()
+                })?;
                 let step = self.range_value()?;
                 Ok(self.create_node(ParseToken::Range(None, Some(to), step)))
-            }
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
 
-    fn range(&mut self, from: isize) -> Result<ParserNode, TokenError> {
+    fn range(
+        &mut self,
+        from: isize,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#range");
         match self.token_reader.next_token() {
             Ok(Token::Key(s)) => {
                 let str_to = self.token_reader.read_value(&s);
-                let to = Self::string_to_num(str_to, || self.token_reader.to_error())?;
+                let to = Self::string_to_num(str_to, || {
+                    self.token_reader.to_error()
+                })?;
                 let step = self.range_value()?;
-                Ok(self.create_node(ParseToken::Range(Some(from), Some(to), step)))
-            }
+                Ok(self.create_node(ParseToken::Range(
+                    Some(from),
+                    Some(to),
+                    step,
+                )))
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
@@ -415,8 +496,11 @@ impl<'a> ParserImpl<'a> {
             Ok(Token::OpenParenthesis(_)) => {
                 let ret = self.exprs()?;
                 self.eat_whitespace();
-                self.close_token(ret, Token::CloseParenthesis(StrRange::new(0, 0)))
-            }
+                self.close_token(
+                    ret,
+                    Token::CloseParenthesis(StrRange::new(0, 0)),
+                )
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
@@ -430,18 +514,24 @@ impl<'a> ParserImpl<'a> {
                 trace!("\t-exprs - open_parenthesis");
                 let ret = self.exprs()?;
                 self.eat_whitespace();
-                self.close_token(ret, Token::CloseParenthesis(StrRange::new(0, 0)))?
-            }
+                self.close_token(
+                    ret,
+                    Token::CloseParenthesis(StrRange::new(0, 0)),
+                )?
+            },
             _ => {
                 trace!("\t-exprs - else");
                 self.expr()?
-            }
+            },
         };
         self.eat_whitespace();
         self.condition_expr(node)
     }
 
-    fn condition_expr(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn condition_expr(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#condition_expr");
         match self.token_reader.peek_token() {
             Ok(Token::And(_)) => {
@@ -451,7 +541,7 @@ impl<'a> ParserImpl<'a> {
                     left: Some(Box::new(prev)),
                     right: Some(Box::new(self.exprs()?)),
                 })
-            }
+            },
             Ok(Token::Or(_)) => {
                 self.eat_token();
                 Ok(ParserNode {
@@ -459,7 +549,7 @@ impl<'a> ParserImpl<'a> {
                     left: Some(Box::new(prev)),
                     right: Some(Box::new(self.exprs()?)),
                 })
-            }
+            },
             _ => Ok(prev),
         }
     }
@@ -467,19 +557,21 @@ impl<'a> ParserImpl<'a> {
     fn expr(&mut self) -> Result<ParserNode, TokenError> {
         debug!("#expr");
 
-        let has_prop_candidate = matches!(self.token_reader.peek_token(), Ok(Token::At(_)));
+        let has_prop_candidate =
+            matches!(self.token_reader.peek_token(), Ok(Token::At(_)));
 
         let node = self.term()?;
         self.eat_whitespace();
 
-        if matches!(self.token_reader.peek_token(),
+        if matches!(
+            self.token_reader.peek_token(),
             Ok(Token::Equal(_))
-            | Ok(Token::NotEqual(_))
-            | Ok(Token::Little(_))
-            | Ok(Token::LittleOrEqual(_))
-            | Ok(Token::Greater(_))
-            | Ok(Token::GreaterOrEqual(_)))
-        {
+                | Ok(Token::NotEqual(_))
+                | Ok(Token::Little(_))
+                | Ok(Token::LittleOrEqual(_))
+                | Ok(Token::Greater(_))
+                | Ok(Token::GreaterOrEqual(_))
+        ) {
             self.op(node)
         } else if has_prop_candidate {
             Ok(node)
@@ -496,24 +588,32 @@ impl<'a> ParserImpl<'a> {
                 match self.token_reader.peek_token() {
                     Ok(Token::Dot(_)) => self.term_num_float(val),
                     _ => {
-                        let number = Self::string_to_num(val, || self.token_reader.to_error())?;
+                        let number = Self::string_to_num(val, || {
+                            self.token_reader.to_error()
+                        })?;
                         Ok(self.create_node(ParseToken::Number(number)))
-                    }
+                    },
                 }
-            }
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
 
-    fn term_num_float(&mut self, num: &'a str) -> Result<ParserNode, TokenError> {
+    fn term_num_float(
+        &mut self,
+        num: &'a str,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#term_num_float");
         self.eat_token();
         match self.token_reader.next_token() {
             Ok(Token::Key(s)) => {
                 let frac = self.token_reader.read_value(&s);
-                let number = Self::string_to_num(&[num, ".", frac].concat(), || self.token_reader.to_error())?;
+                let number =
+                    Self::string_to_num(&[num, ".", frac].concat(), || {
+                        self.token_reader.to_error()
+                    })?;
                 Ok(self.create_node(ParseToken::Number(number)))
-            }
+            },
             _ => Err(self.token_reader.to_error()),
         }
     }
@@ -525,11 +625,12 @@ impl<'a> ParserImpl<'a> {
             return Err(self.token_reader.to_error());
         }
 
-        let has_term_key = if let Ok(Token::Key(s)) = self.token_reader.peek_token() {
-            Some(s.clone())
-        } else {
-            None
-        };
+        let has_term_key =
+            if let Ok(Token::Key(s)) = self.token_reader.peek_token() {
+                Some(s.clone())
+            } else {
+                None
+            };
 
         if let Some(s) = has_term_key {
             let key = self.token_reader.read_value(&s);
@@ -548,34 +649,37 @@ impl<'a> ParserImpl<'a> {
                     Ok(Token::Whitespace(_)) => {
                         self.eat_whitespace();
                         Ok(node)
-                    }
+                    },
                     _ => self.paths(node),
                 }
-            }
-            Ok(Token::Absolute(_)) => {
-                self.json_path()
-            }
+            },
+            Ok(Token::Absolute(_)) => self.json_path(),
             Ok(Token::DoubleQuoted(_)) | Ok(Token::SingleQuoted(_)) => {
                 self.array_quote_value()
-            }
-            _ => {
-                Err(self.token_reader.to_error())
-            }
+            },
+            _ => Err(self.token_reader.to_error()),
         }
     }
 
-    fn op(&mut self, prev: ParserNode) -> Result<ParserNode, TokenError> {
+    fn op(
+        &mut self,
+        prev: ParserNode,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#op");
         let token = match self.token_reader.next_token() {
             Ok(Token::Equal(_)) => ParseToken::Filter(FilterToken::Equal),
             Ok(Token::NotEqual(_)) => ParseToken::Filter(FilterToken::NotEqual),
             Ok(Token::Little(_)) => ParseToken::Filter(FilterToken::Little),
-            Ok(Token::LittleOrEqual(_)) => ParseToken::Filter(FilterToken::LittleOrEqual),
+            Ok(Token::LittleOrEqual(_)) => {
+                ParseToken::Filter(FilterToken::LittleOrEqual)
+            },
             Ok(Token::Greater(_)) => ParseToken::Filter(FilterToken::Greater),
-            Ok(Token::GreaterOrEqual(_)) => ParseToken::Filter(FilterToken::GreaterOrEqual),
+            Ok(Token::GreaterOrEqual(_)) => {
+                ParseToken::Filter(FilterToken::GreaterOrEqual)
+            },
             _ => {
                 return Err(self.token_reader.to_error());
-            }
+            },
         };
 
         self.eat_whitespace();
@@ -597,7 +701,11 @@ impl<'a> ParserImpl<'a> {
         let _ = self.token_reader.next_token();
     }
 
-    fn close_token(&mut self, ret: ParserNode, token: Token) -> Result<ParserNode, TokenError> {
+    fn close_token(
+        &mut self,
+        ret: ParserNode,
+        token: Token,
+    ) -> Result<ParserNode, TokenError> {
         debug!("#close_token");
         match self.token_reader.next_token() {
             Ok(ref t) if t.is_match_token_type(token) => Ok(ret),
@@ -605,7 +713,10 @@ impl<'a> ParserImpl<'a> {
         }
     }
 
-    fn create_node(&mut self, token: ParseToken) -> ParserNode {
+    fn create_node(
+        &mut self,
+        token: ParseToken,
+    ) -> ParserNode {
         ParserNode {
             left: None,
             right: None,
@@ -623,10 +734,10 @@ pub struct ParserNode {
 
 #[cfg(test)]
 mod path_parser_tests {
-    use paths::ParserTokenHandler;
     use paths::path_parser::PathParser;
     use paths::str_reader::StrRange;
     use paths::tokens::{FilterToken, ParseToken};
+    use paths::ParserTokenHandler;
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,
@@ -642,16 +753,20 @@ mod path_parser_tests {
         }
 
         fn start(&mut self) -> Result<Vec<ParseToken>, String> {
-            let parser = PathParser::compile(self.input).map_err(|_| "Token Error")?;
+            let parser =
+                PathParser::compile(self.input).map_err(|_| "Token Error")?;
             let _ = parser.parse(self);
             Ok(self.stack.split_off(0))
         }
     }
 
     impl<'a> ParserTokenHandler<'a> for NodeVisitorTestImpl<'a> {
-        fn handle<F>(&mut self, token: &ParseToken, _: &F)
-            where
-                F: Fn(&StrRange) -> &'a str
+        fn handle<F>(
+            &mut self,
+            token: &ParseToken,
+            _: &F,
+        ) where
+            F: Fn(&StrRange) -> &'a str,
         {
             trace!("handle {:?}", token);
             self.stack.push(token.clone());
@@ -726,7 +841,10 @@ mod path_parser_tests {
                 ParseToken::In,
                 ParseToken::Key(StrRange::new(2, "00".len())),
                 ParseToken::In,
-                ParseToken::Key(StrRange::new(5, "韓창".chars().map(|c| c.len_utf8()).sum())),
+                ParseToken::Key(StrRange::new(
+                    5,
+                    "韓창".chars().map(|c| c.len_utf8()).sum()
+                )),
                 ParseToken::In,
                 ParseToken::Key(StrRange::new(12, "seok".len()))
             ])
@@ -964,7 +1082,10 @@ mod path_parser_tests {
             Ok(vec![
                 ParseToken::Absolute,
                 ParseToken::Array,
-                ParseToken::Keys(vec![StrRange::new(2, "\"a\"".len()), StrRange::new(7, "'b'".len())]),
+                ParseToken::Keys(vec![
+                    StrRange::new(2, "\"a\"".len()),
+                    StrRange::new(7, "'b'".len())
+                ]),
                 ParseToken::ArrayEof
             ])
         );
