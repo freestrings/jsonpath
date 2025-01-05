@@ -262,3 +262,41 @@ fn bugs50() {
         json!([])
     );
 }
+
+#[test]
+fn bugs92_duplicate_result_similar_indernal_values() {
+    setup();
+
+    select_and_then_compare(
+        "$[?(@.name.first=='A')]",
+        json!([
+            {
+                "name":{
+                    "first":"A"
+                }
+            },
+            {
+                "name":{
+                    "first":"A"
+                }
+            },
+            {
+                "name":{
+                    "first":"B"
+                }
+            }
+        ]),
+        json!([
+            {
+                "name":{
+                    "first":"A"
+                }
+            },
+            {
+                "name":{
+                    "first":"A"
+                }
+            }
+        ]),
+    );
+}
