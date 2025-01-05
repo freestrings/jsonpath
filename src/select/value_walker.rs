@@ -14,7 +14,12 @@ impl<'a> ValueWalker {
         });
     }
 
-    pub fn all_with_str(vec: &[&'a Value], tmp: &mut Vec<&'a Value>, key: &str, is_filter: bool) {
+    pub fn all_with_str(
+        vec: &[&'a Value],
+        tmp: &mut Vec<&'a Value>,
+        key: &str,
+        is_filter: bool,
+    ) {
         if is_filter {
             Self::walk(vec, tmp, &|v| match v {
                 Value::Object(map) if map.contains_key(key) => Some(vec![v]),
@@ -28,7 +33,10 @@ impl<'a> ValueWalker {
         }
     }
 
-    pub fn all(vec: &[&'a Value], tmp: &mut Vec<&'a Value>) {
+    pub fn all(
+        vec: &[&'a Value],
+        tmp: &mut Vec<&'a Value>,
+    ) {
         Self::walk(vec, tmp, &|v| match v {
             Value::Array(vec) => Some(vec.iter().collect()),
             Value::Object(map) => {
@@ -37,7 +45,7 @@ impl<'a> ValueWalker {
                     tmp.push(v);
                 }
                 Some(tmp)
-            }
+            },
             _ => None,
         });
     }
@@ -64,13 +72,13 @@ impl<'a> ValueWalker {
                 for v in vec {
                     Self::_walk(v, tmp, fun);
                 }
-            }
+            },
             Value::Object(map) => {
                 for (_, v) in map {
                     Self::_walk(v, tmp, fun);
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -89,13 +97,13 @@ impl<'a> ValueWalker {
                         tmp.push(v)
                     }
                 }
-            }
+            },
             Value::Array(vec) => {
                 for v in vec {
                     Self::walk_dedup(v, tmp, key, visited);
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 }

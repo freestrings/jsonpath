@@ -20,18 +20,28 @@ impl<'a> ExprTerm<'a> {
     ) -> ExprTerm<'a> {
         match &self {
             ExprTerm::String(s1) => match &other {
-                ExprTerm::String(s2) => ExprTerm::Bool(cmp_fn.cmp_string(s1, s2)),
-                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::String(s2) => {
+                    ExprTerm::Bool(cmp_fn.cmp_string(s1, s2))
+                },
+                ExprTerm::Json(_, _, _) => {
+                    other.cmp(self, reverse_cmp_fn, cmp_fn)
+                },
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Number(n1) => match &other {
-                ExprTerm::Number(n2) => ExprTerm::Bool(cmp_fn.cmp_f64(to_f64(n1), to_f64(n2))),
-                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Number(n2) => {
+                    ExprTerm::Bool(cmp_fn.cmp_f64(to_f64(n1), to_f64(n2)))
+                },
+                ExprTerm::Json(_, _, _) => {
+                    other.cmp(self, reverse_cmp_fn, cmp_fn)
+                },
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Bool(b1) => match &other {
                 ExprTerm::Bool(b2) => ExprTerm::Bool(cmp_fn.cmp_bool(*b1, *b2)),
-                ExprTerm::Json(_, _, _) => other.cmp(self, reverse_cmp_fn, cmp_fn),
+                ExprTerm::Json(_, _, _) => {
+                    other.cmp(self, reverse_cmp_fn, cmp_fn)
+                },
                 _ => ExprTerm::Bool(cmp_fn.default()),
             },
             ExprTerm::Json(rel, fk1, vec1) => {
@@ -42,12 +52,13 @@ impl<'a> ExprTerm<'a> {
                             Value::String(s1) => cmp_fn.cmp_string(s1, s2),
                             Value::Object(map1) => {
                                 if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::String(s1)) = map1.get(k) {
+                                    if let Some(Value::String(s1)) = map1.get(k)
+                                    {
                                         return cmp_fn.cmp_string(s1, s2);
                                     }
                                 }
                                 cmp_fn.default()
-                            }
+                            },
                             _ => cmp_fn.default(),
                         })
                         .cloned()
@@ -55,15 +66,19 @@ impl<'a> ExprTerm<'a> {
                     ExprTerm::Number(n2) => vec1
                         .iter()
                         .filter(|v1| match v1 {
-                            Value::Number(n1) => cmp_fn.cmp_f64(to_f64(n1), to_f64(n2)),
+                            Value::Number(n1) => {
+                                cmp_fn.cmp_f64(to_f64(n1), to_f64(n2))
+                            },
                             Value::Object(map1) => {
                                 if let Some(FilterKey::String(k)) = fk1 {
-                                    if let Some(Value::Number(n1)) = map1.get(k) {
-                                        return cmp_fn.cmp_f64(to_f64(n1), to_f64(n2));
+                                    if let Some(Value::Number(n1)) = map1.get(k)
+                                    {
+                                        return cmp_fn
+                                            .cmp_f64(to_f64(n1), to_f64(n2));
                                     }
                                 }
                                 cmp_fn.default()
-                            }
+                            },
                             _ => cmp_fn.default(),
                         })
                         .cloned()
@@ -79,7 +94,7 @@ impl<'a> ExprTerm<'a> {
                                     }
                                 }
                                 cmp_fn.default()
-                            }
+                            },
                             _ => cmp_fn.default(),
                         })
                         .cloned()
@@ -92,7 +107,7 @@ impl<'a> ExprTerm<'a> {
                         } else {
                             cmp_fn.cmp_json(vec1, vec2)
                         }
-                    }
+                    },
                 };
 
                 if ret.is_empty() {
@@ -119,11 +134,15 @@ impl<'a> ExprTerm<'a> {
                 } else {
                     ExprTerm::Json(None, None, ret)
                 }
-            }
+            },
         }
     }
 
-    pub fn eq(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn eq(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("eq - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpEq, &CmpEq);
@@ -131,7 +150,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn ne(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn ne(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("ne - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpNe, &CmpNe);
@@ -139,7 +162,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn gt(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn gt(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("gt - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpGt, &CmpLt);
@@ -147,7 +174,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn ge(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn ge(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("ge - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpGe, &CmpLe);
@@ -155,7 +186,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn lt(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn lt(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("lt - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpLt, &CmpGt);
@@ -163,7 +198,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn le(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn le(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("le - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpLe, &CmpGe);
@@ -171,7 +210,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn and(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn and(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("and - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpAnd, &CmpAnd);
@@ -179,7 +222,11 @@ impl<'a> ExprTerm<'a> {
         *ret = Some(tmp);
     }
 
-    pub fn or(&self, other: &Self, ret: &mut Option<ExprTerm<'a>>) {
+    pub fn or(
+        &self,
+        other: &Self,
+        ret: &mut Option<ExprTerm<'a>>,
+    ) {
         debug!("or - {:?} : {:?}", &self, &other);
         let _ = ret.take();
         let tmp = self.cmp(other, &CmpOr, &CmpOr);
@@ -195,7 +242,7 @@ impl<'a> From<&Vec<&'a Value>> for ExprTerm<'a> {
                 Value::Number(v) => return ExprTerm::Number(v.clone()),
                 Value::String(v) => return ExprTerm::String(v.clone()),
                 Value::Bool(v) => return ExprTerm::Bool(*v),
-                _ => {}
+                _ => {},
             }
         }
 

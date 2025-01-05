@@ -13,7 +13,10 @@ pub struct StrRange {
 }
 
 impl StrRange {
-    pub fn new(pos: usize, offset: usize) -> Self {
+    pub fn new(
+        pos: usize,
+        offset: usize,
+    ) -> Self {
         StrRange { pos, offset }
     }
 }
@@ -69,7 +72,10 @@ impl<'a> StrReader<'a> {
         Ok((StrRange::new(pos, len), ch))
     }
 
-    pub fn read(&self, span: &StrRange) -> &'a str {
+    pub fn read(
+        &self,
+        span: &StrRange,
+    ) -> &'a str {
         &self.input[span.pos..(span.pos + span.offset)]
     }
 

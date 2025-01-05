@@ -12,7 +12,7 @@ impl<'a> ValueWalker {
             match v {
                 Value::Object(map) => acc.extend(map.values()),
                 Value::Array(vec) => acc.extend(vec),
-                _ => {}
+                _ => {},
             }
             acc
         })
@@ -104,7 +104,7 @@ impl<'a> ValueWalker {
         match v {
             Value::Array(vec) => {
                 vec.iter().for_each(|v| Self::_walk(v, acc, fun));
-            }
+            },
             Value::Object(map) => {
                 map.values().for_each(|v| Self::_walk(v, acc, fun));
             }
@@ -156,7 +156,7 @@ impl<'a> ValueWalker {
                 } else if depth == 0 {
                     is_not_contain(index);
                 }
-            }
+            },
             Value::Array(vec) => {
                 if depth == 0 {
                     is_not_contain(index);
@@ -172,12 +172,12 @@ impl<'a> ValueWalker {
                         depth + 1,
                     );
                 })
-            }
+            },
             _ => {
                 if depth == 0 {
                     is_not_contain(index);
                 }
-            }
+            },
         }
     }
 }

@@ -329,7 +329,8 @@ fn readme_select_as() {
 
 #[test]
 fn readme_compile() {
-    let first_firend = jsonpath::PathCompiled::compile("$..friends[0]").unwrap();
+    let first_firend =
+        jsonpath::PathCompiled::compile("$..friends[0]").unwrap();
 
     let json_obj = json!({
         "school": {
@@ -510,17 +511,17 @@ fn readme_replace_with() {
             {"name": "친구4"}
     ]});
 
-    let result = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
-        let age = if let Value::Number(n) = v {
-            n.as_u64().unwrap() * 2
-        } else {
-            0
-        };
+    let result =
+        jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+            let age = if let Value::Number(n) = v {
+                n.as_u64().unwrap() * 2
+            } else {
+                0
+            };
 
         Some(json!(age))
     })
     .unwrap();
-
     assert_eq!(
         result,
         json!({

@@ -136,42 +136,66 @@ fn op_ge() {
 fn op_eq_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a == 1)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a == 1)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_ne_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a != 2)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a != 2)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_lt_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a < 2)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a < 2)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_le_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a <= 1)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a <= 1)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_gt_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a > 0)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a > 0)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_ge_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a >= 0)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a >= 0)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
@@ -200,7 +224,11 @@ fn op_ne_for_string_value() {
 fn op_lt_for_string_value() {
     setup();
 
-    select_and_then_compare(r#"$.[?(@.a < "b")]"#, json!({ "a": "b" }), json!([]));
+    select_and_then_compare(
+        r#"$.[?(@.a < "b")]"#,
+        json!({ "a": "b" }),
+        json!([]),
+    );
 }
 
 #[test]
@@ -218,7 +246,11 @@ fn op_le_for_string_value() {
 fn op_gt_for_string_value() {
     setup();
 
-    select_and_then_compare(r#"$.[?(@.a > "b")]"#, json!({ "a": "b" }), json!([]));
+    select_and_then_compare(
+        r#"$.[?(@.a > "b")]"#,
+        json!({ "a": "b" }),
+        json!([]),
+    );
 }
 
 #[test]

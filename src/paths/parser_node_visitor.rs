@@ -21,7 +21,7 @@ pub trait ParserNodeVisitor<'a> {
             | ParseToken::Number(_)
             | ParseToken::Bool(_) => {
                 token_handler.handle(&parse_node.token, parse_value_reader);
-            }
+            },
             ParseToken::In | ParseToken::Leaves => {
                 if let Some(n) = &parse_node.left {
                     self.visit(n, token_handler, parse_value_reader);
@@ -32,7 +32,7 @@ pub trait ParserNodeVisitor<'a> {
                 if let Some(n) = &parse_node.right {
                     self.visit(n, token_handler, parse_value_reader);
                 }
-            }
+            },
             ParseToken::Array => {
                 if let Some(n) = &parse_node.left {
                     self.visit(n, token_handler, parse_value_reader);
@@ -45,8 +45,9 @@ pub trait ParserNodeVisitor<'a> {
                 }
 
                 token_handler.handle(&ParseToken::ArrayEof, parse_value_reader);
-            }
-            ParseToken::Filter(FilterToken::And) | ParseToken::Filter(FilterToken::Or) => {
+            },
+            ParseToken::Filter(FilterToken::And)
+            | ParseToken::Filter(FilterToken::Or) => {
                 if let Some(n) = &parse_node.left {
                     self.visit(n, token_handler, parse_value_reader);
                 }
@@ -56,7 +57,7 @@ pub trait ParserNodeVisitor<'a> {
                 }
 
                 token_handler.handle(&parse_node.token, parse_value_reader);
-            }
+            },
             ParseToken::Filter(_) => {
                 if let Some(n) = &parse_node.left {
                     self.visit(n, token_handler, parse_value_reader);
@@ -67,8 +68,8 @@ pub trait ParserNodeVisitor<'a> {
                 }
 
                 token_handler.handle(&parse_node.token, parse_value_reader);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 }

@@ -10,7 +10,10 @@ pub fn to_f64(n: &Number) -> f64 {
     }
 }
 
-pub fn abs_index(n: isize, len: usize) -> usize {
+pub fn abs_index(
+    n: isize,
+    len: usize,
+) -> usize {
     if n < 0_isize {
         (n + len as isize).max(0) as usize
     } else {
@@ -47,7 +50,8 @@ pub fn to_path_str(key: &str) -> PathKey {
         let s = &key[1..key.len() - 1];
         path_key.key = s;
         if key.contains('\\') {
-            path_key.special_key = Some(s.chars().filter(|ch| ch != &'\\').collect());
+            path_key.special_key =
+                Some(s.chars().filter(|ch| ch != &'\\').collect());
         }
     }
     path_key

@@ -30,7 +30,7 @@ impl<'a> ExprTerm<'a> {
                 let p1 = utils::to_path_str(s1);
                 let p2 = utils::to_path_str(s2);
                 ExprTerm::Bool(cmp_fn.cmp_string(p1.get_key(), p2.get_key()))
-            }
+            },
             ExprTerm::Json(_, _, _) => unreachable!(),
             _ => ExprTerm::Bool(cmp_fn.default()),
         }
@@ -108,6 +108,7 @@ impl<'a> ExprTerm<'a> {
                     }
                     cmp_fn.default()
                 }
+
                 _ => cmp_fn.default(),
             })
             .copied()
@@ -255,56 +256,80 @@ impl<'a> ExprTerm<'a> {
         }
     }
 
-    pub fn eq_(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn eq_(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("eq - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpEq, &CmpEq);
         debug!("eq = {:?}", expr);
         expr
     }
 
-    pub fn ne_(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn ne_(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("ne - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpNe, &CmpNe);
         debug!("ne = {:?}", expr);
         expr
     }
 
-    pub fn gt(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn gt(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("gt - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpGt, &CmpLt);
         debug!("gt = {:?}", expr);
         expr
     }
 
-    pub fn ge(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn ge(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("ge - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpGe, &CmpLe);
         debug!("ge = {:?}", expr);
         expr
     }
 
-    pub fn lt(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn lt(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("lt - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpLt, &CmpGt);
         debug!("lt = {:?}", expr);
         expr
     }
 
-    pub fn le(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn le(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("le - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpLe, &CmpGe);
         debug!("le = {:?}", expr);
         expr
     }
 
-    pub fn and(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn and(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("and - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpAnd, &CmpAnd);
         debug!("and = {:?}", expr);
         expr
     }
 
-    pub fn or(&mut self, mut other: Self) -> ExprTerm<'a> {
+    pub fn or(
+        &mut self,
+        mut other: Self,
+    ) -> ExprTerm<'a> {
         debug!("or - {:?} : {:?}", &self, &other);
         let expr = self.cmp(&mut other, &CmpOr, &CmpOr);
         debug!("or = {:?}", expr);
@@ -319,7 +344,7 @@ impl<'a> From<&Vec<&'a Value>> for ExprTerm<'a> {
                 Value::Number(v) => return ExprTerm::Number(v.clone()),
                 Value::String(v) => return ExprTerm::String(v.as_str()),
                 Value::Bool(v) => return ExprTerm::Bool(*v),
-                _ => {}
+                _ => {},
             }
         }
 
@@ -351,7 +376,10 @@ impl<'a> FilterTerms<'a> {
         self.0.is_empty()
     }
 
-    pub fn push_term(&mut self, term: Option<ExprTerm<'a>>) {
+    pub fn push_term(
+        &mut self,
+        term: Option<ExprTerm<'a>>,
+    ) {
         self.0.push(term);
     }
 
@@ -505,17 +533,19 @@ impl<'a> FilterTerms<'a> {
                         Some(Vec::new())
                     } else if let Some(vec) = rel {
                         let index = utils::abs_index(index as isize, vec.len());
-                        let ret = vec.get(index).map_or(Vec::new(), |v| vec![*v]);
+                        let ret =
+                            vec.get(index).map_or(Vec::new(), |v| vec![*v]);
                         Some(ret)
                     } else {
                         let index = utils::abs_index(index as isize, vec.len());
-                        let ret = vec.get(index).map_or(Vec::new(), |v| vec![*v]);
+                        let ret =
+                            vec.get(index).map_or(Vec::new(), |v| vec![*v]);
                         Some(ret)
                     };
-                }
+                },
                 _ => {
                     self.push_term(Some(e));
-                }
+                },
             }
         }
 
@@ -547,7 +577,10 @@ impl<'a> FilterTerms<'a> {
         Some(acc)
     }
 
-    pub fn collect_next_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+    pub fn collect_next_all(
+        &mut self,
+        current: Option<Vec<&'a Value>>,
+    ) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!("collect_next_all : {:?}", &current);
             return current;
@@ -556,7 +589,10 @@ impl<'a> FilterTerms<'a> {
         Some(ValueWalker::next_all(&current.unwrap()))
     }
 
-    pub fn collect_all(&mut self, current: Option<Vec<&'a Value>>) -> Option<Vec<&'a Value>> {
+    pub fn collect_all(
+        &mut self,
+        current: Option<Vec<&'a Value>>,
+    ) -> Option<Vec<&'a Value>> {
         if current.is_none() {
             debug!("collect_all: {:?}", &current);
             return current;
