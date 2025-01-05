@@ -136,52 +136,76 @@ fn op_ge() {
 fn op_eq_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a == 1)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a == 1)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_ne_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a != 2)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a != 2)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_lt_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a < 2)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a < 2)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_le_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a <= 1)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a <= 1)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_gt_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a > 0)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a > 0)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
 
 #[test]
 fn op_ge_for_number() {
     setup();
 
-    select_and_then_compare("$.[?(@.a >= 0)]", json!({ "a": 1 }), json!([{ "a": 1 }]));
+    select_and_then_compare(
+        "$.[?(@.a >= 0)]",
+        json!({ "a": 1 }),
+        json!([{ "a": 1 }]),
+    );
 }
-
-
 
 #[test]
 fn op_eq_for_string_value() {
     setup();
 
     select_and_then_compare(
-        r#"$.[?(@.a == "b")]"#, json!({ "a": "b" }), json!([{ "a": "b" }]),
+        r#"$.[?(@.a == "b")]"#,
+        json!({ "a": "b" }),
+        json!([{ "a": "b" }]),
     );
 }
 
@@ -190,9 +214,10 @@ fn op_ne_for_string_value() {
     setup();
 
     select_and_then_compare(
-        r#"$.[?(@.a != "c")]"#, json!({ "a": "b" }), json!([{ "a": "b" }]),
+        r#"$.[?(@.a != "c")]"#,
+        json!({ "a": "b" }),
+        json!([{ "a": "b" }]),
     );
-
 }
 
 #[test]
@@ -200,7 +225,9 @@ fn op_lt_for_string_value() {
     setup();
 
     select_and_then_compare(
-        r#"$.[?(@.a < "b")]"#, json!({ "a": "b" }), json!([]),
+        r#"$.[?(@.a < "b")]"#,
+        json!({ "a": "b" }),
+        json!([]),
     );
 }
 
@@ -209,7 +236,9 @@ fn op_le_for_string_value() {
     setup();
 
     select_and_then_compare(
-        r#"$.[?(@.a <= "b")]"#, json!({ "a": "b" }), json!([{ "a": "b" }]),
+        r#"$.[?(@.a <= "b")]"#,
+        json!({ "a": "b" }),
+        json!([{ "a": "b" }]),
     );
 }
 
@@ -218,7 +247,9 @@ fn op_gt_for_string_value() {
     setup();
 
     select_and_then_compare(
-        r#"$.[?(@.a > "b")]"#, json!({ "a": "b" }), json!([]),
+        r#"$.[?(@.a > "b")]"#,
+        json!({ "a": "b" }),
+        json!([]),
     );
 }
 
@@ -227,7 +258,9 @@ fn op_ge_for_string_value() {
     setup();
 
     select_and_then_compare(
-        r#"$.[?(@.a >= "b")]"#, json!({ "a": "b" }), json!([{ "a": "b" }]),
+        r#"$.[?(@.a >= "b")]"#,
+        json!({ "a": "b" }),
+        json!([{ "a": "b" }]),
     );
 }
 
@@ -314,21 +347,21 @@ fn cmp_json_rel() {
             }
         }),
         json!([
-                   {
-                      "a" : {
-                         "a" : [
-                            true,
-                            "1"
-                         ]
-                      },
-                      "b" : {
-                         "a" : [
-                            true,
-                            "1"
-                         ]
-                      }
-                   }
-                ])
+           {
+              "a" : {
+                 "a" : [
+                    true,
+                    "1"
+                 ]
+              },
+              "b" : {
+                 "a" : [
+                    true,
+                    "1"
+                 ]
+              }
+           }
+        ]),
     )
 }
 
@@ -403,7 +436,7 @@ fn op_ne_for_complex_value() {
                  "b" : 1
               }
            }
-        ])
+        ]),
     );
 }
 
@@ -439,7 +472,7 @@ fn op_compare_different_types() {
         r#"$[?(true == 1)]"#,
         r#"$[?(@ == 1)]"#,
     ]
-        .iter()
+    .iter()
     {
         select_and_then_compare(path, json!({}), json!([]));
     }

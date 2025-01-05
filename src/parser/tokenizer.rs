@@ -62,7 +62,10 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn is_match_token_type(&self, other: Token) -> bool {
+    pub fn is_match_token_type(
+        &self,
+        other: Token,
+    ) -> bool {
         match self {
             Token::Absolute(_) => matches!(other, Token::Absolute(_)),
             Token::Dot(_) => matches!(other, Token::Dot(_)),
@@ -73,20 +76,34 @@ impl Token {
             Token::Question(_) => matches!(other, Token::Question(_)),
             Token::Comma(_) => matches!(other, Token::Comma(_)),
             Token::Split(_) => matches!(other, Token::Split(_)),
-            Token::OpenParenthesis(_) => matches!(other, Token::OpenParenthesis(_)),
-            Token::CloseParenthesis(_) => matches!(other, Token::CloseParenthesis(_)),
+            Token::OpenParenthesis(_) => {
+                matches!(other, Token::OpenParenthesis(_))
+            },
+            Token::CloseParenthesis(_) => {
+                matches!(other, Token::CloseParenthesis(_))
+            },
             Token::Key(_, _) => matches!(other, Token::Key(_, _)),
-            Token::DoubleQuoted(_, _) => matches!(other, Token::DoubleQuoted(_, _)),
-            Token::SingleQuoted(_, _) => matches!(other, Token::SingleQuoted(_, _)),
+            Token::DoubleQuoted(_, _) => {
+                matches!(other, Token::DoubleQuoted(_, _))
+            },
+            Token::SingleQuoted(_, _) => {
+                matches!(other, Token::SingleQuoted(_, _))
+            },
             Token::Equal(_) => matches!(other, Token::Equal(_)),
-            Token::GreaterOrEqual(_) => matches!(other, Token::GreaterOrEqual(_)),
+            Token::GreaterOrEqual(_) => {
+                matches!(other, Token::GreaterOrEqual(_))
+            },
             Token::Greater(_) => matches!(other, Token::Greater(_)),
             Token::Little(_) => matches!(other, Token::Little(_)),
-            Token::LittleOrEqual(_) => matches!(other, Token::LittleOrEqual(_)),
+            Token::LittleOrEqual(_) => {
+                matches!(other, Token::LittleOrEqual(_))
+            },
             Token::NotEqual(_) => matches!(other, Token::NotEqual(_)),
             Token::And(_) => matches!(other, Token::And(_)),
             Token::Or(_) => matches!(other, Token::Or(_)),
-            Token::Whitespace(_, _) => matches!(other, Token::Whitespace(_, _)),
+            Token::Whitespace(_, _) => {
+                matches!(other, Token::Whitespace(_, _))
+            },
         }
     }
 }
@@ -103,28 +120,20 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn dolla(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn dolla(
+        &mut self,
+        pos: usize,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN
+            | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA
+            | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
+            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
-        let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
+        let (_, mut vec) =
+            self.input.take_while(fun).map_err(to_token_error)?;
         vec.insert(0, ch);
 
         if vec.len() == 1 {
@@ -134,7 +143,10 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn quote(&mut self, ch: char) -> Result<String, TokenError> {
+    fn quote(
+        &mut self,
+        ch: char,
+    ) -> Result<String, TokenError> {
         let (_, mut val) = self
             .input
             .take_while(|c| *c != ch)
@@ -157,83 +169,119 @@ impl<'a> Tokenizer<'a> {
         Ok(val)
     }
 
-    fn single_quote(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn single_quote(
+        &mut self,
+        pos: usize,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         let val = self.quote(ch)?;
         Ok(Token::SingleQuoted(pos, val))
     }
 
-    fn double_quote(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn double_quote(
+        &mut self,
+        pos: usize,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         let val = self.quote(ch)?;
         Ok(Token::DoubleQuoted(pos, val))
     }
 
-    fn equal(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn equal(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::Equal(pos))
-            }
+            },
             _ => Err(TokenError::Position(pos)),
         }
     }
 
-    fn not_equal(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn not_equal(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::NotEqual(pos))
-            }
+            },
             _ => Err(TokenError::Position(pos)),
         }
     }
 
-    fn little(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn little(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::LittleOrEqual(pos))
-            }
+            },
             _ => Ok(Token::Little(pos)),
         }
     }
 
-    fn greater(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn greater(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_EQUAL => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::GreaterOrEqual(pos))
-            }
+            },
             _ => Ok(Token::Greater(pos)),
         }
     }
 
-    fn and(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn and(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_AMPERSAND => {
                 let _ = self.input.next_char().map_err(to_token_error);
                 Ok(Token::And(pos))
-            }
+            },
             _ => Err(TokenError::Position(pos)),
         }
     }
 
-    fn or(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn or(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
         match ch {
             CH_PIPE => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::Or(pos))
-            }
+            },
             _ => Err(TokenError::Position(pos)),
         }
     }
 
-    fn whitespace(&mut self, pos: usize, _: char) -> Result<Token, TokenError> {
+    fn whitespace(
+        &mut self,
+        pos: usize,
+        _: char,
+    ) -> Result<Token, TokenError> {
         let (_, vec) = self
             .input
             .take_while(|c| c.is_whitespace())
@@ -241,29 +289,20 @@ impl<'a> Tokenizer<'a> {
         Ok(Token::Whitespace(pos, vec.len()))
     }
 
-    fn other(&mut self, pos: usize, ch: char) -> Result<Token, TokenError> {
+    fn other(
+        &mut self,
+        pos: usize,
+        ch: char,
+    ) -> Result<Token, TokenError> {
         let fun = |c: &char| match c {
-            &CH_DOLLA
-            | &CH_DOT
-            | &CH_ASTERISK
-            | &CH_LARRAY
-            | &CH_RARRAY
-            | &CH_LPAREN
-            | &CH_RPAREN
-            | &CH_AT
-            | &CH_QUESTION
-            | &CH_COMMA
-            | &CH_SEMICOLON
-            | &CH_LITTLE
-            | &CH_GREATER
-            | &CH_EQUAL
-            | &CH_AMPERSAND
-            | &CH_PIPE
-            | &CH_EXCLAMATION
-            => false,
+            &CH_DOLLA | &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY
+            | &CH_LPAREN | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA
+            | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
+            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
             _ => !c.is_whitespace(),
         };
-        let (_, mut vec) = self.input.take_while(fun).map_err(to_token_error)?;
+        let (_, mut vec) =
+            self.input.take_while(fun).map_err(to_token_error)?;
         vec.insert(0, ch);
         Ok(Token::Key(pos, vec))
     }
@@ -316,7 +355,7 @@ impl<'a> TokenReader<'a> {
             match tokenizer.next_token() {
                 Ok(t) => {
                     tokens.insert(0, (tokenizer.current_pos(), t));
-                }
+                },
                 Err(e) => {
                     return TokenReader {
                         origin_input: input,
@@ -325,7 +364,7 @@ impl<'a> TokenReader<'a> {
                         tokens,
                         curr_pos: None,
                     };
-                }
+                },
             }
         }
     }
@@ -335,11 +374,11 @@ impl<'a> TokenReader<'a> {
             Some((_, t)) => {
                 trace!("%{:?}", t);
                 Ok(t)
-            }
+            },
             _ => {
                 trace!("%{:?}", self.err);
                 Err(self.err.clone())
-            }
+            },
         }
     }
 
@@ -349,15 +388,18 @@ impl<'a> TokenReader<'a> {
                 self.curr_pos = Some(pos);
                 trace!("@{:?}", t);
                 Ok(t)
-            }
+            },
             _ => {
                 trace!("@{:?}", self.err);
                 Err(self.err.clone())
-            }
+            },
         }
     }
 
-    pub fn err_msg_with_pos(&self, pos: usize) -> String {
+    pub fn err_msg_with_pos(
+        &self,
+        pos: usize,
+    ) -> String {
         format!("{}\n{}", self.origin_input, "^".repeat(pos))
     }
 

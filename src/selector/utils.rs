@@ -10,7 +10,10 @@ pub fn to_f64(n: &Number) -> f64 {
     }
 }
 
-pub fn abs_index(n: isize, len: usize) -> usize {
+pub fn abs_index(
+    n: isize,
+    len: usize,
+) -> usize {
     if n < 0_isize {
         (n + len as isize).max(0) as usize
     } else {
@@ -20,7 +23,7 @@ pub fn abs_index(n: isize, len: usize) -> usize {
 
 pub struct PathKey<'a> {
     key: &'a str,
-    special_key: Option<String>
+    special_key: Option<String>,
 }
 
 impl<'a: 'b, 'b> PathKey<'a> {
@@ -40,14 +43,15 @@ impl<'a: 'b, 'b> PathKey<'a> {
 pub fn to_path_str(key: &str) -> PathKey {
     let mut path_key = PathKey {
         key,
-        special_key: None
+        special_key: None,
     };
 
     if key.starts_with('\'') || key.starts_with('"') {
         let s = &key[1..key.len() - 1];
         path_key.key = s;
         if key.contains('\\') {
-            path_key.special_key = Some(s.chars().filter(|ch| ch != &'\\').collect());
+            path_key.special_key =
+                Some(s.chars().filter(|ch| ch != &'\\').collect());
         }
     }
     path_key

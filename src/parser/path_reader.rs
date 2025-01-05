@@ -20,7 +20,10 @@ impl<'a> PathReader<'a> {
         Ok((self.pos + ch.len_utf8(), ch))
     }
 
-    pub fn take_while<F>(&mut self, fun: F) -> Result<(usize, String), ReaderError>
+    pub fn take_while<F>(
+        &mut self,
+        fun: F,
+    ) -> Result<(usize, String), ReaderError>
     where
         F: Fn(&char) -> bool,
     {

@@ -176,9 +176,7 @@ fn readme_selector() {
     let parser = PathParser::compile("$..[?(@.age >= 30)]").unwrap();
     let mut selector = JsonSelector::new(parser);
 
-    let result = selector.value(&json_obj)
-        .select()
-        .unwrap();
+    let result = selector.value(&json_obj).select().unwrap();
 
     assert_eq!(vec![&json!({"name": "친구3", "age": 30})], result);
 
@@ -212,7 +210,8 @@ fn readme_selector_mut() {
     let parser = PathParser::compile("$..[?(@.age == 20)].age").unwrap();
     let mut selector_mut = JsonSelectorMut::new(parser);
 
-    let result = selector_mut.value(json_obj)
+    let result = selector_mut
+        .value(json_obj)
         .replace_with(&mut |v| {
             let age = if let Value::Number(n) = v {
                 n.as_u64().unwrap() * 2
@@ -286,7 +285,7 @@ fn readme_select_as_str() {
     "#,
         "$..friends[0]",
     )
-        .unwrap();
+    .unwrap();
 
     assert_eq!(
         ret,
@@ -317,7 +316,7 @@ fn readme_select_as() {
                 }"#,
         "$.person",
     )
-        .unwrap();
+    .unwrap();
 
     let person = Person {
         name: "Doe John".to_string(),
@@ -330,7 +329,8 @@ fn readme_select_as() {
 
 #[test]
 fn readme_compile() {
-    let first_firend = jsonpath::PathCompiled::compile("$..friends[0]").unwrap();
+    let first_firend =
+        jsonpath::PathCompiled::compile("$..friends[0]").unwrap();
 
     let json_obj = json!({
         "school": {
@@ -511,15 +511,16 @@ fn readme_replace_with() {
             {"name": "친구4"}
     ]});
 
-    let result = jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
-        let age = if let Value::Number(n) = v {
-            n.as_u64().unwrap() * 2
-        } else {
-            0
-        };
+    let result =
+        jsonpath::replace_with(json_obj, "$..[?(@.age == 20)].age", &mut |v| {
+            let age = if let Value::Number(n) = v {
+                n.as_u64().unwrap() * 2
+            } else {
+                0
+            };
 
-        Some(json!(age))
-    })
+            Some(json!(age))
+        })
         .unwrap();
 
     assert_eq!(

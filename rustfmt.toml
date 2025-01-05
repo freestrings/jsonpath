@@ -1,5 +1,3 @@
-error_on_line_overflow = true
-error_on_unformatted = true
-style_edition = "2024"
-overflow_delimited_expr = false
 max_width = 80
+fn_params_layout="Vertical"
+match_block_trailing_comma=true

@@ -28,7 +28,10 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn is_match_token_type(&self, other: Token) -> bool {
+    pub fn is_match_token_type(
+        &self,
+        other: Token,
+    ) -> bool {
         match self {
             Token::Absolute(_) => matches!(other, Token::Absolute(_)),
             Token::Dot(_) => matches!(other, Token::Dot(_)),
@@ -39,16 +42,24 @@ impl Token {
             Token::Question(_) => matches!(other, Token::Question(_)),
             Token::Comma(_) => matches!(other, Token::Comma(_)),
             Token::Split(_) => matches!(other, Token::Split(_)),
-            Token::OpenParenthesis(_) => matches!(other, Token::OpenParenthesis(_)),
-            Token::CloseParenthesis(_) => matches!(other, Token::CloseParenthesis(_)),
+            Token::OpenParenthesis(_) => {
+                matches!(other, Token::OpenParenthesis(_))
+            },
+            Token::CloseParenthesis(_) => {
+                matches!(other, Token::CloseParenthesis(_))
+            },
             Token::Key(_) => matches!(other, Token::Key(_)),
             Token::DoubleQuoted(_) => matches!(other, Token::DoubleQuoted(_)),
             Token::SingleQuoted(_) => matches!(other, Token::SingleQuoted(_)),
             Token::Equal(_) => matches!(other, Token::Equal(_)),
-            Token::GreaterOrEqual(_) => matches!(other, Token::GreaterOrEqual(_)),
+            Token::GreaterOrEqual(_) => {
+                matches!(other, Token::GreaterOrEqual(_))
+            },
             Token::Greater(_) => matches!(other, Token::Greater(_)),
             Token::Little(_) => matches!(other, Token::Little(_)),
-            Token::LittleOrEqual(_) => matches!(other, Token::LittleOrEqual(_)),
+            Token::LittleOrEqual(_) => {
+                matches!(other, Token::LittleOrEqual(_))
+            },
             Token::NotEqual(_) => matches!(other, Token::NotEqual(_)),
             Token::And(_) => matches!(other, Token::And(_)),
             Token::Or(_) => matches!(other, Token::Or(_)),
@@ -56,7 +67,10 @@ impl Token {
         }
     }
 
-    pub fn reset_span(&mut self, new_span: StrRange) -> Token {
+    pub fn reset_span(
+        &mut self,
+        new_span: StrRange,
+    ) -> Token {
         match self {
             Token::Absolute(_) => Token::Absolute(new_span),
             Token::Dot(_) => Token::Dot(new_span),
