@@ -288,7 +288,11 @@ fn unsupported_in_filter() {
         "b": {"x": {"i": 20, "j": 5}}
     }]);
 
-    select_and_then_compare("$..x[?(@.i>10)]", json.clone(), json!([{"i": 20,"j": 5}]));
+    select_and_then_compare(
+        "$..x[?(@.i>10)]",
+        json.clone(),
+        json!([{"i": 20,"j": 5}]),
+    );
 
     // Should not panic ('empty term left')
     select_and_then_compare("$..x[?($.i>10)]", json.clone(), json!([]));
