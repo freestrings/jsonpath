@@ -1,5 +1,5 @@
-use select::cmp::*;
-use select::{to_f64, FilterKey};
+use crate::select::cmp::*;
+use crate::select::{to_f64, FilterKey};
 use serde_json::{Number, Value};
 
 #[derive(Debug, PartialEq)]

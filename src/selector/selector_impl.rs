@@ -5,8 +5,8 @@ use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
 use super::utils;
-use paths::{tokens::*, ParserTokenHandler, PathParser, StrRange};
-use JsonPathError;
+use crate::paths::{tokens::*, ParserTokenHandler, PathParser, StrRange};
+use crate::JsonPathError;
 
 use super::terms::*;
 

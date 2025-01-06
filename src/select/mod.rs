@@ -4,7 +4,7 @@ use std::fmt;
 use serde_json::map::Entry;
 use serde_json::{Number, Value};
 
-use parser::*;
+use crate::parser::*;
 
 use self::expr_term::*;
 use self::value_walker::ValueWalker;
@@ -774,7 +774,7 @@ impl Selector<'_, '_> {
                     _ => unreachable!(),
                 },
             ),
-            _ => ExprTerm::Json(None, None, vec![]), //panic!("empty term right"),
+            _ => ExprTerm::Json(None, None, vec![]),
         };
 
         let left = match self.selector_filter.pop_term() {
@@ -787,6 +787,7 @@ impl Selector<'_, '_> {
                     _ => unreachable!(),
                 },
             ),
+            _ => ExprTerm::Json(None, None, vec![]),
         };
 
         let mut ret = None;

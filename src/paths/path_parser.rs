@@ -734,10 +734,10 @@ pub struct ParserNode {
 
 #[cfg(test)]
 mod path_parser_tests {
-    use paths::path_parser::PathParser;
-    use paths::str_reader::StrRange;
-    use paths::tokens::{FilterToken, ParseToken};
-    use paths::ParserTokenHandler;
+    use crate::paths::path_parser::PathParser;
+    use crate::paths::str_reader::StrRange;
+    use crate::paths::tokens::{FilterToken, ParseToken};
+    use crate::paths::ParserTokenHandler;
 
     struct NodeVisitorTestImpl<'a> {
         input: &'a str,

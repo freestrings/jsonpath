@@ -662,7 +662,7 @@ impl<'a> FilterTerms<'a> {
 mod expr_term_inner_tests {
     use serde_json::{Number, Value};
 
-    use selector::terms::ExprTerm;
+    use crate::selector::terms::ExprTerm;
 
     #[test]
     fn value_vec_into() {

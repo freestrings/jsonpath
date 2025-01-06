@@ -357,7 +357,7 @@ impl Cmp for CmpOr {
 mod cmp_inner_tests {
     use serde_json::Value;
 
-    use selector::cmp::*;
+    use crate::selector::cmp::*;
 
     #[test]
     fn cmp_eq() {
