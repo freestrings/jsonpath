@@ -770,7 +770,6 @@ impl Selector<'_, '_> {
                 },
             ),
             _ => ExprTerm::Json(None, None, vec![]),
-
         };
 
         let mut ret = None;

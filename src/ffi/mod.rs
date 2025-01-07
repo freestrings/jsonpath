@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
 
-use crate::{parser, select, select_as_str};
+use {crate::parser, crate::select, crate::select_as_str};
 
 const INVALID_PATH: &str = "invalid path";
 const INVALID_JSON: &str = "invalud json";
@@ -53,7 +53,9 @@ pub extern "C" fn ffi_select_with_compiled_path(
     json_ptr: *const c_char,
 ) -> *const c_char {
     #[allow(deprecated)]
-    let node = std::mem::ManuallyDrop::new(unsafe { Box::from_raw(path_ptr as *mut parser::Node) });
+    let node = std::mem::ManuallyDrop::new(unsafe {
+        Box::from_raw(path_ptr as *mut parser::Node)
+    });
     let json_str = to_str(json_ptr, INVALID_JSON);
     let json = serde_json::from_str(json_str)
         .unwrap_or_else(|_| panic!("invalid json string: {}", json_str));

@@ -54,3 +54,51 @@ impl<'a> PathReader<'a> {
         self.pos
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let reader = PathReader::new("abc");
+        assert_eq!(reader.input, "abc");
+        assert_eq!(reader.pos, 0);
+    }
+
+    #[test]
+    fn test_peek_char() {
+        let reader = PathReader::new("abc");
+        assert_eq!(reader.peek_char(), Ok((1, 'a')));
+        let empty_reader = PathReader::new("");
+        assert_eq!(empty_reader.peek_char(), Err(ReaderError::Eof));
+    }
+
+    #[test]
+    fn test_take_while() {
+        let mut reader = PathReader::new("abc");
+        assert_eq!(reader.take_while(|c| *c != 'c'), Ok((2, "ab".to_string())));
+        assert_eq!(reader.take_while(|c| *c != 'c'), Ok((2, "".to_string()))); // already at 'c'
+        let mut empty_reader = PathReader::new("");
+        assert_eq!(empty_reader.take_while(|_| true), Ok((0, "".to_string())));
+        let mut reader = PathReader::new("abc");
+        assert_eq!(reader.take_while(|_| false), Ok((0, "".to_string())));
+    }
+
+    #[test]
+    fn test_next_char() {
+        let mut reader = PathReader::new("abc");
+        assert_eq!(reader.next_char(), Ok((0, 'a')));
+        assert_eq!(reader.next_char(), Ok((1, 'b')));
+        assert_eq!(reader.next_char(), Ok((2, 'c')));
+        assert_eq!(reader.next_char(), Err(ReaderError::Eof));
+    }
+
+    #[test]
+    fn test_current_pos() {
+        let mut reader = PathReader::new("abc");
+        assert_eq!(reader.current_pos(), 0);
+        reader.next_char().unwrap();
+        assert_eq!(reader.current_pos(), 1);
+    }
+}
