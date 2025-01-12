@@ -120,20 +120,37 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    // FIXME When written in "match" grammar, it is determined that "tarpoline" did not cover the test coverage.
+    fn is_not_token(c: &char) -> bool {
+        if c == &CH_DOT
+            || c == &CH_ASTERISK
+            || c == &CH_LARRAY
+            || c ==  &CH_RARRAY
+            || c ==  &CH_LPAREN
+            || c ==  &CH_RPAREN
+            || c ==  &CH_AT
+            || c ==  &CH_QUESTION
+            || c ==  &CH_COMMA
+            || c ==  &CH_SEMICOLON
+            || c ==  &CH_LITTLE
+            || c ==  &CH_GREATER
+            || c ==  &CH_EQUAL
+            || c ==  &CH_AMPERSAND
+            || c ==  &CH_PIPE
+            || c ==  &CH_EXCLAMATION {
+            return false
+        }
+
+        !c.is_whitespace()
+    }
+
     fn dolla(
         &mut self,
         pos: usize,
         ch: char,
     ) -> Result<Token, TokenError> {
-        let fun = |c: &char| match c {
-            &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY | &CH_LPAREN
-            | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA
-            | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
-            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
-            _ => !c.is_whitespace(),
-        };
         let (_, mut vec) =
-            self.input.take_while(fun).map_err(to_token_error)?;
+            self.input.take_while(Self::is_not_token).map_err(to_token_error)?;
         vec.insert(0, ch);
 
         if vec.len() == 1 {
@@ -222,13 +239,13 @@ impl<'a> Tokenizer<'a> {
         pos: usize,
         _: char,
     ) -> Result<Token, TokenError> {
-        let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_EQUAL => {
+        match self.input.peek_char() {
+            Ok((_, CH_EQUAL)) => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::LittleOrEqual(pos))
             },
-            _ => Ok(Token::Little(pos)),
+            Ok(_) => Ok(Token::Little(pos)),
+            Err(ReaderError::Eof) => Ok(Token::Little(pos)),
         }
     }
 
@@ -237,13 +254,13 @@ impl<'a> Tokenizer<'a> {
         pos: usize,
         _: char,
     ) -> Result<Token, TokenError> {
-        let (_, ch) = self.input.peek_char().map_err(to_token_error)?;
-        match ch {
-            CH_EQUAL => {
+        match self.input.peek_char() {
+            Ok((_, CH_EQUAL)) => {
                 self.input.next_char().map_err(to_token_error)?;
                 Ok(Token::GreaterOrEqual(pos))
             },
-            _ => Ok(Token::Greater(pos)),
+            Ok(_) => Ok(Token::Greater(pos)),
+            Err(ReaderError::Eof) => Ok(Token::Greater(pos)),
         }
     }
 
@@ -280,13 +297,20 @@ impl<'a> Tokenizer<'a> {
     fn whitespace(
         &mut self,
         pos: usize,
-        _: char,
+        ch: char,
     ) -> Result<Token, TokenError> {
         let (_, vec) = self
             .input
             .take_while(|c| c.is_whitespace())
             .map_err(to_token_error)?;
-        Ok(Token::Whitespace(pos, vec.len()))
+        Ok(Token::Whitespace(
+            pos,
+            if ch.is_whitespace() {
+                vec.len() + 1
+            } else {
+                vec.len()
+            },
+        ))
     }
 
     fn other(
@@ -294,15 +318,8 @@ impl<'a> Tokenizer<'a> {
         pos: usize,
         ch: char,
     ) -> Result<Token, TokenError> {
-        let fun = |c: &char| match c {
-            &CH_DOLLA | &CH_DOT | &CH_ASTERISK | &CH_LARRAY | &CH_RARRAY
-            | &CH_LPAREN | &CH_RPAREN | &CH_AT | &CH_QUESTION | &CH_COMMA
-            | &CH_SEMICOLON | &CH_LITTLE | &CH_GREATER | &CH_EQUAL
-            | &CH_AMPERSAND | &CH_PIPE | &CH_EXCLAMATION => false,
-            _ => !c.is_whitespace(),
-        };
         let (_, mut vec) =
-            self.input.take_while(fun).map_err(to_token_error)?;
+            self.input.take_while(Self::is_not_token).map_err(to_token_error)?;
         vec.insert(0, ch);
         Ok(Token::Key(pos, vec))
     }
@@ -408,5 +425,242 @@ impl<'a> TokenReader<'a> {
             Some(pos) => self.err_msg_with_pos(pos),
             _ => self.err_msg_with_pos(self.err_pos),
         }
+    }
+}
+
+#[cfg(test)]
+mod token_tests {
+    use super::*;
+
+    #[test]
+    fn test_is_match_token_type() {
+        assert!(Token::Absolute(1).is_match_token_type(Token::Absolute(2)));
+        assert!(Token::Dot(1).is_match_token_type(Token::Dot(2)));
+        assert!(Token::At(1).is_match_token_type(Token::At(2)));
+        assert!(Token::OpenArray(1).is_match_token_type(Token::OpenArray(2)));
+        assert!(Token::CloseArray(1).is_match_token_type(Token::CloseArray(2)));
+        assert!(Token::Asterisk(1).is_match_token_type(Token::Asterisk(2)));
+        assert!(Token::Question(1).is_match_token_type(Token::Question(2)));
+        assert!(Token::Comma(1).is_match_token_type(Token::Comma(2)));
+        assert!(Token::Split(1).is_match_token_type(Token::Split(2)));
+        assert!(Token::OpenParenthesis(1)
+            .is_match_token_type(Token::OpenParenthesis(2)));
+        assert!(Token::CloseParenthesis(1)
+            .is_match_token_type(Token::CloseParenthesis(2)));
+        assert!(Token::Key(1, "key".to_string())
+            .is_match_token_type(Token::Key(2, "key".to_string())));
+        assert!(Token::DoubleQuoted(1, "value".to_string())
+            .is_match_token_type(Token::DoubleQuoted(2, "value".to_string())));
+        assert!(Token::SingleQuoted(1, "value".to_string())
+            .is_match_token_type(Token::SingleQuoted(2, "value".to_string())));
+        assert!(Token::Equal(1).is_match_token_type(Token::Equal(2)));
+        assert!(Token::GreaterOrEqual(1)
+            .is_match_token_type(Token::GreaterOrEqual(2)));
+        assert!(Token::Greater(1).is_match_token_type(Token::Greater(2)));
+        assert!(Token::Little(1).is_match_token_type(Token::Little(2)));
+        assert!(Token::LittleOrEqual(1)
+            .is_match_token_type(Token::LittleOrEqual(2)));
+        assert!(Token::NotEqual(1).is_match_token_type(Token::NotEqual(2)));
+        assert!(Token::And(1).is_match_token_type(Token::And(2)));
+        assert!(Token::Or(1).is_match_token_type(Token::Or(2)));
+        assert!(Token::Whitespace(1, 2)
+            .is_match_token_type(Token::Whitespace(3, 4)));
+    }
+}
+
+#[cfg(test)]
+mod tokenizer_tests {
+    use super::*;
+
+    #[test]
+    fn test_dolla() {
+        let mut tokenizer = Tokenizer::new("$");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+    }
+
+    #[test]
+    fn test_dot() {
+        let mut tokenizer = Tokenizer::new(".");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Dot(0));
+    }
+
+    #[test]
+    fn test_asterisk() {
+        let mut tokenizer = Tokenizer::new("*");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Asterisk(0));
+    }
+
+    #[test]
+    fn test_open_array() {
+        let mut tokenizer = Tokenizer::new("[");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::OpenArray(0));
+    }
+
+    #[test]
+    fn test_close_array() {
+        let mut tokenizer = Tokenizer::new("]");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::CloseArray(0));
+    }
+
+    #[test]
+    fn test_open_parenthesis() {
+        let mut tokenizer = Tokenizer::new("(");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::OpenParenthesis(0));
+    }
+
+    #[test]
+    fn test_close_parenthesis() {
+        let mut tokenizer = Tokenizer::new(")");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::CloseParenthesis(0));
+    }
+
+    #[test]
+    fn test_at() {
+        let mut tokenizer = Tokenizer::new("@");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::At(0));
+    }
+
+    #[test]
+    fn test_question() {
+        let mut tokenizer = Tokenizer::new("?");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Question(0));
+    }
+
+    #[test]
+    fn test_comma() {
+        let mut tokenizer = Tokenizer::new(",");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Comma(0));
+    }
+
+    #[test]
+    fn test_semicolon() {
+        let mut tokenizer = Tokenizer::new(":");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Split(0));
+    }
+
+    #[test]
+    fn test_single_quote() {
+        let mut tokenizer = Tokenizer::new("'value'");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::SingleQuoted(0, "value".to_string()));
+    }
+
+    #[test]
+    fn test_double_quote() {
+        let mut tokenizer = Tokenizer::new("\"value\"");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::DoubleQuoted(0, "value".to_string()));
+    }
+
+    #[test]
+    fn test_equal() {
+        let mut tokenizer = Tokenizer::new("==");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Equal(0));
+    }
+
+    #[test]
+    fn test_not_equal() {
+        let mut tokenizer = Tokenizer::new("!=");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::NotEqual(0));
+    }
+
+    #[test]
+    fn test_little() {
+        let mut tokenizer = Tokenizer::new("<");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Little(0));
+    }
+
+    #[test]
+    fn test_little_or_equal() {
+        let mut tokenizer = Tokenizer::new("<=");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::LittleOrEqual(0));
+    }
+
+    #[test]
+    fn test_greater() {
+        let mut tokenizer = Tokenizer::new(">");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Greater(0));
+    }
+
+    #[test]
+    fn test_greater_or_equal() {
+        let mut tokenizer = Tokenizer::new(">=");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::GreaterOrEqual(0));
+    }
+
+    #[test]
+    fn test_and() {
+        let mut tokenizer = Tokenizer::new("&&");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::And(0));
+    }
+
+    #[test]
+    fn test_or() {
+        let mut tokenizer = Tokenizer::new("||");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Or(0));
+    }
+
+    #[test]
+    fn test_whitespace() {
+        let mut tokenizer = Tokenizer::new("   ");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Whitespace(0, 3));
+    }
+
+    #[test]
+    fn test_other() {
+        let mut tokenizer = Tokenizer::new("key");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Key(0, "key".to_string()));
+    }
+
+    #[test]
+    fn test_is_not_token() {
+        let mut tokenizer = Tokenizer::new("$key");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Key(0, "$key".to_string()));
+        let mut tokenizer = Tokenizer::new("$.");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Dot(1));
+        let mut tokenizer = Tokenizer::new("$*");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Asterisk(1));
+        let mut tokenizer = Tokenizer::new("$[");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::OpenArray(1));
+        let mut tokenizer = Tokenizer::new("$]");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::CloseArray(1));
+        let mut tokenizer = Tokenizer::new("$(");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::OpenParenthesis(1));
+        let mut tokenizer = Tokenizer::new("$)");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::CloseParenthesis(1));
+        let mut tokenizer = Tokenizer::new("$@");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::At(1));
+        let mut tokenizer = Tokenizer::new("$?");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Question(1));
+        let mut tokenizer = Tokenizer::new("$,");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Comma(1));
+        let mut tokenizer = Tokenizer::new("$:");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Split(1));
+        let mut tokenizer = Tokenizer::new("$<");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Little(1));
+        let mut tokenizer = Tokenizer::new("$>");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Greater(1));
+        let mut tokenizer = Tokenizer::new("$=");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token(), Err(TokenError::Eof));
+        let mut tokenizer = Tokenizer::new("$&");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token(), Err(TokenError::Eof));
+        let mut tokenizer = Tokenizer::new("$|");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token(), Err(TokenError::Eof));
+        let mut tokenizer = Tokenizer::new("$!");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token(), Err(TokenError::Eof));
     }
 }

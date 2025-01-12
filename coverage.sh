@@ -6,4 +6,4 @@
 
 set -e
 
-cargo tarpaulin --exclude-files nodejs wasm parser/mod.rs -v --all
+cargo tarpaulin --exclude-files nodejs wasm src/parser/mod.rs -v --all
