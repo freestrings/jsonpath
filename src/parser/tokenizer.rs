@@ -120,25 +120,26 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    // FIXME When written in "match" grammar, it is determined that "tarpoline" did not cover the test coverage.
+    // FIXME When written in "match" grammar, it is determined that "tarpaulin" did not cover the test coverage.
     fn is_not_token(c: &char) -> bool {
         if c == &CH_DOT
             || c == &CH_ASTERISK
             || c == &CH_LARRAY
-            || c ==  &CH_RARRAY
-            || c ==  &CH_LPAREN
-            || c ==  &CH_RPAREN
-            || c ==  &CH_AT
-            || c ==  &CH_QUESTION
-            || c ==  &CH_COMMA
-            || c ==  &CH_SEMICOLON
-            || c ==  &CH_LITTLE
-            || c ==  &CH_GREATER
-            || c ==  &CH_EQUAL
-            || c ==  &CH_AMPERSAND
-            || c ==  &CH_PIPE
-            || c ==  &CH_EXCLAMATION {
-            return false
+            || c == &CH_RARRAY
+            || c == &CH_LPAREN
+            || c == &CH_RPAREN
+            || c == &CH_AT
+            || c == &CH_QUESTION
+            || c == &CH_COMMA
+            || c == &CH_SEMICOLON
+            || c == &CH_LITTLE
+            || c == &CH_GREATER
+            || c == &CH_EQUAL
+            || c == &CH_AMPERSAND
+            || c == &CH_PIPE
+            || c == &CH_EXCLAMATION
+        {
+            return false;
         }
 
         !c.is_whitespace()
@@ -149,8 +150,10 @@ impl<'a> Tokenizer<'a> {
         pos: usize,
         ch: char,
     ) -> Result<Token, TokenError> {
-        let (_, mut vec) =
-            self.input.take_while(Self::is_not_token).map_err(to_token_error)?;
+        let (_, mut vec) = self
+            .input
+            .take_while(Self::is_not_token)
+            .map_err(to_token_error)?;
         vec.insert(0, ch);
 
         if vec.len() == 1 {
@@ -318,8 +321,10 @@ impl<'a> Tokenizer<'a> {
         pos: usize,
         ch: char,
     ) -> Result<Token, TokenError> {
-        let (_, mut vec) =
-            self.input.take_while(Self::is_not_token).map_err(to_token_error)?;
+        let (_, mut vec) = self
+            .input
+            .take_while(Self::is_not_token)
+            .map_err(to_token_error)?;
         vec.insert(0, ch);
         Ok(Token::Key(pos, vec))
     }
@@ -541,13 +546,24 @@ mod tokenizer_tests {
     #[test]
     fn test_single_quote() {
         let mut tokenizer = Tokenizer::new("'value'");
-        assert_eq!(tokenizer.next_token().unwrap(), Token::SingleQuoted(0, "value".to_string()));
+        assert_eq!(
+            tokenizer.next_token().unwrap(),
+            Token::SingleQuoted(0, "value".to_string())
+        );
+        let mut tokenizer = Tokenizer::new("'value\\''");
+        assert_eq!(
+            tokenizer.next_token().unwrap(),
+            Token::SingleQuoted(0, "value'".to_string())
+        );
     }
 
     #[test]
     fn test_double_quote() {
         let mut tokenizer = Tokenizer::new("\"value\"");
-        assert_eq!(tokenizer.next_token().unwrap(), Token::DoubleQuoted(0, "value".to_string()));
+        assert_eq!(
+            tokenizer.next_token().unwrap(),
+            Token::DoubleQuoted(0, "value".to_string())
+        );
     }
 
     #[test]
@@ -607,13 +623,19 @@ mod tokenizer_tests {
     #[test]
     fn test_other() {
         let mut tokenizer = Tokenizer::new("key");
-        assert_eq!(tokenizer.next_token().unwrap(), Token::Key(0, "key".to_string()));
+        assert_eq!(
+            tokenizer.next_token().unwrap(),
+            Token::Key(0, "key".to_string())
+        );
     }
 
     #[test]
     fn test_is_not_token() {
         let mut tokenizer = Tokenizer::new("$key");
-        assert_eq!(tokenizer.next_token().unwrap(), Token::Key(0, "$key".to_string()));
+        assert_eq!(
+            tokenizer.next_token().unwrap(),
+            Token::Key(0, "$key".to_string())
+        );
         let mut tokenizer = Tokenizer::new("$.");
         assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
         assert_eq!(tokenizer.next_token().unwrap(), Token::Dot(1));
@@ -662,5 +684,53 @@ mod tokenizer_tests {
         let mut tokenizer = Tokenizer::new("$!");
         assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
         assert_eq!(tokenizer.next_token(), Err(TokenError::Eof));
+        let mut tokenizer = Tokenizer::new("$|");
+        assert_eq!(tokenizer.next_token().unwrap(), Token::Absolute(0));
+        assert_eq!(tokenizer.next_token(), Err(TokenError::Eof));
+    }
+}
+
+#[cfg(test)]
+mod token_reader_tests {
+    use super::*;
+
+    #[test]
+    fn test_token_reader_new() {
+        let input = "some input string";
+        let reader = TokenReader::new(input);
+        assert_eq!(reader.origin_input, input);
+        assert!(reader.tokens.len() > 0 || reader.err_pos > 0);
+    }
+
+    #[test]
+    fn test_peek_token() {
+        let input = "some input string";
+        let reader = TokenReader::new(input);
+        assert_eq!(reader.peek_token(), Ok(&Token::Key(0, "some".to_string())));
+    }
+
+    #[test]
+    fn test_next_token() {
+        let input = "some input string";
+        let mut reader = TokenReader::new(input);
+        assert_eq!(reader.next_token(), Ok(Token::Key(0, "some".to_string())));
+    }
+
+    #[test]
+    fn test_err_msg_with_pos() {
+        let input = "some input string";
+        let reader = TokenReader::new(input);
+        let pos = 5;
+        let err_msg = reader.err_msg_with_pos(pos);
+        assert!(err_msg.contains("^".repeat(pos).as_str()));
+    }
+
+    #[test]
+    fn test_err_msg() {
+        let input = "some input string";
+        let mut reader = TokenReader::new(input);
+        while reader.next_token().is_ok() {}
+        let err_msg = reader.err_msg();
+        assert!(err_msg.contains("^"));
     }
 }
