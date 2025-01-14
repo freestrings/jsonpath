@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/freestrings/jsonpath.svg?branch=master)](https://travis-ci.org/freestrings/jsonpath)
 ![crates.io](https://img.shields.io/crates/v/jsonpath_lib.svg)
 ![npm](https://img.shields.io/npm/v/jsonpath-wasm.svg?label=npm%20%60jsonpath-wasm%60)
-![Codecov](https://img.shields.io/codecov/c/github/freestrings/jsonpath.svg?token=92c41b4e7cf04a9cbebc08f68c5da615)
+[![codecov](https://codecov.io/github/freestrings/jsonpath/graph/badge.svg?token=xLtsYrqvi9)](https://codecov.io/github/freestrings/jsonpath)
 
 `Rust` 버전 [JsonPath](https://goessner.net/articles/JsonPath/) 구현으로 `Webassembly`와 `Javascript`에서도 유사한 API 인터페이스를 제공 한다.
 
