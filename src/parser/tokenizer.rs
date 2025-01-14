@@ -699,7 +699,7 @@ mod token_reader_tests {
         let input = "some input string";
         let reader = TokenReader::new(input);
         assert_eq!(reader.origin_input, input);
-        assert!(reader.tokens.len() > 0 || reader.err_pos > 0);
+        assert!(!reader.tokens.is_empty() || reader.err_pos > 0);
     }
 
     #[test]

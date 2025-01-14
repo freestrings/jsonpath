@@ -17,8 +17,8 @@ fn to_char_ptr(v: &str) -> *const c_char {
     let s = std::mem::ManuallyDrop::new(
         CString::new(v).unwrap_or_else(|_| panic!("invalid string: {}", v)),
     );
-    let ptr = s.as_ptr();
-    ptr
+
+    s.as_ptr()
 }
 
 #[no_mangle]
